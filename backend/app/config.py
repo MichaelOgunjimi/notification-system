@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     RETRY_MAX_BACKOFF_SECONDS: int = 600
     RETRY_JITTER_ENABLED: bool = True
 
+    # Auth
+    MASTER_API_KEY: str = ""
+
     # Redis (Phase 2)
     REDIS_URL: str = "redis://localhost:6379/0"
 
