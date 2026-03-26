@@ -28,6 +28,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.7.0",
     "psycopg2-binary>=2.9.0",
+    "greenlet>=3.3.2",
 ]
 
 [tool.pytest.ini_options]

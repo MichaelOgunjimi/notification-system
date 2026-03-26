@@ -1,11 +1,11 @@
-"""Datetime utilities — timezone-aware UTC helpers."""
+"""Datetime utilities — UTC helpers."""
 
 from datetime import UTC, datetime
 
 
 def utc_now() -> datetime:
-    """Return the current UTC time as a timezone-aware datetime."""
-    return datetime.now(UTC)
+    """Return the current UTC time as a naive datetime (for TIMESTAMP WITHOUT TIME ZONE)."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def to_iso(dt: datetime) -> str:

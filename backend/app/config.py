@@ -4,20 +4,60 @@ All settings are loaded from environment variables and/or a .env file.
 """
 
 from functools import lru_cache
+from pathlib import Path
 
+from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# .env lives at project root (one level above backend/)
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/notifications"
-    DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/notifications"
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "notification_system"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DATABASE_URL(self) -> str:  # noqa: N802
+        """Async database URL for FastAPI (asyncpg driver)."""
+        return str(PostgresDsn.build(
+            scheme="postgresql+asyncpg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            path=self.POSTGRES_DB,
+        ))
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SYNC_DATABASE_URL(self) -> str:  # noqa: N802
+        """Sync database URL for Alembic migrations (psycopg2 driver)."""
+        ssl_mode = (
+            "require"
+            if self.POSTGRES_SERVER not in ["localhost", "db", "127.0.0.1"]
+            else "disable"
+        )
+        return str(PostgresDsn.build(
+            scheme="postgresql+psycopg2",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            path=self.POSTGRES_DB,
+            query=f"sslmode={ssl_mode}",
+        ))
 
     # Application
     APP_ENV: str = "development"

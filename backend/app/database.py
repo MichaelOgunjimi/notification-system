@@ -25,7 +25,7 @@ async_session = async_sessionmaker(
 )
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async database session for FastAPI dependency injection."""
     async with async_session() as session:
         yield session

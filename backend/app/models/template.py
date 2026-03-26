@@ -34,15 +34,13 @@ class Template(SQLModel, table=True):
     subject: str | None = Field(default=None, max_length=500)
     body: str
     variables: dict[str, Any] | list[Any] = Field(
-        default=[], sa_column=Column(JSONB, nullable=False, server_default="'[]'::jsonb")
+        default=[], sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     )
     version: int = Field(default=1)
     is_active: bool = Field(default=True)
     metadata_: dict[str, Any] | None = Field(
         default=None, sa_column=Column("metadata", JSONB, nullable=True)
     )
-    created_by: uuid.UUID | None = Field(
-        default=None, foreign_key="api_keys.id"
-    )
+    created_by: uuid.UUID | None = Field(default=None, foreign_key="api_keys.id")
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

@@ -1103,6 +1103,7 @@ dependencies = [
 dev = [
     { name = "factory-boy" },
     { name = "faker" },
+    { name = "greenlet" },
     { name = "httpx" },
     { name = "psycopg2-binary" },
     { name = "pytest" },
@@ -1130,6 +1131,7 @@ requires-dist = [
 dev = [
     { name = "factory-boy", specifier = ">=3.3.0" },
     { name = "faker", specifier = ">=30.0.0" },
+    { name = "greenlet", specifier = ">=3.3.2" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "pytest", specifier = ">=8.3.0" },

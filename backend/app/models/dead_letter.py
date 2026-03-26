@@ -30,9 +30,7 @@ class DeadLetterMessage(SQLModel, table=True):
     error_type: str = Field(max_length=100)
     error_message: str
     retry_count: int
-    retry_history: list[dict[str, Any]] = Field(
-        sa_column=Column(JSONB, nullable=False)
-    )
+    retry_history: list[dict[str, Any]] = Field(sa_column=Column(JSONB, nullable=False))
     status: DeadLetterStatus = Field(default=DeadLetterStatus.ACTIVE)
     failed_at: datetime
     retried_at: datetime | None = Field(default=None)

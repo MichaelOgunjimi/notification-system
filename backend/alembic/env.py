@@ -8,13 +8,13 @@ from sqlmodel import SQLModel
 
 import app.models  # noqa: F401 — ensure all models are registered
 from alembic import context
+from app.config import settings
 
 config = context.config
 
-# Override sqlalchemy.url from environment if available
-database_url = os.environ.get("DATABASE_URL_SYNC")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+# Use the computed sync URL from settings, with env override as fallback
+database_url = os.environ.get("SYNC_DATABASE_URL", settings.SYNC_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
