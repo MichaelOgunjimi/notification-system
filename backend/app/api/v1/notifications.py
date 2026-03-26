@@ -3,11 +3,9 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import get_current_api_key, get_db
-from app.models.api_key import ApiKey
+from app.api.deps import ApiKeyDep, SessionDep
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.notifications import (
@@ -30,8 +28,9 @@ async def list_notifications(
     date_from: datetime | None = Query(default=None),
     date_to: datetime | None = Query(default=None),
     recipient: str | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
-    api_key: ApiKey = Depends(get_current_api_key),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
 ) -> PaginatedResponse[NotificationResponse]:
     filters = NotificationListParams(
         status=status_filter,
@@ -40,9 +39,7 @@ async def list_notifications(
         date_to=date_to,
         recipient=recipient,
     )
-    items, total = await notification_service.list_notifications(
-        db, filters, page, per_page
-    )
+    items, total = await notification_service.list_notifications(db, filters, page, per_page)
     response_items = [
         NotificationResponse(
             id=n.id,
@@ -63,14 +60,13 @@ async def list_notifications(
 @router.get("/{notification_id}", response_model=NotificationDetailResponse)
 async def get_notification(
     notification_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    api_key: ApiKey = Depends(get_current_api_key),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
 ) -> NotificationDetailResponse:
     notification = await notification_service.get_notification(db, notification_id)
     if notification is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
     logs = await notification_service.get_notification_logs(db, notification_id)
     log_responses = [

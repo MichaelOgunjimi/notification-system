@@ -2,11 +2,9 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import get_current_api_key, get_db
-from app.models.api_key import ApiKey
+from app.api.deps import ApiKeyDep, SessionDep
 from app.schemas.events import (
     EventBatchCreate,
     EventCreate,
@@ -21,8 +19,9 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.post("", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 async def create_event(
     body: EventCreate,
-    db: AsyncSession = Depends(get_db),
-    api_key: ApiKey = Depends(get_current_api_key),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
 ) -> EventResponse:
     event, notification_ids = await event_service.create_event(db, body, api_key.id)
     return EventResponse(
@@ -35,19 +34,16 @@ async def create_event(
     )
 
 
-@router.post(
-    "/batch", response_model=list[EventResponse], status_code=status.HTTP_201_CREATED
-)
+@router.post("/batch", response_model=list[EventResponse], status_code=status.HTTP_201_CREATED)
 async def create_batch_events(
     body: EventBatchCreate,
-    db: AsyncSession = Depends(get_db),
-    api_key: ApiKey = Depends(get_current_api_key),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
 ) -> list[EventResponse]:
     results: list[EventResponse] = []
     for event_data in body.events:
-        event, notification_ids = await event_service.create_event(
-            db, event_data, api_key.id
-        )
+        event, notification_ids = await event_service.create_event(db, event_data, api_key.id)
         results.append(
             EventResponse(
                 id=event.id,
@@ -64,8 +60,9 @@ async def create_batch_events(
 @router.get("/{event_id}", response_model=EventDetailResponse)
 async def get_event(
     event_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    api_key: ApiKey = Depends(get_current_api_key),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
 ) -> EventDetailResponse:
     event = await event_service.get_event(db, event_id)
     if event is None:

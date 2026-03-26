@@ -1,10 +1,9 @@
 """Health check endpoints — /health, /health/ready, /health/live."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import SessionDep
 from app.config import settings
 from app.schemas.common import HealthResponse
 from app.utils.datetime import utc_now
@@ -13,7 +12,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
+async def health_check(*, db: SessionDep) -> HealthResponse:
     db_connected = False
     try:
         await db.execute(text("SELECT 1"))
