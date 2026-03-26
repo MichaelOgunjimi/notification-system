@@ -62,3 +62,4 @@ yarn-error.log*
 
 # Pencil design files (if any)
 *.pen
+.progress/

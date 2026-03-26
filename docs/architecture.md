@@ -155,7 +155,7 @@ The system consists of five major subsystems:
 
 The following traces a single notification from API submission to delivery:
 
-```
+```code
 Step 1: Client Request
 ──────────────────────
 Client ──POST /api/v1/events/──▶ FastAPI
@@ -257,7 +257,7 @@ Client ──POST /api/v1/events/batch──▶ FastAPI
     │  ┌─────────────────────────────────────────────────────────┐    │
     │  │  notifications.high     ■■■■■■■■                        │    │
     │  │  notifications.medium   ■■■■■■■■■■■■■■■■                │    │
-    │  │  notifications.low      ■■■                              │    │
+    │  │  notifications.low      ■■■                             │    │
     │  └─────────────────────────────┬───────────────────────────┘    │
     │                                │                                │
     │                       Dispatcher Worker                         │
@@ -272,7 +272,7 @@ Client ──POST /api/v1/events/batch──▶ FastAPI
     │                                                                 │
     │  SYSTEM QUEUES                                                  │
     │  ┌─────────────────────────────────────────────────────────┐    │
-    │  │  notifications.dlq      ■■  (manual retry processing)  │    │
+    │  │  notifications.dlq      ■■  (manual retry processing)   │    │
     │  └─────────────────────────────────────────────────────────┘    │
     │                                                                 │
     └─────────────────────────────────────────────────────────────────┘

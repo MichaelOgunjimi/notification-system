@@ -6,7 +6,7 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 
 ## Architecture
 
-```
+```text
 ┌──────────┐     ┌─────────────┐     ┌─────────────┐     ┌──────────────────┐
 │  Client   │────▶│  FastAPI API │────▶│ Redis Queue  │────▶│  Celery Workers  │
 │           │     │  (REST)     │     │  (Priority)  │     │                  │
@@ -31,7 +31,7 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 ## Key Concepts Demonstrated
 
 | Concept | Implementation |
-|---------|---------------|
+| --- | --- |
 | Async message processing | Celery workers consuming from Redis-backed queues |
 | Priority queues | Multiple Celery queues with priority routing (`high`, `medium`, `low`) |
 | At-least-once delivery | `acks_late` with idempotent workers — tasks survive crashes |
@@ -47,7 +47,7 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+| --- | --- |
 | **API** | FastAPI, Pydantic v2, SQLModel, Alembic |
 | **Task Queue** | Celery, Redis (broker + result backend) |
 | **Database** | PostgreSQL |
@@ -58,6 +58,7 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 ## Features
 
 ### Core Backend
+
 - **Event Ingestion** — REST API with JSON Schema validation, API key auth, and idempotency support
 - **Priority Queue Routing** — Events dispatched to `high`, `medium`, `low` queues with channel fan-out
 - **Email Worker** — Resend adapter with HTML/plain-text Jinja2 templates and bounce tracking
@@ -70,6 +71,7 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 - **Batch Processing** — Up to 1,000 recipients per request with aggregate status tracking
 
 ### Dashboard (Frontend)
+
 - **Overview** — Live metric cards, activity feed, queue depth sparklines, system health indicators
 - **Notification History** — Searchable table with expandable delivery timelines and bulk actions
 - **Queue Monitor** — Real-time queue depth charts, active workers, processing rate
@@ -113,7 +115,7 @@ make dev
 
 ### Interactive API Docs
 
-Once the server is running, visit **http://localhost:8000/docs** for the Swagger UI.
+Once the server is running, visit <http://localhost:8000/docs> for the Swagger UI.
 
 ## API Overview
 
@@ -145,7 +147,7 @@ curl http://localhost:8000/api/v1/health/
 
 ## Project Structure
 
-```
+```text
 notification-system/
 ├── backend/
 │   ├── app/              # FastAPI application
@@ -164,7 +166,7 @@ notification-system/
 ## Documentation
 
 | Document | Description |
-|----------|-------------|
+| --- | --- |
 | [PRD](docs/PRD.md) | Full product requirements document |
 | [Architecture](docs/architecture.md) | System design and component deep-dive |
 | [Concepts Guide](docs/CONCEPTS.md) | Distributed systems concepts with interview talking points |
