@@ -5,6 +5,7 @@ import uuid
 from jinja2 import BaseLoader, Environment
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from app.models.template import Template
 from app.schemas.templates import TemplateCreate, TemplateUpdate
@@ -28,24 +29,22 @@ async def create_template(db: AsyncSession, data: TemplateCreate) -> Template:
 
 async def get_template(db: AsyncSession, template_id: uuid.UUID) -> Template | None:
     result = await db.execute(
-        select(Template).where(Template.id == template_id, Template.is_active == True)  # noqa: E712
+        select(Template).where(col(Template.id) == template_id, col(Template.is_active))
     )
     return result.scalar_one_or_none()
 
 
-async def list_templates(
-    db: AsyncSession, page: int, per_page: int
-) -> tuple[list[Template], int]:
+async def list_templates(db: AsyncSession, page: int, per_page: int) -> tuple[list[Template], int]:
     count_result = await db.execute(
-        select(func.count()).select_from(Template).where(Template.is_active == True)  # noqa: E712
+        select(func.count()).select_from(Template).where(col(Template.is_active))
     )
     total = count_result.scalar() or 0
 
     offset = (page - 1) * per_page
     result = await db.execute(
         select(Template)
-        .where(Template.is_active == True)  # noqa: E712
-        .order_by(Template.created_at.desc())
+        .where(col(Template.is_active))
+        .order_by(col(Template.created_at).desc())
         .offset(offset)
         .limit(per_page)
     )

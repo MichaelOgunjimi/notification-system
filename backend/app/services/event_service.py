@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from app.models.enums import EventStatus, NotificationStatus
 from app.models.event import Event
@@ -74,15 +75,13 @@ async def create_event(
 
 async def get_event(db: AsyncSession, event_id: uuid.UUID) -> Event | None:
     """Fetch a single event by ID."""
-    result = await db.execute(select(Event).where(Event.id == event_id))
+    result = await db.execute(select(Event).where(col(Event.id) == event_id))
     return result.scalar_one_or_none()
 
 
-async def get_event_notification_ids(
-    db: AsyncSession, event_id: uuid.UUID
-) -> list[uuid.UUID]:
+async def get_event_notification_ids(db: AsyncSession, event_id: uuid.UUID) -> list[uuid.UUID]:
     """Get all notification IDs for an event."""
     result = await db.execute(
-        select(Notification.id).where(Notification.event_id == event_id)
+        select(col(Notification.id)).where(col(Notification.event_id) == event_id)
     )
     return list(result.scalars().all())
