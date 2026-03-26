@@ -1,7 +1,7 @@
 # ── Build stage ──────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
-WORKDIR /build
+WORKDIR /app
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -21,8 +21,8 @@ WORKDIR /app
 RUN groupadd --gid 1000 appuser && \
     useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
 
-# Copy the virtual environment from the builder
-COPY --from=builder /build/.venv /app/.venv
+# Copy the virtual environment from the builder (same path = shebangs work)
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY . /app

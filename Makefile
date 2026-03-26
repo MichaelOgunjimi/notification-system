@@ -1,4 +1,4 @@
-.PHONY: dev test lint format migrate migrate-create seed docker-up docker-down install
+.PHONY: dev test lint format migrate migrate-create seed docker-up docker-down docker-rebuild install
 
 install:
 	cd backend && uv sync
@@ -28,4 +28,7 @@ docker-up:
 	docker compose up -d
 
 docker-down:
-	docker compose down
+	docker compose down 
+
+docker-rebuild:
+	docker compose down --rmi all && docker compose up -d --build
