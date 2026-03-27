@@ -41,18 +41,30 @@ async def create_batch_events(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> list[EventResponse]:
+    """Create multiple events atomically — all succeed or all roll back."""
+    batch_id = uuid.uuid4()
     results: list[EventResponse] = []
-    for event_data in body.events:
-        event, notification_ids = await event_service.create_event(db, event_data, api_key.id)
-        results.append(
-            EventResponse(
-                id=event.id,
-                event_type=event.event_type,
-                priority=event.priority,
-                status=event.status,
-                notification_ids=notification_ids,
-                created_at=event.created_at,
+    try:
+        for event_data in body.events:
+            event, notification_ids = await event_service.create_event(
+                db, event_data, api_key.id, batch_id=batch_id, auto_commit=False,
             )
+            results.append(
+                EventResponse(
+                    id=event.id,
+                    event_type=event.event_type,
+                    priority=event.priority,
+                    status=event.status,
+                    notification_ids=notification_ids,
+                    created_at=event.created_at,
+                )
+            )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Batch failed — all events rolled back",
         )
     return results
 
