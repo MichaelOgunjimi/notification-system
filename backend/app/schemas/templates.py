@@ -34,6 +34,7 @@ class TemplateResponse(BaseModel):
     variables: dict[str, Any] | list[Any]
     version: int
     is_active: bool
+    created_by: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

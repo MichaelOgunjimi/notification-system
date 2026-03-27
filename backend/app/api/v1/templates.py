@@ -25,7 +25,7 @@ async def create_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.create_template(db, body)
+    template = await template_service.create_template(db, body, api_key_id=apikey.id)
     return TemplateResponse.model_validate(template)
 
 
@@ -37,7 +37,7 @@ async def list_templates(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> PaginatedResponse[TemplateResponse]:
-    items, total = await template_service.list_templates(db, page, per_page)
+    items, total = await template_service.list_templates(db, page, per_page, api_key_id=apikey.id)
     response_items = [TemplateResponse.model_validate(t) for t in items]
     return PaginatedResponse.create(response_items, total, page, per_page)
 
@@ -49,7 +49,7 @@ async def get_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.get_template(db, template_id)
+    template = await template_service.get_template(db, template_id, api_key_id=apikey.id)
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return TemplateResponse.model_validate(template)
@@ -63,7 +63,9 @@ async def update_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.update_template(db, template_id, body)
+    template = await template_service.update_template(
+        db, template_id, body, api_key_id=apikey.id
+    )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return TemplateResponse.model_validate(template)
@@ -76,7 +78,7 @@ async def delete_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> None:
-    deleted = await template_service.delete_template(db, template_id)
+    deleted = await template_service.delete_template(db, template_id, api_key_id=apikey.id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
 
@@ -89,7 +91,7 @@ async def preview_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> TemplatePreviewResponse:
-    template = await template_service.get_template(db, template_id)
+    template = await template_service.get_template(db, template_id, api_key_id=apikey.id)
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     rendered_subject, rendered_body = template_service.preview_template(

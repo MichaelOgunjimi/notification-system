@@ -1,5 +1,6 @@
 """FastAPI dependency injection — database sessions, auth, and settings."""
 
+import secrets
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -49,9 +50,11 @@ async def verify_master_key(
 ) -> None:
     """Verify that the provided key matches the MASTER_API_KEY env var."""
     if not settings.MASTER_API_KEY:
-        # No master key configured — allow unrestricted access for bootstrapping
-        return
-    if x_api_key != settings.MASTER_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Master API key not configured",
+        )
+    if not secrets.compare_digest(x_api_key, settings.MASTER_API_KEY):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid master API key",

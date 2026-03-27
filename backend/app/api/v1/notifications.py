@@ -39,7 +39,9 @@ async def list_notifications(
         date_to=date_to,
         recipient=recipient,
     )
-    items, total = await notification_service.list_notifications(db, filters, page, per_page)
+    items, total = await notification_service.list_notifications(
+        db, filters, page, per_page, api_key_id=api_key.id
+    )
     response_items = [
         NotificationResponse(
             id=n.id,
@@ -64,7 +66,9 @@ async def get_notification(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> NotificationDetailResponse:
-    notification = await notification_service.get_notification(db, notification_id)
+    notification = await notification_service.get_notification(
+        db, notification_id, api_key_id=api_key.id
+    )
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 

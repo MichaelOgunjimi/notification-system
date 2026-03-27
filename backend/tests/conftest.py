@@ -103,11 +103,45 @@ async def api_key_pair(db: AsyncSession) -> tuple[ApiKey, str]:
 
 
 @pytest.fixture
+async def api_key_pair_b(db: AsyncSession) -> tuple[ApiKey, str]:
+    """Insert a second test API key for isolation tests."""
+    raw_key = generate_api_key()
+    key = ApiKey(
+        id=uuid.uuid4(),
+        key_hash=hash_api_key(raw_key),
+        key_prefix=raw_key[:10],
+        name="test-key-b",
+        is_active=True,
+        created_at=utc_now(),
+    )
+    db.add(key)
+    await db.commit()
+    return key, raw_key
+
+
+@pytest.fixture
 async def auth_client(
     api_key_pair: tuple[ApiKey, str],
 ) -> AsyncGenerator[AsyncClient, None]:
     """AsyncClient that sends a valid X-API-Key header on every request."""
     _key_model, raw_key = api_key_pair
+    test_app = _make_app()
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers={"X-API-Key": raw_key},
+    ) as ac:
+        yield ac
+    test_app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def auth_client_b(
+    api_key_pair_b: tuple[ApiKey, str],
+) -> AsyncGenerator[AsyncClient, None]:
+    """AsyncClient using a second API key for isolation tests."""
+    _key_model, raw_key = api_key_pair_b
     test_app = _make_app()
     transport = ASGITransport(app=test_app)
     async with AsyncClient(
