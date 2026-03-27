@@ -119,6 +119,55 @@ async def import_event_service():
 
 
 @pytest.mark.asyncio
+async def test_create_event_missing_email(auth_client: AsyncClient) -> None:
+    """Requesting email channel without an email address returns 422."""
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(recipients=[{"user_id": "u1", "channels": ["email"]}]),
+    )
+    assert resp.status_code == 422
+    assert "email" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_event_missing_phone(auth_client: AsyncClient) -> None:
+    """Requesting sms channel without a phone number returns 422."""
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(recipients=[{"user_id": "u1", "channels": ["sms"]}]),
+    )
+    assert resp.status_code == 422
+    assert "phone" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_event_missing_webhook_url(auth_client: AsyncClient) -> None:
+    """Requesting webhook channel without a webhook_url returns 422."""
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(recipients=[{"user_id": "u1", "channels": ["webhook"]}]),
+    )
+    assert resp.status_code == 422
+    assert "webhook_url" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_batch_missing_contact_returns_422(auth_client: AsyncClient) -> None:
+    """Batch with missing contact info returns 422 and rolls back."""
+    payload = {
+        "events": [
+            _event_payload(event_type="ok.event"),
+            _event_payload(
+                event_type="bad.event",
+                recipients=[{"user_id": "u1", "channels": ["email"]}],
+            ),
+        ]
+    }
+    resp = await auth_client.post("/api/v1/events/batch", json=payload)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_create_event_missing_fields(auth_client: AsyncClient) -> None:
     resp = await auth_client.post("/api/v1/events", json={})
     assert resp.status_code == 422

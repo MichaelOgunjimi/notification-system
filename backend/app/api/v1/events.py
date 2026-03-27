@@ -23,7 +23,10 @@ async def create_event(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> EventResponse:
-    event, notification_ids = await event_service.create_event(db, body, api_key.id)
+    try:
+        event, notification_ids = await event_service.create_event(db, body, api_key.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     return EventResponse(
         id=event.id,
         event_type=event.event_type,
@@ -60,6 +63,12 @@ async def create_batch_events(
                 )
             )
         await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        )
     except Exception:
         await db.rollback()
         raise HTTPException(

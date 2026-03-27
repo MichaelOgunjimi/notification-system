@@ -14,14 +14,26 @@ from app.schemas.events import EventCreate, RecipientCreate
 
 
 def _resolve_recipient_address(recipient: RecipientCreate, channel: str) -> str:
-    """Determine the delivery address for a given channel."""
+    """Determine the delivery address for a given channel.
+
+    Raises ValueError when the required contact field is missing.
+    """
     if channel == "email":
-        return recipient.email or recipient.user_id or ""
+        address = recipient.email
+        if not address:
+            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'email' for email channel")
+        return address
     if channel == "sms":
-        return recipient.phone or recipient.user_id or ""
+        address = recipient.phone
+        if not address:
+            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'phone' for sms channel")
+        return address
     if channel == "webhook":
-        return recipient.webhook_url or ""
-    return recipient.user_id or ""
+        address = recipient.webhook_url
+        if not address:
+            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'webhook_url' for webhook channel")
+        return address
+    raise ValueError(f"Unsupported channel: {channel}")
 
 
 async def create_event(
