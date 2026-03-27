@@ -28,8 +28,16 @@ async def create_event(
     db: AsyncSession,
     event_data: EventCreate,
     api_key_id: uuid.UUID,
+    *,
+    batch_id: uuid.UUID | None = None,
+    auto_commit: bool = True,
 ) -> tuple[Event, list[uuid.UUID]]:
-    """Create an Event and fan out Notification records for each recipient+channel."""
+    """Create an Event and fan out Notification records for each recipient+channel.
+
+    When ``auto_commit`` is False the caller is responsible for committing
+    (or rolling back) the transaction — used by the batch endpoint so that
+    all events in a batch are atomic.
+    """
     event = Event(
         event_type=event_data.event_type,
         priority=event_data.priority,
@@ -38,6 +46,7 @@ async def create_event(
         payload=event_data.payload,
         metadata_=event_data.metadata,
         api_key_id=api_key_id,
+        batch_id=batch_id,
         recipient_count=len(event_data.recipients),
     )
     db.add(event)
@@ -68,8 +77,9 @@ async def create_event(
             db.add(log_entry)
             notification_ids.append(notification.id)
 
-    await db.commit()
-    await db.refresh(event)
+    if auto_commit:
+        await db.commit()
+        await db.refresh(event)
     return event, notification_ids
 
 
