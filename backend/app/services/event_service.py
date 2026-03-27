@@ -73,9 +73,14 @@ async def create_event(
     return event, notification_ids
 
 
-async def get_event(db: AsyncSession, event_id: uuid.UUID) -> Event | None:
-    """Fetch a single event by ID."""
-    result = await db.execute(select(Event).where(col(Event.id) == event_id))
+async def get_event(
+    db: AsyncSession, event_id: uuid.UUID, api_key_id: uuid.UUID | None = None
+) -> Event | None:
+    """Fetch a single event by ID, scoped to the owning API key."""
+    query = select(Event).where(col(Event.id) == event_id)
+    if api_key_id is not None:
+        query = query.where(col(Event.api_key_id) == api_key_id)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 

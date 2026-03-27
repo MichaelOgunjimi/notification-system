@@ -3,6 +3,8 @@
 import pytest
 from httpx import AsyncClient
 
+from app.models.api_key import ApiKey
+
 
 def _template_payload(**overrides):
     base = {
@@ -16,13 +18,16 @@ def _template_payload(**overrides):
 
 
 @pytest.mark.asyncio
-async def test_create_template(auth_client: AsyncClient) -> None:
+async def test_create_template(
+    auth_client: AsyncClient, api_key_pair: tuple[ApiKey, str]
+) -> None:
     resp = await auth_client.post("/api/v1/templates", json=_template_payload())
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "test_template"
     assert data["channel"] == "email"
     assert data["is_active"] is True
+    assert data["created_by"] == str(api_key_pair[0].id)
 
 
 @pytest.mark.asyncio
