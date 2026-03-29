@@ -1,6 +1,7 @@
 """Celery application instance and configuration."""
 
 from celery import Celery
+from celery.signals import worker_process_init
 
 from app.config import settings
 
@@ -20,9 +21,8 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     
-    # Task routing — dispatcher goes to priority queue, channels to their own queues
+    # Task routing — dispatcher routing is dynamic via apply_async(queue=...)
     task_routes={
-        "app.workers.dispatcher.dispatch_event": {"queue": "notifications.medium"},
         "app.workers.email_worker.send_email": {"queue": "notifications.email"},
         "app.workers.sms_worker.send_sms": {"queue": "notifications.sms"},
         "app.workers.webhook_worker.send_webhook": {"queue": "notifications.webhook"},
@@ -44,3 +44,15 @@ celery_app.conf.update(
         "app.workers.webhook_worker",
     ],
 )
+
+
+@worker_process_init.connect
+def _reset_db_connections(**kwargs):
+    """Dispose inherited DB connections after Celery prefork.
+
+    Celery's prefork model imports modules in the parent process then forks.
+    The child inherits the parent's connection pool with stale file descriptors.
+    Disposing forces fresh connections in each worker process.
+    """
+    from app.workers.database import sync_engine
+    sync_engine.dispose()

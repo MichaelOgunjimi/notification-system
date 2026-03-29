@@ -47,4 +47,4 @@ class Notification(SQLModel, table=True):
     processing_started_at: datetime | None = Field(default=None)
     delivered_at: datetime | None = Field(default=None)
     failed_at: datetime | None = Field(default=None)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

@@ -2,15 +2,18 @@
 
 Each channel worker calls process_notification() which handles:
 1. Load notification from DB
-2. Update status to processing
-3. Simulate delivery (Phase 2 stub — Phase 3 adds real adapters)
-4. Update status to delivered
-5. Write NotificationLog entries for each transition
+2. Guard against duplicate processing (idempotency)
+3. Update status to processing
+4. Simulate delivery (Phase 2 stub — Phase 3 adds real adapters)
+5. Update status to delivered
+6. Write NotificationLog entries for each transition
 
 Phase 3 will refactor this to call real adapter classes.
 """
 
 import logging
+
+from sqlalchemy import select
 
 from app.models.enums import EventStatus, NotificationStatus
 from app.models.event import Event
@@ -20,6 +23,17 @@ from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
 
 logger = logging.getLogger(__name__)
+
+# Statuses that are safe to process — anything else means already handled
+_PROCESSABLE = {NotificationStatus.QUEUED, NotificationStatus.PENDING}
+
+# Terminal statuses — notification won't change again
+_TERMINAL = {
+    NotificationStatus.DELIVERED,
+    NotificationStatus.FAILED,
+    NotificationStatus.DEAD_LETTER,
+    NotificationStatus.CANCELLED,
+}
 
 
 def process_notification(notification_id: str, channel: str) -> dict:
@@ -34,9 +48,18 @@ def process_notification(notification_id: str, channel: str) -> dict:
             logger.error("Notification %s not found", notification_id)
             return {"status": "error", "reason": "notification_not_found"}
 
+        # Guard: skip if already processed (handles Celery redelivery)
+        if notification.status not in _PROCESSABLE:
+            logger.warning(
+                "Notification %s already in status %s, skipping",
+                notification_id, notification.status,
+            )
+            return {"status": "skipped", "reason": f"already_{notification.status}"}
+
         # Transition: queued → processing
         prev_status = notification.status
         notification.status = NotificationStatus.PROCESSING
+        notification.processing_started_at = utc_now()
         notification.updated_at = utc_now()
         session.add(NotificationLog(
             notification_id=notification.id,
@@ -88,8 +111,14 @@ def process_notification(notification_id: str, channel: str) -> dict:
 
 
 def _maybe_complete_event(session, event_id) -> None:
-    """If all notifications for an event are terminal, update the event status."""
-    event = session.get(Event, event_id)
+    """If all notifications for an event are terminal, update the event status.
+
+    Uses SELECT FOR UPDATE to prevent concurrent workers from corrupting
+    the event status when multiple notifications finish simultaneously.
+    """
+    event = session.execute(
+        select(Event).where(Event.id == event_id).with_for_update()
+    ).scalar_one_or_none()
     if event is None:
         return
 
@@ -101,6 +130,11 @@ def _maybe_complete_event(session, event_id) -> None:
 
     statuses = {n.status for n in notifications}
 
+    # If any notification is still in-flight, don't update event yet
+    if not statuses.issubset(_TERMINAL):
+        session.commit()  # Release the FOR UPDATE lock
+        return
+
     if all(s == NotificationStatus.DELIVERED for s in statuses):
         event.status = EventStatus.COMPLETED
     elif NotificationStatus.FAILED in statuses or NotificationStatus.DEAD_LETTER in statuses:
@@ -108,6 +142,8 @@ def _maybe_complete_event(session, event_id) -> None:
             event.status = EventStatus.PARTIALLY_FAILED
         else:
             event.status = EventStatus.FAILED
+    else:
+        event.status = EventStatus.COMPLETED
 
     event.updated_at = utc_now()
     session.commit()

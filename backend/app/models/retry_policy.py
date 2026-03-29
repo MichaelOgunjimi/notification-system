@@ -23,4 +23,4 @@ class RetryPolicy(SQLModel, table=True):
     retry_on_5xx: bool = Field(default=True)
     retry_on_4xx: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utc_now)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

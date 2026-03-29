@@ -30,7 +30,7 @@ async def create_api_key(
 ) -> ApiKeyCreateResponse:
     raw_key = generate_api_key()
     key_hash = hash_api_key(raw_key)
-    key_prefix = raw_key[:7]
+    key_prefix = raw_key[:10]
 
     api_key = ApiKey(
         key_hash=key_hash,
