@@ -26,7 +26,7 @@ def _event_payload(**overrides):
 @pytest.mark.asyncio
 async def test_create_event(auth_client: AsyncClient) -> None:
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     data = resp.json()
     assert data["event_type"] == "user.signup"
     assert data["priority"] == "high"
@@ -53,7 +53,7 @@ async def test_batch_events(auth_client: AsyncClient) -> None:
         ]
     }
     resp = await auth_client.post("/api/v1/events/batch", json=payload)
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     data = resp.json()
     assert len(data) == 2
     assert data[0]["event_type"] == "batch.one"
@@ -71,7 +71,7 @@ async def test_batch_events_share_batch_id(auth_client: AsyncClient) -> None:
         ]
     }
     resp = await auth_client.post("/api/v1/events/batch", json=payload)
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     data = resp.json()
 
     # Fetch detail for each event and verify shared batch_id

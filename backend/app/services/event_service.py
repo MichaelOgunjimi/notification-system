@@ -92,7 +92,22 @@ async def create_event(
     if auto_commit:
         await db.commit()
         await db.refresh(event)
+        _enqueue_dispatch(str(event.id), event_data.priority)
     return event, notification_ids
+
+
+def _enqueue_dispatch(event_id: str, priority: str) -> None:
+    """Enqueue event dispatch to the appropriate priority queue."""
+    try:
+        from app.workers.dispatcher import dispatch_event
+        queue = f"notifications.{priority}"
+        dispatch_event.apply_async(args=[event_id], queue=queue)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to enqueue dispatch for event %s — Celery/Redis may be down",
+            event_id,
+        )
 
 
 async def get_event(

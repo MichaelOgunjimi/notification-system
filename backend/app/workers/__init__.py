@@ -1,1 +1,1 @@
-"""Workers package — async task workers for notification processing (Phase 2)."""
+"""Workers package — Celery task workers for async notification processing."""

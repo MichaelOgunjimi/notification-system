@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     RETRY_MAX_BACKOFF_SECONDS: int = 600
     RETRY_JITTER_ENABLED: bool = True
 
+    # Celery / Redis
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+
     # Auth
     MASTER_API_KEY: str = ""
 

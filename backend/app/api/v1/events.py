@@ -16,7 +16,7 @@ from app.services import event_service
 router = APIRouter(prefix="/events", tags=["events"])
 
 
-@router.post("", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=EventResponse, status_code=status.HTTP_202_ACCEPTED)
 async def create_event(
     body: EventCreate,
     *,
@@ -37,7 +37,7 @@ async def create_event(
     )
 
 
-@router.post("/batch", response_model=list[EventResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/batch", response_model=list[EventResponse], status_code=status.HTTP_202_ACCEPTED)
 async def create_batch_events(
     body: EventBatchCreate,
     *,
@@ -63,6 +63,9 @@ async def create_batch_events(
                 )
             )
         await db.commit()
+        # Enqueue dispatch tasks after successful commit
+        for event_data, result in zip(body.events, results):
+            event_service._enqueue_dispatch(str(result.id), event_data.priority)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(

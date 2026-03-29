@@ -38,7 +38,7 @@ async def test_event_isolation(
 ) -> None:
     """Event created by key A is not visible to key B."""
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     event_id = resp.json()["id"]
 
     # Key A can read its own event
@@ -56,7 +56,7 @@ async def test_notification_isolation(
 ) -> None:
     """Notification from key A's event is not visible to key B."""
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     nid = resp.json()["notification_ids"][0]
 
     # Key A can read its own notification

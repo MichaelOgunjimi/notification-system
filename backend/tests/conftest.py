@@ -151,3 +151,9 @@ async def auth_client_b(
     ) as ac:
         yield ac
     test_app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def _mock_celery_dispatch(monkeypatch):
+    """Prevent Celery tasks from being enqueued during tests."""
+    monkeypatch.setattr("app.services.event_service._enqueue_dispatch", lambda *a, **kw: None)

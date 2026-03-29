@@ -18,6 +18,21 @@ services:
     networks:
       - notification-net
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notification-net
+
   api:
     build:
       context: ./backend
@@ -26,18 +41,112 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       POSTGRES_SERVER: db
       POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "${API_PORT:-8000}:8000"
     networks:
       - notification-net
 
+  worker-dispatcher:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low -l info -n dispatcher@%h --concurrency=4
+    networks:
+      - notification-net
+
+  worker-email:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A app.workers.celery_app worker -Q notifications.email -l info -n email@%h --concurrency=4
+    networks:
+      - notification-net
+
+  worker-sms:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A app.workers.celery_app worker -Q notifications.sms -l info -n sms@%h --concurrency=4
+    networks:
+      - notification-net
+
+  worker-webhook:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A app.workers.celery_app worker -Q notifications.webhook -l info -n webhook@%h --concurrency=4
+    networks:
+      - notification-net
+
 volumes:
   pgdata:
+  redisdata:
 
 networks:
   notification-net:

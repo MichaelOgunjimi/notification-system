@@ -1,4 +1,4 @@
-.PHONY: dev test lint format migrate migrate-create seed docker-up docker-down docker-rebuild install
+.PHONY: dev test lint format migrate migrate-create seed docker-up docker-down docker-rebuild install worker-dispatcher worker-email worker-sms worker-webhook worker-all
 
 install:
 	cd backend && uv sync
@@ -32,3 +32,18 @@ docker-down:
 
 docker-rebuild:
 	docker compose down --rmi all && docker compose up -d --build
+
+worker-dispatcher:
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low -l info
+
+worker-email:
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.email -l info
+
+worker-sms:
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.sms -l info
+
+worker-webhook:
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.webhook -l info
+
+worker-all:
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.email,notifications.sms,notifications.webhook -l info
