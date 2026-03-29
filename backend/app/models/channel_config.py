@@ -22,4 +22,4 @@ class ChannelConfig(SQLModel, table=True):
     rate_limit_per_min: int | None = Field(default=None)
     config: dict[str, Any] = Field(sa_column=Column(JSONB, nullable=False))
     created_at: datetime = Field(default_factory=utc_now)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

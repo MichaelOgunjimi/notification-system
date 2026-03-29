@@ -43,4 +43,4 @@ class Template(SQLModel, table=True):
     )
     created_by: uuid.UUID | None = Field(default=None, foreign_key="api_keys.id")
     created_at: datetime = Field(default_factory=utc_now)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

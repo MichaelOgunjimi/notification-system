@@ -46,6 +46,7 @@ def dispatch_event(self, event_id: str) -> dict:
         for notification in notifications:
             # Update status to queued
             notification.status = NotificationStatus.QUEUED
+            notification.queued_at = utc_now()
             notification.updated_at = utc_now()
 
             # Write log entry
@@ -57,7 +58,7 @@ def dispatch_event(self, event_id: str) -> dict:
             session.add(log_entry)
 
             # Route to channel-specific worker
-            _enqueue_channel_task(notification)
+            _enqueue_channel_task(notification, self.request.id)
             dispatched += 1
 
         session.commit()
@@ -77,18 +78,21 @@ def dispatch_event(self, event_id: str) -> dict:
         session.close()
 
 
-def _enqueue_channel_task(notification: Notification) -> None:
+def _enqueue_channel_task(notification: Notification, dispatcher_task_id: str | None = None) -> None:
     """Route a notification to the appropriate channel worker."""
     notification_id = str(notification.id)
 
     if notification.channel == NotificationChannel.EMAIL:
         from app.workers.email_worker import send_email
-        send_email.delay(notification_id)
+        result = send_email.delay(notification_id)
     elif notification.channel == NotificationChannel.SMS:
         from app.workers.sms_worker import send_sms
-        send_sms.delay(notification_id)
+        result = send_sms.delay(notification_id)
     elif notification.channel == NotificationChannel.WEBHOOK:
         from app.workers.webhook_worker import send_webhook
-        send_webhook.delay(notification_id)
+        result = send_webhook.delay(notification_id)
     else:
         logger.warning("Unknown channel %s for notification %s", notification.channel, notification_id)
+        return
+
+    notification.celery_task_id = result.id

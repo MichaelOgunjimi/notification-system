@@ -36,4 +36,4 @@ class DeadLetterMessage(SQLModel, table=True):
     retried_at: datetime | None = Field(default=None)
     discarded_at: datetime | None = Field(default=None)
     created_at: datetime = Field(default_factory=utc_now)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

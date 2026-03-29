@@ -2,7 +2,8 @@
 
 import uuid
 
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -10,7 +11,7 @@ from sqlmodel import col
 from app.models.template import Template
 from app.schemas.templates import TemplateCreate, TemplateUpdate
 
-_jinja_env = Environment(loader=BaseLoader(), autoescape=True)
+_jinja_env = SandboxedEnvironment(loader=BaseLoader(), autoescape=True)
 
 
 async def create_template(

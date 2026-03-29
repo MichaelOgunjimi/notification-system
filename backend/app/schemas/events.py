@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.config import settings as app_settings
 from app.models.enums import EventPriority, EventStatus, NotificationChannel
 
 
@@ -27,7 +28,7 @@ class EventCreate(BaseModel):
 
 
 class EventBatchCreate(BaseModel):
-    events: list[EventCreate]
+    events: list[EventCreate] = Field(..., min_length=1, max_length=app_settings.MAX_BATCH_SIZE)
 
 
 class EventResponse(BaseModel):

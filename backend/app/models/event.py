@@ -44,4 +44,4 @@ class Event(SQLModel, table=True):
     batch_id: uuid.UUID | None = Field(default=None)
     recipient_count: int = Field(default=1)
     created_at: datetime = Field(default_factory=utc_now)
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

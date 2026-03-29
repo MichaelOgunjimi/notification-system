@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 class ApiKeyCreate(BaseModel):
     name: str
     rate_limit_per_min: int | None = Field(default=1000)
-    expires_at: datetime | None = None
 
 
 class ApiKeyResponse(BaseModel):
@@ -20,7 +19,6 @@ class ApiKeyResponse(BaseModel):
     rate_limit_per_min: int | None
     created_at: datetime
     last_used_at: datetime | None
-    expires_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
