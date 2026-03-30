@@ -16,26 +16,26 @@ celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    
+
     # Timezone
     timezone="UTC",
     enable_utc=True,
-    
+
     # Task routing — dispatcher routing is dynamic via apply_async(queue=...)
     task_routes={
         "app.workers.email_worker.send_email": {"queue": "notifications.email"},
         "app.workers.sms_worker.send_sms": {"queue": "notifications.sms"},
         "app.workers.webhook_worker.send_webhook": {"queue": "notifications.webhook"},
     },
-    
+
     # Worker settings
     worker_prefetch_multiplier=2,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
-    
+
     # Result settings
     result_expires=3600,
-    
+
     # Task discovery
     imports=[
         "app.workers.dispatcher",

@@ -30,7 +30,6 @@ from app.models.notification import Notification
 from app.models.retry_policy import RetryPolicy
 from app.models.template import Template
 from app.utils.crypto import generate_api_key, hash_api_key
-from app.utils.datetime import utc_now
 
 
 async def seed_api_key(db: AsyncSession) -> ApiKey:

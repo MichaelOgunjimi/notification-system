@@ -2,14 +2,13 @@
 
 import uuid
 
-from app.schemas.common import PaginatedResponse
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col, func
 
 from app.api.deps import MasterKeyDep, SessionDep
 from app.models.api_key import ApiKey
+from app.schemas.common import PaginatedResponse
 from app.schemas.settings import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse
 from app.utils.crypto import generate_api_key, hash_api_key
 from app.utils.datetime import utc_now

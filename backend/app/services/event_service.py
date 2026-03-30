@@ -24,17 +24,24 @@ def _resolve_recipient_address(recipient: RecipientCreate, channel: str) -> str:
     if channel == "email":
         address = recipient.email
         if not address:
-            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'email' for email channel")
+            raise ValueError(
+                f"Recipient '{recipient.user_id or 'unknown'}' missing 'email' for email channel"
+            )
         return address
     if channel == "sms":
         address = recipient.phone
         if not address:
-            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'phone' for sms channel")
+            raise ValueError(
+                f"Recipient '{recipient.user_id or 'unknown'}' missing 'phone' for sms channel"
+            )
         return address
     if channel == "webhook":
         address = recipient.webhook_url
         if not address:
-            raise ValueError(f"Recipient '{recipient.user_id or 'unknown'}' missing 'webhook_url' for webhook channel")
+            raise ValueError(
+                f"Recipient '{recipient.user_id or 'unknown'}' "
+                "missing 'webhook_url' for webhook channel"
+            )
         return address
     raise ValueError(f"Unsupported channel: {channel}")
 
@@ -117,7 +124,11 @@ async def create_batch(
     try:
         for event_data in events_data:
             event, notification_ids = await create_event(
-                db, event_data, api_key_id, batch_id=batch_id, auto_commit=False,
+                db,
+                event_data,
+                api_key_id,
+                batch_id=batch_id,
+                auto_commit=False,
             )
             results.append((event, notification_ids))
         await db.commit()
@@ -147,6 +158,7 @@ def _enqueue_dispatch(event_id: str, priority: str) -> None:
     Raises on failure so the caller knows the event won't be processed.
     """
     from app.workers.dispatcher import dispatch_event
+
     queue = f"notifications.{priority}"
     dispatch_event.apply_async(args=[event_id], queue=queue)
 

@@ -2,6 +2,8 @@
 
 import logging
 
+from sqlmodel import col
+
 from app.models.enums import EventStatus, NotificationChannel, NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
@@ -36,8 +38,8 @@ def dispatch_event(self, event_id: str) -> dict:
         notifications = (
             session.query(Notification)
             .filter(
-                Notification.event_id == event_id,
-                Notification.status == NotificationStatus.PENDING,
+                col(Notification.event_id == event_id),
+                col(Notification.status == NotificationStatus.PENDING),
             )
             .all()
         )
@@ -78,7 +80,9 @@ def dispatch_event(self, event_id: str) -> dict:
         session.close()
 
 
-def _enqueue_channel_task(notification: Notification, dispatcher_task_id: str | None = None) -> None:
+def _enqueue_channel_task(
+    notification: Notification, dispatcher_task_id: str | None = None,
+) -> None:
     """Route a notification to the appropriate channel worker."""
     notification_id = str(notification.id)
 
@@ -92,7 +96,10 @@ def _enqueue_channel_task(notification: Notification, dispatcher_task_id: str | 
         from app.workers.webhook_worker import send_webhook
         result = send_webhook.delay(notification_id)
     else:
-        logger.warning("Unknown channel %s for notification %s", notification.channel, notification_id)
+        logger.warning(
+            "Unknown channel %s for notification %s",
+            notification.channel, notification_id,
+        )
         return
 
     notification.celery_task_id = result.id
