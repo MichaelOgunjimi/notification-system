@@ -81,24 +81,29 @@ def dispatch_event(self, event_id: str) -> dict:
 
 
 def _enqueue_channel_task(
-    notification: Notification, dispatcher_task_id: str | None = None,
+    notification: Notification,
+    dispatcher_task_id: str | None = None,
 ) -> None:
     """Route a notification to the appropriate channel worker."""
     notification_id = str(notification.id)
 
     if notification.channel == NotificationChannel.EMAIL:
         from app.workers.email_worker import send_email
+
         result = send_email.delay(notification_id)
     elif notification.channel == NotificationChannel.SMS:
         from app.workers.sms_worker import send_sms
+
         result = send_sms.delay(notification_id)
     elif notification.channel == NotificationChannel.WEBHOOK:
         from app.workers.webhook_worker import send_webhook
+
         result = send_webhook.delay(notification_id)
     else:
         logger.warning(
             "Unknown channel %s for notification %s",
-            notification.channel, notification_id,
+            notification.channel,
+            notification_id,
         )
         return
 

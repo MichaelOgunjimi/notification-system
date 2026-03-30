@@ -115,6 +115,7 @@ async def test_batch_atomicity_rolls_back_on_failure(auth_client: AsyncClient) -
 
 async def import_event_service():
     from app.services import event_service
+
     return event_service
 
 

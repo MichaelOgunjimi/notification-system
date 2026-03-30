@@ -55,9 +55,7 @@ async def test_get_notification_detail(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_nonexistent_notification(auth_client: AsyncClient) -> None:
-    resp = await auth_client.get(
-        "/api/v1/notifications/00000000-0000-0000-0000-000000000000"
-    )
+    resp = await auth_client.get("/api/v1/notifications/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
 
 

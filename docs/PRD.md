@@ -1,7 +1,7 @@
 # Product Requirements Document — Event-Driven Notification System
 
-> **Version:** 1.0  
-> **Status:** Draft  
+> **Version:** 1.0
+> **Status:** Draft
 > **Last Updated:** 2025-07-17
 
 ---

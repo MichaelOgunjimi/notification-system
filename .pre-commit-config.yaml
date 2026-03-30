@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: ^backend/alembic/versions/
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy type check
+        entry: bash -c 'cd backend && uv run mypy app/'
+        language: system
+        pass_filenames: false
+        files: ^backend/app/
+
+      - id: pytest
+        name: pytest
+        entry: bash -c 'cd backend && uv run pytest -q'
+        language: system
+        pass_filenames: false
+        files: ^backend/

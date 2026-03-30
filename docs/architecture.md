@@ -1,7 +1,7 @@
 # System Architecture — Event-Driven Notification System
 
-> **Version:** 1.0  
-> **Last Updated:** 2025-07-17  
+> **Version:** 1.0
+> **Last Updated:** 2025-07-17
 > **Companion Document:** [PRD.md](./PRD.md)
 
 ---

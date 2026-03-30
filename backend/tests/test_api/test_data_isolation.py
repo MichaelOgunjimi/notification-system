@@ -33,9 +33,7 @@ def _template_payload(**overrides):
 
 
 @pytest.mark.asyncio
-async def test_event_isolation(
-    auth_client: AsyncClient, auth_client_b: AsyncClient
-) -> None:
+async def test_event_isolation(auth_client: AsyncClient, auth_client_b: AsyncClient) -> None:
     """Event created by key A is not visible to key B."""
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
     assert resp.status_code == 202
@@ -51,9 +49,7 @@ async def test_event_isolation(
 
 
 @pytest.mark.asyncio
-async def test_notification_isolation(
-    auth_client: AsyncClient, auth_client_b: AsyncClient
-) -> None:
+async def test_notification_isolation(auth_client: AsyncClient, auth_client_b: AsyncClient) -> None:
     """Notification from key A's event is not visible to key B."""
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
     assert resp.status_code == 202
@@ -85,13 +81,9 @@ async def test_notification_list_isolation(
 
 
 @pytest.mark.asyncio
-async def test_template_isolation(
-    auth_client: AsyncClient, auth_client_b: AsyncClient
-) -> None:
+async def test_template_isolation(auth_client: AsyncClient, auth_client_b: AsyncClient) -> None:
     """Template created by key A is not visible to key B."""
-    resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="iso_get")
-    )
+    resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="iso_get"))
     assert resp.status_code == 201
     tid = resp.json()["id"]
 
@@ -109,9 +101,7 @@ async def test_template_list_isolation(
     auth_client: AsyncClient, auth_client_b: AsyncClient
 ) -> None:
     """Template list for key B is empty when only key A created templates."""
-    await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="iso_list")
-    )
+    await auth_client.post("/api/v1/templates", json=_template_payload(name="iso_list"))
 
     resp_a = await auth_client.get("/api/v1/templates")
     assert resp_a.status_code == 200
@@ -127,14 +117,10 @@ async def test_template_update_isolation(
     auth_client: AsyncClient, auth_client_b: AsyncClient
 ) -> None:
     """Key B cannot update key A's template."""
-    resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="iso_upd")
-    )
+    resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="iso_upd"))
     tid = resp.json()["id"]
 
-    resp_b = await auth_client_b.put(
-        f"/api/v1/templates/{tid}", json={"body": "hacked"}
-    )
+    resp_b = await auth_client_b.put(f"/api/v1/templates/{tid}", json={"body": "hacked"})
     assert resp_b.status_code == 404
 
 
@@ -143,9 +129,7 @@ async def test_template_delete_isolation(
     auth_client: AsyncClient, auth_client_b: AsyncClient
 ) -> None:
     """Key B cannot delete key A's template."""
-    resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="iso_del")
-    )
+    resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="iso_del"))
     tid = resp.json()["id"]
 
     resp_b = await auth_client_b.delete(f"/api/v1/templates/{tid}")

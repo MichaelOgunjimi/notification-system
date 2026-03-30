@@ -72,11 +72,7 @@ async def seed_templates(db: AsyncSession) -> list[Template]:
             "name": "alert_email",
             "channel": NotificationChannel.EMAIL,
             "subject": "[{{ severity }}] Alert: {{ title }}",
-            "body": (
-                "<h2>{{ title }}</h2>"
-                "<p>Severity: {{ severity }}</p>"
-                "<p>{{ message }}</p>"
-            ),
+            "body": ("<h2>{{ title }}</h2><p>Severity: {{ severity }}</p><p>{{ message }}</p>"),
             "variables": ["severity", "title", "message"],
         },
         {
@@ -112,9 +108,7 @@ async def seed_templates(db: AsyncSession) -> list[Template]:
 async def seed_retry_policies(db: AsyncSession) -> None:
     """Create retry policies for each channel."""
     for channel in NotificationChannel:
-        result = await db.execute(
-            select(RetryPolicy).where(col(RetryPolicy.channel) == channel)
-        )
+        result = await db.execute(select(RetryPolicy).where(col(RetryPolicy.channel) == channel))
         if result.scalar_one_or_none() is not None:
             print(f"  ✓ Retry policy for '{channel}' already exists")
             continue

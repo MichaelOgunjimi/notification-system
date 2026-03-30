@@ -18,19 +18,19 @@ from app.models.api_key import ApiKey
 from app.utils.crypto import generate_api_key, hash_api_key
 from app.utils.datetime import utc_now
 
-TEST_DATABASE_URL = str(PostgresDsn.build(
-    scheme="postgresql+asyncpg",
-    username=settings.POSTGRES_USER,
-    password=settings.POSTGRES_PASSWORD,
-    host=settings.POSTGRES_SERVER,
-    port=settings.POSTGRES_PORT,
-    path=f"{settings.POSTGRES_DB}_test",
-))
+TEST_DATABASE_URL = str(
+    PostgresDsn.build(
+        scheme="postgresql+asyncpg",
+        username=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD,
+        host=settings.POSTGRES_SERVER,
+        port=settings.POSTGRES_PORT,
+        path=f"{settings.POSTGRES_DB}_test",
+    )
+)
 
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
-TestSessionLocal = async_sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
-)
+TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest.fixture(scope="session", autouse=True)

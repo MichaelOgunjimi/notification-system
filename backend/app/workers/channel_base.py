@@ -52,7 +52,8 @@ def process_notification(notification_id: str, channel: str) -> dict:
         if notification.status not in _PROCESSABLE:
             logger.warning(
                 "Notification %s already in status %s, skipping",
-                notification_id, notification.status,
+                notification_id,
+                notification.status,
             )
             return {"status": "skipped", "reason": f"already_{notification.status}"}
 
@@ -61,11 +62,13 @@ def process_notification(notification_id: str, channel: str) -> dict:
         notification.status = NotificationStatus.PROCESSING
         notification.processing_started_at = utc_now()
         notification.updated_at = utc_now()
-        session.add(NotificationLog(
-            notification_id=notification.id,
-            previous_status=prev_status,
-            new_status=NotificationStatus.PROCESSING,
-        ))
+        session.add(
+            NotificationLog(
+                notification_id=notification.id,
+                previous_status=prev_status,
+                new_status=NotificationStatus.PROCESSING,
+            )
+        )
         session.commit()
 
         # --- Phase 2 stub: simulate successful delivery ---
@@ -84,11 +87,13 @@ def process_notification(notification_id: str, channel: str) -> dict:
         notification.status = NotificationStatus.DELIVERED
         notification.delivered_at = utc_now()
         notification.updated_at = utc_now()
-        session.add(NotificationLog(
-            notification_id=notification.id,
-            previous_status=NotificationStatus.PROCESSING,
-            new_status=NotificationStatus.DELIVERED,
-        ))
+        session.add(
+            NotificationLog(
+                notification_id=notification.id,
+                previous_status=NotificationStatus.PROCESSING,
+                new_status=NotificationStatus.DELIVERED,
+            )
+        )
         session.commit()
 
         # Check if all notifications for the event are delivered → update event status
@@ -122,11 +127,7 @@ def _maybe_complete_event(session, event_id) -> None:
     if event is None:
         return
 
-    notifications = (
-        session.query(Notification)
-        .filter(Notification.event_id == event_id)
-        .all()
-    )
+    notifications = session.query(Notification).filter(Notification.event_id == event_id).all()
 
     statuses = {n.status for n in notifications}
 

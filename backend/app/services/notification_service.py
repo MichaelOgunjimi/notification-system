@@ -52,9 +52,9 @@ async def list_notifications(
         query = query.join(Event, col(Notification.event_id) == col(Event.id)).where(
             col(Event.api_key_id) == api_key_id
         )
-        count_query = count_query.join(
-            Event, col(Notification.event_id) == col(Event.id)
-        ).where(col(Event.api_key_id) == api_key_id)
+        count_query = count_query.join(Event, col(Notification.event_id) == col(Event.id)).where(
+            col(Event.api_key_id) == api_key_id
+        )
 
     if filters.status is not None:
         query = query.where(col(Notification.status) == filters.status)

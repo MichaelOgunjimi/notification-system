@@ -63,9 +63,7 @@ async def update_template(
     db: SessionDep,
     apikey: ApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.update_template(
-        db, template_id, body, api_key_id=apikey.id
-    )
+    template = await template_service.update_template(db, template_id, body, api_key_id=apikey.id)
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return TemplateResponse.model_validate(template)

@@ -42,7 +42,7 @@ Client ──POST /send-email──► API Server ──connect──► Email P
   │                            │ (waiting for reply...)  │
   │                            ◄──── 200 OK ────────────┘
   ◄──── 200 OK ───────────────┘
-  
+
 Total client wait: 2-15 seconds (or timeout)
 ```
 
@@ -112,7 +112,7 @@ Event-Driven Architecture:
                         │              │       ├──────────────────┤
                         │              ├──────►│  Webhook Worker   │
                         └──────────────┘       └──────────────────┘
-  
+
   Producer doesn't know about consumers.
   Consumers don't know about each other.
   They're decoupled through the event bus.
@@ -160,7 +160,7 @@ What happens when producers are faster than consumers? The queue grows. This is 
 Backpressure Scenario:
 
   Producer: 100 events/sec ──►  Queue: ████████████████ (growing!)  ──► Consumer: 20 events/sec
-  
+
   Solutions:
   1. Scale consumers: add more workers (docker compose up --scale worker-email=3)
   2. Rate-limit producers: return 429 when queue depth exceeds threshold
@@ -432,7 +432,7 @@ Idempotency Flow:
   │ 5. Cache response in Redis (TTL: 24 hours)       │
   │ 6. Return 202 Accepted                           │
   └──────────────────────────────────────────────────┘
-  
+
   Request #2 (same Idempotency-Key: abc-123)
   ┌──────────────────────────────────────────────────┐
   │ 1. Check Redis: "idempotency:{api_key}:abc-123" │
@@ -494,11 +494,11 @@ We use Redis sorted sets (ZSETs) where each entry is a request timestamp:
 Sliding Window with Redis Sorted Sets:
 
   Time ──────────────────────────────────────────────►
-  
+
   Window (60 seconds):  [─────────────────────────────]
                          ▲                             ▲
                      now - 60s                        now
-  
+
   Redis ZSET "rate_limit:api:{key_hash}":
   ┌─────────────────────────────────────────────────┐
   │ Score (timestamp)    │ Member (unique request ID)│
@@ -507,7 +507,7 @@ Sliding Window with Redis Sorted Sets:
   │ 1700000003.789       │ req_g7h8i9               │
   │ ...                  │ ...                       │
   └─────────────────────────────────────────────────┘
-  
+
   Steps (atomic Lua script):
   1. ZREMRANGEBYSCORE — remove entries older than (now - window)
   2. ZCARD — count remaining entries
@@ -612,7 +612,7 @@ The `NotificationLog` table implements a form of event sourcing. Instead of upda
 NotificationLog — Immutable Audit Trail:
 
   notification_id: abc-123
-  
+
   ┌────┬──────────┬────────────┬───────────┬────────────────────────┐
   │ #  │ previous │ new_status │ worker_id │ created_at             │
   ├────┼──────────┼────────────┼───────────┼────────────────────────┤
@@ -621,7 +621,7 @@ NotificationLog — Immutable Audit Trail:
   │ 3  │ queued   │ processing │ email-w2  │ 2024-01-15T10:00:03Z   │
   │ 4  │ process. │ delivered  │ email-w2  │ 2024-01-15T10:00:05Z   │
   └────┴──────────┴────────────┴───────────┴────────────────────────┘
-  
+
   You can reconstruct the FULL lifecycle of any notification from this log.
 ```
 

@@ -18,9 +18,7 @@ def _template_payload(**overrides):
 
 
 @pytest.mark.asyncio
-async def test_create_template(
-    auth_client: AsyncClient, api_key_pair: tuple[ApiKey, str]
-) -> None:
+async def test_create_template(auth_client: AsyncClient, api_key_pair: tuple[ApiKey, str]) -> None:
     resp = await auth_client.post("/api/v1/templates", json=_template_payload())
     assert resp.status_code == 201
     data = resp.json()
@@ -44,9 +42,7 @@ async def test_list_templates(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_template(auth_client: AsyncClient) -> None:
-    create_resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="get_t")
-    )
+    create_resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="get_t"))
     tid = create_resp.json()["id"]
 
     resp = await auth_client.get(f"/api/v1/templates/{tid}")
@@ -56,9 +52,7 @@ async def test_get_template(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_update_template(auth_client: AsyncClient) -> None:
-    create_resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="upd_t")
-    )
+    create_resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="upd_t"))
     tid = create_resp.json()["id"]
 
     resp = await auth_client.put(
@@ -71,9 +65,7 @@ async def test_update_template(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_template(auth_client: AsyncClient) -> None:
-    create_resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="del_t")
-    )
+    create_resp = await auth_client.post("/api/v1/templates", json=_template_payload(name="del_t"))
     tid = create_resp.json()["id"]
 
     resp = await auth_client.delete(f"/api/v1/templates/{tid}")
@@ -102,7 +94,5 @@ async def test_template_preview(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_nonexistent_template(auth_client: AsyncClient) -> None:
-    resp = await auth_client.get(
-        "/api/v1/templates/00000000-0000-0000-0000-000000000000"
-    )
+    resp = await auth_client.get("/api/v1/templates/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404

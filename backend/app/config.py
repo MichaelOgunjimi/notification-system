@@ -31,33 +31,35 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:  # noqa: N802
         """Async database URL for FastAPI (asyncpg driver)."""
-        return str(PostgresDsn.build(
-            scheme="postgresql+asyncpg",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=self.POSTGRES_PORT,
-            path=self.POSTGRES_DB,
-        ))
+        return str(
+            PostgresDsn.build(
+                scheme="postgresql+asyncpg",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD,
+                host=self.POSTGRES_SERVER,
+                port=self.POSTGRES_PORT,
+                path=self.POSTGRES_DB,
+            )
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SYNC_DATABASE_URL(self) -> str:  # noqa: N802
         """Sync database URL for Alembic migrations (psycopg2 driver)."""
         ssl_mode = (
-            "require"
-            if self.POSTGRES_SERVER not in ["localhost", "db", "127.0.0.1"]
-            else "disable"
+            "require" if self.POSTGRES_SERVER not in ["localhost", "db", "127.0.0.1"] else "disable"
         )
-        return str(PostgresDsn.build(
-            scheme="postgresql+psycopg2",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=self.POSTGRES_PORT,
-            path=self.POSTGRES_DB,
-            query=f"sslmode={ssl_mode}",
-        ))
+        return str(
+            PostgresDsn.build(
+                scheme="postgresql+psycopg2",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD,
+                host=self.POSTGRES_SERVER,
+                port=self.POSTGRES_PORT,
+                path=self.POSTGRES_DB,
+                query=f"sslmode={ssl_mode}",
+            )
+        )
 
     # Application
     APP_ENV: str = "development"
