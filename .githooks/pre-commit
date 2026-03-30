@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🔍 Pre-commit: running checks..."
+
+echo ""
+echo "▸ Lint (ruff)"
+make lint
+
+echo ""
+echo "▸ Type check (mypy)"
+make type-check
+
+echo ""
+echo "▸ Tests (pytest)"
+make test
+
+echo ""
+echo "✅ All checks passed — committing."

@@ -38,8 +38,8 @@ def dispatch_event(self, event_id: str) -> dict:
         notifications = (
             session.query(Notification)
             .filter(
-                col(Notification.event_id == event_id),
-                col(Notification.status == NotificationStatus.PENDING),
+                col(Notification.event_id) == event_id,
+                col(Notification.status) == NotificationStatus.PENDING,
             )
             .all()
         )

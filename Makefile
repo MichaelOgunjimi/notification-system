@@ -1,4 +1,4 @@
-.PHONY: dev test lint lint-fix format migrate migrate-create seed docker-up docker-down docker-rebuild install worker-dispatcher worker-email worker-sms worker-webhook worker-all
+.PHONY: dev test lint lint-fix format type-check check migrate migrate-create seed docker-up docker-down docker-rebuild install worker-dispatcher worker-email worker-sms worker-webhook worker-all
 
 install:
 	cd backend && uv sync
@@ -14,6 +14,16 @@ lint:
 
 lint-fix:
 	cd backend && uv run ruff check --fix .
+
+type-check:
+	cd backend && uv run mypy app/
+
+check:
+	@echo "Running all checks..."
+	@$(MAKE) lint
+	@$(MAKE) type-check
+	@$(MAKE) test
+	@echo "All checks passed ✅"
 
 format:
 	cd backend && uv run ruff format .
