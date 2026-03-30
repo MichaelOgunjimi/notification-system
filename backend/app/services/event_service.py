@@ -1,5 +1,6 @@
 """Event service — business logic for event ingestion, validation, and fan-out."""
 
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -11,6 +12,8 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.schemas.events import EventCreate, RecipientCreate
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_recipient_address(recipient: RecipientCreate, channel: str) -> str:
@@ -95,6 +98,47 @@ async def create_event(
         await db.refresh(event)
         _enqueue_dispatch(str(event.id), event_data.priority)
     return event, notification_ids
+
+
+async def create_batch(
+    db: AsyncSession,
+    events_data: list[EventCreate],
+    api_key_id: uuid.UUID,
+) -> list[tuple[Event, list[uuid.UUID]]]:
+    """Create multiple events atomically — all succeed or all roll back.
+
+    DB operations are atomic (single commit). Enqueue is best-effort after
+    commit — if enqueue fails for some events, the committed events are
+    still returned so the client knows what was created.
+    """
+    batch_id = uuid.uuid4()
+    results: list[tuple[Event, list[uuid.UUID]]] = []
+
+    try:
+        for event_data in events_data:
+            event, notification_ids = await create_event(
+                db, event_data, api_key_id, batch_id=batch_id, auto_commit=False,
+            )
+            results.append((event, notification_ids))
+        await db.commit()
+    except ValueError:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise
+
+    # Best-effort enqueue after commit — failures logged, not raised
+    for event, _ in results:
+        try:
+            _enqueue_dispatch(str(event.id), event.priority)
+        except Exception:
+            logger.error(
+                "Failed to enqueue event %s — stuck in ACCEPTED, needs reprocessing",
+                event.id,
+            )
+
+    return results
 
 
 def _enqueue_dispatch(event_id: str, priority: str) -> None:

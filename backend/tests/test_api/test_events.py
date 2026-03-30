@@ -106,11 +106,11 @@ async def test_batch_atomicity_rolls_back_on_failure(auth_client: AsyncClient) -
             raise RuntimeError("simulated failure")
         return await original(*args, **kwargs)
 
-    with patch("app.api.v1.events.event_service.create_event", side_effect=_fail_on_second):
+    with patch("app.services.event_service.create_event", side_effect=_fail_on_second):
         resp = await auth_client.post("/api/v1/events/batch", json=payload)
 
     assert resp.status_code == 500
-    assert "rolled back" in resp.json()["detail"].lower()
+    assert "failed" in resp.json()["detail"].lower()
 
 
 async def import_event_service():
