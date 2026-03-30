@@ -45,40 +45,29 @@ async def create_batch_events(
     api_key: ApiKeyDep,
 ) -> list[EventResponse]:
     """Create multiple events atomically — all succeed or all roll back."""
-    batch_id = uuid.uuid4()
-    results: list[EventResponse] = []
     try:
-        for event_data in body.events:
-            event, notification_ids = await event_service.create_event(
-                db, event_data, api_key.id, batch_id=batch_id, auto_commit=False,
-            )
-            results.append(
-                EventResponse(
-                    id=event.id,
-                    event_type=event.event_type,
-                    priority=event.priority,
-                    status=event.status,
-                    notification_ids=notification_ids,
-                    created_at=event.created_at,
-                )
-            )
-        await db.commit()
-        # Enqueue dispatch tasks after successful commit
-        for event_data, result in zip(body.events, results):
-            event_service._enqueue_dispatch(str(result.id), event_data.priority)
+        event_results = await event_service.create_batch(db, body.events, api_key.id)
     except ValueError as exc:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         )
     except Exception:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Batch failed — all events rolled back",
+            detail="Batch creation failed",
         )
-    return results
+    return [
+        EventResponse(
+            id=event.id,
+            event_type=event.event_type,
+            priority=event.priority,
+            status=event.status,
+            notification_ids=notification_ids,
+            created_at=event.created_at,
+        )
+        for event, notification_ids in event_results
+    ]
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)
