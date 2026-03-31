@@ -4,13 +4,12 @@ Each channel worker calls process_notification() which handles:
 1. Load notification from DB
 2. Guard against duplicate processing (idempotency)
 3. Update status to processing
-4. Simulate delivery (Phase 2 stub — Phase 3 adds real adapters)
-5. Update status to delivered
+4. Render template (if applicable) and deliver via channel adapter
+5. Update status to delivered or failed
 6. Write NotificationLog entries for each transition
-
-Phase 3 will refactor this to call real adapter classes.
 """
 
+import json
 import logging
 
 from sqlalchemy import select
@@ -19,6 +18,7 @@ from app.models.enums import EventStatus, NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
+from app.services.integrations import get_adapter
 from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
 
@@ -71,37 +71,78 @@ def process_notification(notification_id: str, channel: str) -> dict:
         )
         session.commit()
 
-        # --- Phase 2 stub: simulate successful delivery ---
-        # Phase 3 will replace this with actual adapter calls:
-        #   email → Resend API
-        #   sms → Twilio API
-        #   webhook → HTTP POST
-        logger.info(
-            "Delivering %s notification %s to %s (stub)",
-            channel,
-            notification_id,
-            notification.recipient_address,
+        # --- Render body if not already rendered ---
+        if notification.rendered_body is None:
+            event = session.get(Event, str(notification.event_id))
+            if event and event.template_id:
+                from app.models.template import Template
+                from app.services.template_service import preview_template
+
+                template = session.get(Template, str(event.template_id))
+                if template:
+                    variables = event.payload or {}
+                    rendered_subject, rendered_body = preview_template(
+                        body=template.body,
+                        subject=template.subject,
+                        variables=variables,
+                    )
+                    notification.rendered_subject = rendered_subject
+                    notification.rendered_body = rendered_body
+
+            # Fallback: use JSON payload as body
+            if notification.rendered_body is None:
+                notification.rendered_body = json.dumps(event.payload if event else {}, default=str)
+
+        # --- Deliver via channel adapter ---
+        event = session.get(Event, str(notification.event_id))
+        adapter = get_adapter(channel)
+        result = adapter.send(
+            recipient=notification.recipient_address,
+            subject=notification.rendered_subject,
+            body=notification.rendered_body or "",
+            webhook_secret=notification.webhook_secret,
+            event_type=event.event_type if event else "notification",
+            notification_id=str(notification.id),
         )
 
-        # Transition: processing → delivered
-        notification.status = NotificationStatus.DELIVERED
-        notification.delivered_at = utc_now()
-        notification.updated_at = utc_now()
-        session.add(
-            NotificationLog(
-                notification_id=notification.id,
-                previous_status=NotificationStatus.PROCESSING,
-                new_status=NotificationStatus.DELIVERED,
+        notification.provider_response = result.provider_response
+
+        if result.success:
+            notification.status = NotificationStatus.DELIVERED
+            notification.delivered_at = utc_now()
+            notification.updated_at = utc_now()
+            session.add(
+                NotificationLog(
+                    notification_id=notification.id,
+                    previous_status=NotificationStatus.PROCESSING,
+                    new_status=NotificationStatus.DELIVERED,
+                    provider_response=result.provider_response,
+                )
             )
-        )
+        else:
+            notification.status = NotificationStatus.FAILED
+            notification.error_message = result.error_message
+            notification.failed_at = utc_now()
+            notification.updated_at = utc_now()
+            session.add(
+                NotificationLog(
+                    notification_id=notification.id,
+                    previous_status=NotificationStatus.PROCESSING,
+                    new_status=NotificationStatus.FAILED,
+                    error_message=result.error_message,
+                    provider_response=result.provider_response,
+                )
+            )
+
         session.commit()
 
-        # Check if all notifications for the event are delivered → update event status
+        # Check if all notifications for the event are terminal → update event status
         _maybe_complete_event(session, notification.event_id)
 
-        logger.info("Notification %s delivered via %s", notification_id, channel)
+        status_label = "delivered" if result.success else "failed"
+        logger.info("Notification %s %s via %s", notification_id, status_label, channel)
         return {
-            "status": "delivered",
+            "status": status_label,
             "notification_id": notification_id,
             "channel": channel,
             "recipient": notification.recipient_address,
