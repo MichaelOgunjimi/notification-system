@@ -37,8 +37,13 @@ celery_app.conf.update(
         "app.workers.email_worker",
         "app.workers.sms_worker",
         "app.workers.webhook_worker",
+        "app.workers.reconciliation",
     ],
 )
+
+celery_app.conf.beat_schedule = {
+    "reconcile-stuck-notifications": {"task": "reconciliation.sweep", "schedule": 60.0}
+}
 
 
 @worker_process_init.connect
