@@ -36,7 +36,11 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+filterwarnings = [
+    "error::pytest.PytestRemovedIn9Warning",
+]
 
 [tool.mypy]
 python_version = "3.12"

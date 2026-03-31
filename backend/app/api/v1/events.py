@@ -1,5 +1,6 @@
 """Event ingestion endpoints — POST /events, GET /events, GET /events/{id}."""
 
+import logging
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
@@ -12,6 +13,8 @@ from app.schemas.events import (
     EventResponse,
 )
 from app.services import event_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -45,14 +48,16 @@ async def create_batch_events(
     api_key: ApiKeyDep,
 ) -> list[EventResponse]:
     """Create multiple events atomically — all succeed or all roll back."""
+    api_key_id = api_key.id
     try:
-        event_results = await event_service.create_batch(db, body.events, api_key.id)
+        event_results = await event_service.create_batch(db, body.events, api_key_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         )
     except Exception:
+        logger.exception("Batch creation failed for api_key %s", api_key_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Batch creation failed",

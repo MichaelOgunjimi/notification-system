@@ -26,7 +26,11 @@ async_session = async_sessionmaker(
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an async database session for FastAPI dependency injection."""
+    """Yield an async database session for FastAPI dependency injection.
+
+    Session lifecycle is managed by async with — uncommitted changes are
+    discarded when the session closes. Services must explicitly commit.
+    """
     async with async_session() as session:
         yield session
 
