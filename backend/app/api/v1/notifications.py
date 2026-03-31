@@ -72,7 +72,9 @@ async def get_notification(
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
-    logs = await notification_service.get_notification_logs(db, notification_id)
+    logs = await notification_service.get_notification_logs(
+        db, notification_id, api_key_id=api_key.id
+    )
     log_responses = [
         NotificationLogResponse(
             id=log.id,

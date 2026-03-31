@@ -23,6 +23,10 @@ async def validate_api_key(db: AsyncSession, raw_key: str) -> ApiKey | None:
     if api_key.revoked_at is not None:
         return None
 
+    # Commit last_used_at separately — this is observational tracking (like
+    # access logging) and should persist regardless of whether the request
+    # succeeds. Runs before the route handler, so it doesn't break batch
+    # or single-event atomicity.
     api_key.last_used_at = utc_now()
     db.add(api_key)
     await db.commit()

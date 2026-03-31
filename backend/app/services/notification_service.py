@@ -26,14 +26,21 @@ async def get_notification(
 
 
 async def get_notification_logs(
-    db: AsyncSession, notification_id: uuid.UUID
+    db: AsyncSession, notification_id: uuid.UUID, api_key_id: uuid.UUID | None = None
 ) -> list[NotificationLog]:
-    """Get all log entries for a notification."""
-    result = await db.execute(
+    """Get all log entries for a notification, scoped to owning API key."""
+    query = (
         select(NotificationLog)
         .where(col(NotificationLog.notification_id) == notification_id)
         .order_by(col(NotificationLog.created_at))
     )
+    if api_key_id is not None:
+        query = (
+            query.join(Notification, col(NotificationLog.notification_id) == col(Notification.id))
+            .join(Event, col(Notification.event_id) == col(Event.id))
+            .where(col(Event.api_key_id) == api_key_id)
+        )
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
