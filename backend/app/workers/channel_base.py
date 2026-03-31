@@ -5,21 +5,27 @@ Each channel worker calls process_notification() which handles:
 2. Guard against duplicate processing (idempotency)
 3. Update status to processing
 4. Render template (if applicable) and deliver via channel adapter
-5. Update status to delivered or failed
-6. Write NotificationLog entries for each transition
+5. On success: mark delivered
+6. On failure: check retry eligibility → retry or move to dead letter queue
+7. Write NotificationLog entries for each transition
 
 Key design decisions:
 - SELECT FOR UPDATE on notification fetch prevents race conditions under
   task_acks_late (two workers seeing QUEUED simultaneously).
 - Template rendering is wrapped in try/except so Jinja2 errors produce
   FAILED status instead of leaving notifications stuck in PROCESSING.
+- On delivery failure, retry.should_retry() checks per-channel policy.
+  If eligible, the notification is re-enqueued with exponential backoff.
+  If exhausted, it's moved to the dead letter queue.
 - The outer except block marks the notification FAILED if any unexpected
   error occurs after the PROCESSING commit, preventing zombie records.
 """
 
 import json
 import logging
+from typing import Any
 
+from celery import Task
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlmodel import col
@@ -29,8 +35,15 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.services.integrations import get_adapter
+from app.services.integrations.base import DeliveryResult
 from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
+from app.workers.retry import (
+    load_retry_policy,
+    move_to_dead_letter,
+    schedule_retry,
+    should_retry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +88,96 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
         notification.rendered_body = json.dumps(event.payload or {}, default=str)
 
 
-def process_notification(notification_id: str, channel: str) -> dict:
+def _handle_failure(
+    session: Session,
+    notification: Notification,
+    event: Event,
+    result: DeliveryResult,
+    celery_task: Task | None,
+    channel: str,
+) -> dict[str, Any]:
+    """Handle delivery failure: retry if eligible, otherwise dead-letter.
+
+    Returns the status dict for the Celery task result.
+    """
+    policy = load_retry_policy(session, channel)
+
+    if policy and celery_task and should_retry(notification, policy, result.error_type):
+        # --- Schedule retry ---
+        countdown = schedule_retry(
+            session,
+            notification,
+            policy,
+            result.error_message,
+            result.error_type,
+        )
+        notification.provider_response = result.provider_response
+        session.commit()
+
+        # Re-enqueue to same Celery task with countdown
+        celery_task.apply_async(
+            args=[str(notification.id)],
+            countdown=countdown,
+        )
+
+        return {
+            "status": "retry_scheduled",
+            "notification_id": str(notification.id),
+            "channel": channel,
+            "retry_count": notification.retry_count,
+            "countdown_seconds": round(countdown, 1),
+        }
+
+    # --- Exhausted retries or no policy: move to DLQ ---
+    if policy and notification.retry_count > 0:
+        move_to_dead_letter(
+            session,
+            notification,
+            event.payload or {},
+            result.error_message,
+            result.error_type,
+        )
+    else:
+        # No retry policy or first failure with no policy → mark FAILED
+        notification.status = NotificationStatus.FAILED
+        notification.error_message = result.error_message
+        notification.failed_at = utc_now()
+        notification.updated_at = utc_now()
+        session.add(
+            NotificationLog(
+                notification_id=notification.id,
+                previous_status=NotificationStatus.PROCESSING,
+                new_status=NotificationStatus.FAILED,
+                error_message=result.error_message,
+                provider_response=result.provider_response,
+            )
+        )
+
+    notification.provider_response = result.provider_response
+    session.commit()
+    _maybe_complete_event(session, notification.event_id)
+
+    final_status = str(notification.status)
+    logger.info("Notification %s %s via %s", notification.id, final_status, channel)
+    return {
+        "status": final_status,
+        "notification_id": str(notification.id),
+        "channel": channel,
+        "recipient": notification.recipient_address,
+    }
+
+
+def process_notification(
+    notification_id: str,
+    channel: str,
+    celery_task: Task | None = None,
+) -> dict:
     """Process a notification through the delivery pipeline.
+
+    Args:
+        notification_id: UUID of the notification to process.
+        channel: Channel name (email, sms, webhook).
+        celery_task: The Celery task instance (self) — needed for retry re-enqueue.
 
     Returns a dict with status and metadata for Celery result tracking.
     """
@@ -163,9 +264,8 @@ def process_notification(notification_id: str, channel: str) -> dict:
             notification_id=str(notification.id),
         )
 
-        notification.provider_response = result.provider_response
-
         if result.success:
+            notification.provider_response = result.provider_response
             notification.status = NotificationStatus.DELIVERED
             notification.delivered_at = utc_now()
             notification.updated_at = utc_now()
@@ -177,34 +277,19 @@ def process_notification(notification_id: str, channel: str) -> dict:
                     provider_response=result.provider_response,
                 )
             )
-        else:
-            notification.status = NotificationStatus.FAILED
-            notification.error_message = result.error_message
-            notification.failed_at = utc_now()
-            notification.updated_at = utc_now()
-            session.add(
-                NotificationLog(
-                    notification_id=notification.id,
-                    previous_status=NotificationStatus.PROCESSING,
-                    new_status=NotificationStatus.FAILED,
-                    error_message=result.error_message,
-                    provider_response=result.provider_response,
-                )
-            )
+            session.commit()
+            _maybe_complete_event(session, notification.event_id)
 
-        session.commit()
+            logger.info("Notification %s delivered via %s", notification_id, channel)
+            return {
+                "status": "delivered",
+                "notification_id": notification_id,
+                "channel": channel,
+                "recipient": notification.recipient_address,
+            }
 
-        # Check if all notifications for the event are terminal → update event
-        _maybe_complete_event(session, notification.event_id)
-
-        status_label = "delivered" if result.success else "failed"
-        logger.info("Notification %s %s via %s", notification_id, status_label, channel)
-        return {
-            "status": status_label,
-            "notification_id": notification_id,
-            "channel": channel,
-            "recipient": notification.recipient_address,
-        }
+        # --- Delivery failed: retry or dead-letter ---
+        return _handle_failure(session, notification, event, result, celery_task, channel)
 
     except Exception:
         session.rollback()

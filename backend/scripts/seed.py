@@ -106,8 +106,25 @@ async def seed_templates(db: AsyncSession) -> list[Template]:
 
 
 async def seed_retry_policies(db: AsyncSession) -> None:
-    """Create retry policies for each channel."""
-    for channel in NotificationChannel:
+    """Create retry policies for each channel with differentiated defaults."""
+    defaults = {
+        NotificationChannel.EMAIL: {
+            "max_retries": 3,
+            "base_delay_seconds": 30,
+            "max_backoff_seconds": 300,
+        },
+        NotificationChannel.SMS: {
+            "max_retries": 3,
+            "base_delay_seconds": 60,
+            "max_backoff_seconds": 600,
+        },
+        NotificationChannel.WEBHOOK: {
+            "max_retries": 5,
+            "base_delay_seconds": 10,
+            "max_backoff_seconds": 600,
+        },
+    }
+    for channel, config in defaults.items():
         result = await db.execute(select(RetryPolicy).where(col(RetryPolicy.channel) == channel))
         if result.scalar_one_or_none() is not None:
             print(f"  ✓ Retry policy for '{channel}' already exists")
@@ -115,10 +132,8 @@ async def seed_retry_policies(db: AsyncSession) -> None:
 
         policy = RetryPolicy(
             channel=channel,
-            max_retries=5,
-            base_delay_seconds=10,
-            max_backoff_seconds=600,
             jitter_enabled=True,
+            **config,
         )
         db.add(policy)
         await db.flush()

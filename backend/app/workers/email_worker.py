@@ -15,4 +15,4 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="app.workers.email_worker.send_email", bind=True)
 def send_email(self, notification_id: str) -> dict:
     """Send an email notification."""
-    return process_notification(notification_id, channel="email")
+    return process_notification(notification_id, channel="email", celery_task=self)
