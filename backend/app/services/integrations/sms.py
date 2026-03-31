@@ -31,4 +31,5 @@ class SmsAdapter(BaseAdapter):
         return DeliveryResult(
             success=False,
             error_message=f"SMS provider '{self.provider}' not implemented",
+            error_type="provider_not_configured",
         )

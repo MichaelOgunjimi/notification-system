@@ -46,7 +46,12 @@ class EmailAdapter(BaseAdapter):
             )
         except Exception as e:
             logger.error("Resend API error for %s: %s", recipient, e)
+            error_msg = str(e)
+            error_type = "server_error"
+            if "Invalid" in error_msg or "not found" in error_msg.lower():
+                error_type = "permanent_failure"
             return DeliveryResult(
                 success=False,
-                error_message=str(e),
+                error_message=error_msg,
+                error_type=error_type,
             )

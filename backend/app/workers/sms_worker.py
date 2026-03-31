@@ -15,4 +15,4 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="app.workers.sms_worker.send_sms", bind=True)
 def send_sms(self, notification_id: str) -> dict:
     """Send an SMS notification."""
-    return process_notification(notification_id, channel="sms")
+    return process_notification(notification_id, channel="sms", celery_task=self)

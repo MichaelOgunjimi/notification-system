@@ -75,6 +75,7 @@ class WebhookAdapter(BaseAdapter):
             return DeliveryResult(
                 success=False,
                 error_message=error_message,
+                error_type="permanent_failure",
             )
 
         # Parse body as JSON if possible, otherwise wrap as message
@@ -124,6 +125,7 @@ class WebhookAdapter(BaseAdapter):
                         "body": response.text[:500],
                     },
                 )
+            error_type = "server_error" if response.status_code >= 500 else "client_error"
             return DeliveryResult(
                 success=False,
                 provider_response={
@@ -131,16 +133,25 @@ class WebhookAdapter(BaseAdapter):
                     "body": response.text[:500],
                 },
                 error_message=f"Webhook returned {response.status_code}",
+                error_type=error_type,
             )
 
         except httpx.TimeoutException:
             return DeliveryResult(
                 success=False,
                 error_message=f"Webhook timeout after {self.timeout}s",
+                error_type="timeout",
+            )
+        except httpx.ConnectError:
+            return DeliveryResult(
+                success=False,
+                error_message="Connection refused or DNS failure",
+                error_type="connection_error",
             )
         except Exception as e:
             logger.error("Webhook error for %s: %s", recipient, e)
             return DeliveryResult(
                 success=False,
                 error_message=str(e),
+                error_type="connection_error",
             )
