@@ -178,3 +178,33 @@ async def test_create_event_missing_fields(auth_client: AsyncClient) -> None:
 async def test_create_event_no_auth(client: AsyncClient) -> None:
     resp = await client.post("/api/v1/events", json=_event_payload())
     assert resp.status_code in (401, 422)
+
+
+@pytest.mark.asyncio
+async def test_invalid_webhook_url_rejected(auth_client: AsyncClient) -> None:
+    payload = _event_payload(
+        recipients=[
+            {
+                "user_id": "u1",
+                "channels": ["webhook"],
+                "webhook_url": "ftp://example.com/hooks",
+            }
+        ]
+    )
+    resp = await auth_client.post("/api/v1/events", json=payload)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_private_ip_webhook_url_rejected(auth_client: AsyncClient) -> None:
+    payload = _event_payload(
+        recipients=[
+            {
+                "user_id": "u1",
+                "channels": ["webhook"],
+                "webhook_url": "http://127.0.0.1/hooks",
+            }
+        ]
+    )
+    resp = await auth_client.post("/api/v1/events", json=payload)
+    assert resp.status_code == 422
