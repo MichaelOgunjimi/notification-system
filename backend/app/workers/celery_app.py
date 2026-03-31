@@ -3,7 +3,7 @@
 from celery import Celery
 from celery.signals import worker_process_init
 
-from app.config import settings
+from app.core.config import settings
 
 celery_app = Celery(
     "notification_system",

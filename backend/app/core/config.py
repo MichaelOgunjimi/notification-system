@@ -10,7 +10,7 @@ from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env lives at project root (one level above backend/)
-_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):

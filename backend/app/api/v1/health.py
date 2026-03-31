@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from sqlalchemy import text
 
 from app.api.deps import SessionDep
-from app.config import settings
+from app.core.config import settings
 from app.schemas.common import HealthResponse
 from app.utils.datetime import utc_now
 

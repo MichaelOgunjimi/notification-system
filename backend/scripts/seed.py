@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import async_session, engine
+from app.core.database import async_session, engine
 from app.models.api_key import ApiKey
 from app.models.channel_config import ChannelConfig
 from app.models.enums import (

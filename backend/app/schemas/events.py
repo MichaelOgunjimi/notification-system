@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.config import settings as app_settings
+from app.core.config import settings as app_settings
 from app.models.enums import EventPriority, EventStatus, NotificationChannel
 
 

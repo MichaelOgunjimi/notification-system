@@ -11,8 +11,8 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 import app.models  # noqa: F401 — register all tables
-from app.config import settings
-from app.database import get_db
+from app.core.config import settings
+from app.core.database import get_db
 from app.main import create_app
 from app.models.api_key import ApiKey
 from app.utils.crypto import generate_api_key, hash_api_key

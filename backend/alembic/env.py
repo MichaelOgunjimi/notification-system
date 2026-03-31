@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 
 import app.models  # noqa: F401 — ensure all models are registered
 from alembic import context
-from app.config import settings
+from app.core.config import settings
 
 config = context.config
 
