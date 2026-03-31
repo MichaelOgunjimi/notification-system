@@ -2,6 +2,7 @@
 
 import logging
 
+from sqlalchemy import select
 from sqlmodel import col
 
 from app.models.enums import EventStatus, NotificationChannel, NotificationStatus
@@ -19,8 +20,10 @@ logger = logging.getLogger(__name__)
 def dispatch_event(self, event_id: str) -> dict:
     """Dispatch an event: update statuses and fan out to channel-specific workers.
 
-    This task runs on the dispatcher worker which consumes from priority queues
-    (notifications.high, notifications.medium, notifications.low).
+    Commit-before-enqueue: DB status is updated to QUEUED and committed
+    before any Celery tasks are sent. This prevents orphaned tasks (tasks
+    in Celery with no DB record) and ensures partial enqueue failures
+    leave notifications in a recoverable QUEUED state.
     """
     session = get_sync_session()
     try:
@@ -32,38 +35,46 @@ def dispatch_event(self, event_id: str) -> dict:
         # Update event status to processing
         event.status = EventStatus.PROCESSING
         event.updated_at = utc_now()
-        session.commit()
 
         # Get all pending notifications for this event
         notifications = (
-            session.query(Notification)
-            .filter(
-                col(Notification.event_id) == event_id,
-                col(Notification.status) == NotificationStatus.PENDING,
+            session.execute(
+                select(Notification).where(
+                    col(Notification.event_id) == event_id,
+                    col(Notification.status) == NotificationStatus.PENDING,
+                )
             )
+            .scalars()
             .all()
         )
 
-        dispatched = 0
+        # Phase 1: Mark all notifications QUEUED and commit
         for notification in notifications:
-            # Update status to queued
             notification.status = NotificationStatus.QUEUED
             notification.queued_at = utc_now()
             notification.updated_at = utc_now()
-
-            # Write log entry
-            log_entry = NotificationLog(
-                notification_id=notification.id,
-                previous_status=NotificationStatus.PENDING,
-                new_status=NotificationStatus.QUEUED,
+            session.add(
+                NotificationLog(
+                    notification_id=notification.id,
+                    previous_status=NotificationStatus.PENDING,
+                    new_status=NotificationStatus.QUEUED,
+                )
             )
-            session.add(log_entry)
-
-            # Route to channel-specific worker
-            _enqueue_channel_task(notification, self.request.id)
-            dispatched += 1
 
         session.commit()
+
+        # Phase 2: Enqueue to Celery (after commit — safe to fail partially)
+        dispatched = 0
+        for notification in notifications:
+            try:
+                _enqueue_channel_task(notification, self.request.id)
+                dispatched += 1
+            except Exception:
+                logger.exception(
+                    "Failed to enqueue notification %s to Celery (status is QUEUED, "
+                    "reconciliation will retry)",
+                    notification.id,
+                )
 
         logger.info(
             "Dispatched event %s: %d notifications enqueued",
