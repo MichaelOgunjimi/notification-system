@@ -2,8 +2,11 @@
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
+import socket
+from urllib.parse import urlparse
 
 import httpx
 
@@ -17,6 +20,45 @@ class WebhookAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.timeout = settings.WEBHOOK_DEFAULT_TIMEOUT_SECONDS
 
+    @staticmethod
+    def _is_internal_ip(value: str) -> bool:
+        try:
+            ip = ipaddress.ip_address(value)
+        except ValueError:
+            return True
+        return (
+            ip.is_loopback
+            or ip.is_private
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_unspecified
+        )
+
+    def _validate_url(self, url: str) -> tuple[bool, str | None]:
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"}:
+            return False, "Webhook URL must use http or https"
+        if not parsed.hostname:
+            return False, "Webhook URL must include a hostname"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+        try:
+            address_info = socket.getaddrinfo(parsed.hostname, port)
+        except socket.gaierror:
+            return False, "Cannot resolve webhook hostname"
+        except Exception:
+            return False, "Webhook URL validation failed"
+
+        if not address_info:
+            return False, "Cannot resolve webhook hostname"
+
+        for _, _, _, _, sockaddr in address_info:
+            ip_str = str(sockaddr[0])
+            if self._is_internal_ip(ip_str):
+                return False, "Webhook URL resolves to an internal/private address"
+
+        return True, None
+
     def send(
         self,
         recipient: str,  # webhook URL
@@ -28,9 +70,16 @@ class WebhookAdapter(BaseAdapter):
         event_type = kwargs.get("event_type", "notification")
         notification_id = kwargs.get("notification_id", "")
 
+        is_valid_url, error_message = self._validate_url(recipient)
+        if not is_valid_url:
+            return DeliveryResult(
+                success=False,
+                error_message=error_message,
+            )
+
         # Parse body as JSON if possible, otherwise wrap as message
         try:
-            data = json.loads(body) if body.startswith("{") else {"message": body}
+            data = json.loads(body)
         except (json.JSONDecodeError, ValueError):
             data = {"message": body}
 
@@ -41,6 +90,7 @@ class WebhookAdapter(BaseAdapter):
         }
 
         headers: dict[str, str] = {"Content-Type": "application/json"}
+        payload_bytes: bytes | None = None
 
         if webhook_secret and isinstance(webhook_secret, str):
             payload_bytes = json.dumps(payload, sort_keys=True).encode()
@@ -53,11 +103,18 @@ class WebhookAdapter(BaseAdapter):
 
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.post(
-                    recipient,
-                    json=payload,
-                    headers=headers,
-                )
+                if webhook_secret and isinstance(webhook_secret, str):
+                    response = client.post(
+                        recipient,
+                        content=payload_bytes or b"",
+                        headers=headers,
+                    )
+                else:
+                    response = client.post(
+                        recipient,
+                        json=payload,
+                        headers=headers,
+                    )
 
             if response.status_code < 400:
                 return DeliveryResult(
