@@ -341,3 +341,76 @@ def test_empty_run_no_errors(mock_get_session, mock_send_task):
     assert result["recovered_missed_retries"] == 0
     assert result["recovered_zombies"] == 0
     mock_send_task.assert_not_called()
+
+
+@patch("app.workers.reconciliation.celery_app.send_task")
+@patch("app.workers.reconciliation.get_sync_session")
+def test_missed_retry_clears_next_retry_at(mock_get_session, mock_send_task):
+    """After re-enqueue, next_retry_at must be cleared so the next sweep skips it."""
+    session = _get_test_session()
+    _event, notification = _seed_event_and_notification(
+        session,
+        status=NotificationStatus.QUEUED,
+        channel="email",
+        next_retry_at=utc_now() - timedelta(minutes=1),
+    )
+    session.close()
+
+    mock_get_session.return_value = _get_test_session()
+    result = reconcile_stuck_notifications.apply().get()
+    assert result["recovered_missed_retries"] == 1
+
+    verify = _get_test_session()
+    refreshed = verify.get(Notification, notification.id)
+    assert refreshed.next_retry_at is None, "next_retry_at must be cleared after re-enqueue"
+    assert refreshed.status == NotificationStatus.QUEUED
+    verify.close()
+
+
+@patch("app.workers.reconciliation.celery_app.send_task")
+@patch("app.workers.reconciliation.get_sync_session")
+def test_second_sweep_does_not_re_enqueue(mock_get_session, mock_send_task):
+    """Verify a cleared notification is NOT picked up by a subsequent sweep."""
+    session = _get_test_session()
+    _event, notification = _seed_event_and_notification(
+        session,
+        status=NotificationStatus.QUEUED,
+        channel="email",
+        next_retry_at=utc_now() - timedelta(minutes=1),
+    )
+    session.close()
+
+    # First sweep
+    mock_get_session.return_value = _get_test_session()
+    result1 = reconcile_stuck_notifications.apply().get()
+    assert result1["recovered_missed_retries"] == 1
+
+    # Second sweep — same notification should NOT be re-enqueued
+    mock_send_task.reset_mock()
+    mock_get_session.return_value = _get_test_session()
+    result2 = reconcile_stuck_notifications.apply().get()
+    assert result2["recovered_missed_retries"] == 0
+    mock_send_task.assert_not_called()
+
+
+@patch("app.workers.reconciliation.celery_app.send_task")
+@patch("app.workers.reconciliation.get_sync_session")
+def test_sweep_batch_limit_respected(mock_get_session, mock_send_task):
+    """Sweep processes at most SWEEP_BATCH_LIMIT notifications per run."""
+    session = _get_test_session()
+    batch_size = 3  # use small number to test limiting
+    for _ in range(batch_size + 2):
+        _seed_event_and_notification(
+            session,
+            status=NotificationStatus.QUEUED,
+            channel="email",
+            next_retry_at=utc_now() - timedelta(minutes=1),
+        )
+    session.close()
+
+    # Temporarily patch the batch limit to a small value
+    with patch("app.workers.reconciliation.SWEEP_BATCH_LIMIT", batch_size):
+        mock_get_session.return_value = _get_test_session()
+        result = reconcile_stuck_notifications.apply().get()
+        assert result["recovered_missed_retries"] == batch_size
+        assert mock_send_task.call_count == batch_size
