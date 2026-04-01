@@ -24,6 +24,7 @@ from app.workers.retry import (
 logger = logging.getLogger(__name__)
 
 _RECOVERY_MESSAGE = "Recovered by reconciliation: worker timeout"
+SWEEP_BATCH_LIMIT = 500
 _CHANNEL_TASK_NAMES = {
     "email": "app.workers.email_worker.send_email",
     "sms": "app.workers.sms_worker.send_sms",
@@ -32,10 +33,8 @@ _CHANNEL_TASK_NAMES = {
 
 
 @celery_app.task(name="reconciliation.sweep", bind=True)
-def reconcile_stuck_notifications(self) -> dict:
+def reconcile_stuck_notifications(_self) -> dict:
     """Sweep for stuck notifications and recover missed retries/zombie processing."""
-    del self  # bound for future observability hooks
-
     session = get_sync_session()
     recovered_missed_retries = 0
     recovered_zombies = 0
@@ -46,11 +45,13 @@ def reconcile_stuck_notifications(self) -> dict:
         # Recover missed retries: QUEUED + next_retry_at elapsed
         missed_retry_notifications = (
             session.execute(
-                select(Notification).where(
+                select(Notification)
+                .where(
                     col(Notification.status) == NotificationStatus.QUEUED,
                     Notification.next_retry_at.isnot(None),  # type: ignore[union-attr]
                     col(Notification.next_retry_at) <= now,
                 )
+                .limit(SWEEP_BATCH_LIMIT)
             )
             .scalars()
             .all()
@@ -68,6 +69,8 @@ def reconcile_stuck_notifications(self) -> dict:
                 continue
 
             celery_app.send_task(task_name, args=[str(notification.id)])
+            notification.next_retry_at = None
+            notification.updated_at = utc_now()
             logger.info(
                 "Reconciliation re-enqueued missed retry notification %s to %s",
                 notification.id,
@@ -80,10 +83,12 @@ def reconcile_stuck_notifications(self) -> dict:
         zombie_cutoff = utc_now() - timedelta(minutes=5)
         zombie_notifications = (
             session.execute(
-                select(Notification).where(
+                select(Notification)
+                .where(
                     col(Notification.status) == NotificationStatus.PROCESSING,
                     col(Notification.updated_at) < zombie_cutoff,
                 )
+                .limit(SWEEP_BATCH_LIMIT)
             )
             .scalars()
             .all()
