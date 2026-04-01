@@ -351,6 +351,56 @@ class TestRetryIntegration:
 
     @patch("app.workers.channel_base.get_sync_session")
     @patch("app.workers.channel_base.get_adapter")
+    def test_permanent_failure_after_retries_goes_to_failed_not_dlq(
+        self, mock_get_adapter, mock_get_session
+    ):
+        """Permanent failure mid-retry → FAILED, not DLQ.
+
+        If a notification previously retried for transient errors but then
+        hits a permanent error (e.g. invalid recipient), it should be FAILED
+        not moved to the dead letter queue.
+        """
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session, retry_count=2)
+        _seed_retry_policy(session, max_retries=5)
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(
+            success=False,
+            error_message="Invalid email address",
+            error_type="permanent_failure",
+        )
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        mock_celery_task = MagicMock()
+        result = process_notification(str(notification.id), "email", celery_task=mock_celery_task)
+
+        assert result["status"] == NotificationStatus.FAILED
+        mock_celery_task.apply_async.assert_not_called()
+
+        check = _get_test_session()
+        n = check.get(Notification, notification.id)
+        assert n.status == NotificationStatus.FAILED
+        assert n.retry_count == 2  # unchanged — no new retry attempted
+
+        # Verify it did NOT go to DLQ
+        from sqlalchemy import select
+        from sqlmodel import col
+
+        from app.models.dead_letter import DeadLetterMessage
+
+        dlq = check.execute(
+            select(DeadLetterMessage).where(
+                col(DeadLetterMessage.notification_id) == notification.id
+            )
+        ).scalar_one_or_none()
+        assert dlq is None, "Permanent failure should not create a DLQ entry"
+        check.close()
+
+    @patch("app.workers.channel_base.get_sync_session")
+    @patch("app.workers.channel_base.get_adapter")
     def test_retry_increments_count(self, mock_get_adapter, mock_get_session):
         """Each retry attempt increments retry_count."""
         session = _get_test_session()

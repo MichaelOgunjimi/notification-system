@@ -310,3 +310,42 @@ class TestCrossTenantIsolation:
 
         resp = await auth_client_b.get(f"{BASE_URL}/{dlq_a.id}")
         assert resp.status_code == 404
+
+
+class TestDiscardThenRetry:
+    async def test_retry_after_discard_returns_404(
+        self,
+        auth_client: AsyncClient,
+        db: AsyncSession,
+        api_key_pair: tuple[ApiKey, str],
+    ):
+        """Discarded DLQ entries cannot be retried — state transition is terminal."""
+        api_key, _ = api_key_pair
+        _, _, dlq = await _seed_dlq(db, api_key)
+
+        # Discard first
+        resp = await auth_client.post(f"{BASE_URL}/{dlq.id}/discard")
+        assert resp.status_code == 200
+
+        # Retry should fail — discarded is terminal
+        resp = await auth_client.post(f"{BASE_URL}/{dlq.id}/retry")
+        assert resp.status_code == 404
+
+    async def test_discard_after_retry_returns_404(
+        self,
+        auth_client: AsyncClient,
+        db: AsyncSession,
+        api_key_pair: tuple[ApiKey, str],
+    ):
+        """Retried DLQ entries cannot be discarded — state transition is terminal."""
+        api_key, _ = api_key_pair
+        _, _, dlq = await _seed_dlq(db, api_key)
+
+        # Retry first
+        with patch("app.services.dead_letter_service.celery_app"):
+            resp = await auth_client.post(f"{BASE_URL}/{dlq.id}/retry")
+            assert resp.status_code == 200
+
+        # Discard should fail — retried is terminal
+        resp = await auth_client.post(f"{BASE_URL}/{dlq.id}/discard")
+        assert resp.status_code == 404
