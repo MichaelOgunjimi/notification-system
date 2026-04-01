@@ -2,7 +2,16 @@
 
 import logging
 
+import httpx
 import resend
+from resend.exceptions import (
+    ApplicationError,
+    InvalidApiKeyError,
+    MissingApiKeyError,
+    MissingRequiredFieldsError,
+    RateLimitError,
+    ValidationError,
+)
 
 from app.core.config import settings
 from app.services.integrations.base import BaseAdapter, DeliveryResult
@@ -44,14 +53,52 @@ class EmailAdapter(BaseAdapter):
                 success=True,
                 provider_response={"id": response["id"]},
             )
-        except Exception as e:
-            logger.error("Resend API error for %s: %s", recipient, e)
-            error_msg = str(e)
-            error_type = "server_error"
-            if "Invalid" in error_msg or "not found" in error_msg.lower():
-                error_type = "permanent_failure"
+        except (ValidationError, MissingRequiredFieldsError) as e:
+            logger.error("Resend validation error for %s: %s", recipient, e)
             return DeliveryResult(
                 success=False,
-                error_message=error_msg,
-                error_type=error_type,
+                error_message=str(e),
+                error_type="permanent_failure",
+            )
+        except (MissingApiKeyError, InvalidApiKeyError) as e:
+            logger.error("Resend auth error for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=str(e),
+                error_type="provider_not_configured",
+            )
+        except RateLimitError as e:
+            logger.warning("Resend rate limit for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=str(e),
+                error_type="server_error",
+            )
+        except ApplicationError as e:
+            logger.error("Resend server error for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=str(e),
+                error_type="server_error",
+            )
+        except httpx.TimeoutException as e:
+            logger.error("Resend timeout for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=f"Email delivery timeout: {e}",
+                error_type="timeout",
+            )
+        except httpx.ConnectError as e:
+            logger.error("Resend connection error for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=f"Connection error: {e}",
+                error_type="connection_error",
+            )
+        except Exception as e:
+            logger.error("Unexpected Resend error for %s: %s", recipient, e)
+            return DeliveryResult(
+                success=False,
+                error_message=str(e),
+                error_type="server_error",
             )
