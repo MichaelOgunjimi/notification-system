@@ -107,8 +107,13 @@ class Settings(BaseSettings):
     # Auth
     MASTER_API_KEY: str = ""
 
-    # Redis (Phase 2)
+    # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    # Flower (Celery monitoring)
+    FLOWER_PORT: int = 5555
+    FLOWER_USER: str = "admin"
+    FLOWER_PASSWORD: str = "admin"
 
     @property
     def is_production(self) -> bool:
