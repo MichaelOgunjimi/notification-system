@@ -128,8 +128,10 @@ def _handle_failure(
             "countdown_seconds": round(countdown, 1),
         }
 
-    # --- Exhausted retries or no policy: move to DLQ ---
-    if policy and notification.retry_count > 0:
+    # --- Exhausted retries or permanent failure: DLQ or FAILED ---
+    _permanent = result.error_type in ("permanent_failure", "provider_not_configured")
+    if policy and notification.retry_count > 0 and not _permanent:
+        # Exhausted retries on a transient error → DLQ for operator review
         move_to_dead_letter(
             session,
             notification,
@@ -138,7 +140,7 @@ def _handle_failure(
             result.error_type,
         )
     else:
-        # No retry policy or first failure with no policy → mark FAILED
+        # Permanent failure, no retry policy, or first failure → mark FAILED
         notification.status = NotificationStatus.FAILED
         notification.error_message = result.error_message
         notification.failed_at = utc_now()
