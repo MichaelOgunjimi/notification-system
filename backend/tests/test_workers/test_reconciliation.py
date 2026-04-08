@@ -152,6 +152,7 @@ def test_missed_retry_re_enqueued(mock_get_session, mock_send_task):
     mock_send_task.assert_called_once_with(
         "app.workers.email_worker.send_email",
         args=[str(notification.id)],
+        queue="notifications.email.medium",
     )
 
 
@@ -198,6 +199,7 @@ def test_zombie_processing_with_policy_retries(mock_get_session, mock_send_task)
     assert mock_send_task.call_args.args == ("app.workers.email_worker.send_email",)
     assert mock_send_task.call_args.kwargs["args"] == [str(notification.id)]
     assert mock_send_task.call_args.kwargs["countdown"] == 10.0
+    assert mock_send_task.call_args.kwargs["queue"] == "notifications.email.medium"
 
     verify = _get_test_session()
     refreshed = verify.get(Notification, notification.id)

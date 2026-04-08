@@ -19,12 +19,10 @@ celery_app.conf.update(
     # Timezone
     timezone="UTC",
     enable_utc=True,
-    # Task routing — dispatcher routing is dynamic via apply_async(queue=...)
-    task_routes={
-        "app.workers.email_worker.send_email": {"queue": "notifications.email"},
-        "app.workers.sms_worker.send_sms": {"queue": "notifications.sms"},
-        "app.workers.webhook_worker.send_webhook": {"queue": "notifications.webhook"},
-    },
+    # Task routing — all routing is dynamic via apply_async(queue=...).
+    # Dispatcher tasks are sent to notifications.{priority}.
+    # Channel tasks are sent to notifications.{channel}.{priority}.
+    # No static task_routes needed.
     # Worker settings
     worker_prefetch_multiplier=2,
     task_acks_late=True,

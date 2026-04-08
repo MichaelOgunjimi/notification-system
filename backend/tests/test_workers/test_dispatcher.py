@@ -1,7 +1,7 @@
 """Tests for dispatcher — commit-before-enqueue ordering and partial failure."""
 
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import PostgresDsn
@@ -17,7 +17,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.utils.datetime import utc_now
-from app.workers.dispatcher import dispatch_event
+from app.workers.dispatcher import _enqueue_channel_task, dispatch_event
 
 SYNC_TEST_DB_URL = str(
     PostgresDsn.build(
@@ -54,6 +54,7 @@ def _get_test_session() -> Session:
 def _seed_event_with_notifications(
     session: Session,
     channels: list[str] | None = None,
+    priority: str = "medium",
 ) -> tuple[Event, list[Notification]]:
     """Create an event with PENDING notifications for each channel."""
     if channels is None:
@@ -88,6 +89,7 @@ def _seed_event_with_notifications(
             id=uuid.uuid4(),
             event_id=event.id,
             channel=ch,
+            priority=priority,
             recipient_user_id="test-user-1",
             recipient_address="user@test.com" if ch == "email" else "+15551234567",
             status=NotificationStatus.PENDING,
@@ -247,3 +249,99 @@ class TestDispatchEvent:
         e = verify_session.get(Event, event.id)
         assert e.status == EventStatus.PROCESSING
         verify_session.close()
+
+
+class TestPerChannelPriorityRouting:
+    """Tests that _enqueue_channel_task routes to per-channel priority queues."""
+
+    def _make_notification(self, channel: str, priority: str) -> Notification:
+        return Notification(
+            id=uuid.uuid4(),
+            event_id=uuid.uuid4(),
+            channel=channel,
+            priority=priority,
+            recipient_user_id="user-1",
+            recipient_address="test@example.com",
+            status=NotificationStatus.QUEUED,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+
+    @pytest.mark.parametrize(
+        ("channel", "priority"),
+        [
+            ("email", "high"),
+            ("email", "medium"),
+            ("email", "low"),
+            ("sms", "high"),
+            ("sms", "medium"),
+            ("sms", "low"),
+            ("webhook", "high"),
+            ("webhook", "medium"),
+            ("webhook", "low"),
+        ],
+    )
+    def test_routes_to_per_channel_priority_queue(self, channel: str, priority: str):
+        """Each channel+priority combination routes to notifications.{channel}.{priority}."""
+        notification = self._make_notification(channel, priority)
+        expected_queue = f"notifications.{channel}.{priority}"
+
+        worker_map = {
+            "email": "app.workers.email_worker.send_email",
+            "sms": "app.workers.sms_worker.send_sms",
+            "webhook": "app.workers.webhook_worker.send_webhook",
+        }
+        task_path = worker_map[channel]
+        mock_task = MagicMock()
+        mock_result = MagicMock()
+        mock_result.id = "mock-task-id"
+        mock_task.apply_async.return_value = mock_result
+
+        with patch(task_path, mock_task):
+            _enqueue_channel_task(notification)
+
+        mock_task.apply_async.assert_called_once_with(
+            args=[str(notification.id)], queue=expected_queue
+        )
+        assert notification.celery_task_id == "mock-task-id"
+
+    def test_high_priority_email_not_sent_to_medium_queue(self):
+        """High-priority email must NOT go to the medium queue."""
+        notification = self._make_notification("email", "high")
+        mock_task = MagicMock()
+        mock_result = MagicMock()
+        mock_result.id = "mock-task-id"
+        mock_task.apply_async.return_value = mock_result
+
+        with patch("app.workers.email_worker.send_email", mock_task):
+            _enqueue_channel_task(notification)
+
+        _, kwargs = mock_task.apply_async.call_args
+        assert kwargs["queue"] == "notifications.email.high"
+        assert kwargs["queue"] != "notifications.email.medium"
+
+    @patch("app.workers.dispatcher.get_sync_session")
+    def test_dispatch_event_uses_priority_queues(self, mock_get_session):
+        """dispatch_event fans out to per-channel priority queues, not generic channel queues."""
+        session = _get_test_session()
+        event, notifications = _seed_event_with_notifications(
+            session, channels=["email", "sms"], priority="high"
+        )
+        session.close()
+
+        captured_queues: list[str] = []
+
+        def capture_enqueue(notification, *args, **kwargs):
+            captured_queues.append(
+                f"notifications.{notification.channel.value}.{notification.priority.value}"
+            )
+
+        with patch("app.workers.dispatcher._enqueue_channel_task", side_effect=capture_enqueue):
+            mock_get_session.return_value = _get_test_session()
+            result = dispatch_event.apply(args=[str(event.id)]).get()
+
+        assert result["status"] == "dispatched"
+        assert set(captured_queues) == {"notifications.email.high", "notifications.sms.high"}
+        # Ensure old-style generic queues are never used
+        for q in captured_queues:
+            assert q not in {"notifications.email", "notifications.sms", "notifications.webhook"}

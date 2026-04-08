@@ -44,8 +44,16 @@ def calculate_backoff(
 ) -> float:
     """Exponential backoff with optional jitter.
 
-    Returns delay in seconds: min(base * 2^count, max) * jitter_factor
     Jitter spreads retries to avoid thundering herd when a provider recovers.
+
+    Args:
+        retry_count: Current retry attempt number (0-indexed).
+        base_delay: Initial backoff delay in seconds.
+        max_backoff: Maximum backoff delay in seconds (ceiling).
+        jitter: If True, randomize delay between 50%-150% of calculated value.
+
+    Returns:
+        Delay in seconds: min(base * 2^count, max) * jitter_factor.
     """
     delay = min(base_delay * (2**retry_count), max_backoff)
     if jitter:
@@ -55,7 +63,15 @@ def calculate_backoff(
 
 
 def load_retry_policy(session: Session, channel: str) -> RetryPolicy | None:
-    """Load the retry policy for a channel, or None if not configured."""
+    """Load the retry policy for a channel, or None if not configured.
+
+    Args:
+        session: SQLAlchemy database session.
+        channel: Channel name ("email", "sms", "webhook").
+
+    Returns:
+        RetryPolicy object if configured, None otherwise.
+    """
     return session.execute(
         select(RetryPolicy).where(col(RetryPolicy.channel) == channel)
     ).scalar_one_or_none()
@@ -69,6 +85,14 @@ def should_retry(
     """Decide if a failed notification should be retried.
 
     Checks: retry count vs max, permanent errors, and per-policy error rules.
+
+    Args:
+        notification: The notification object with current retry_count.
+        policy: The retry policy for the channel.
+        error_type: Type of delivery error ("timeout", "server_error", "permanent_failure", etc.).
+
+    Returns:
+        True if the notification should be retried, False otherwise.
     """
     if notification.retry_count >= policy.max_retries:
         return False
@@ -93,10 +117,20 @@ def schedule_retry(
     error_message: str | None,
     error_type: str | None,
 ) -> float:
-    """Prepare a notification for retry. Returns countdown in seconds.
+    """Prepare a notification for retry.
 
     Updates DB state (PROCESSING → QUEUED, increments retry_count, sets
     next_retry_at). The caller is responsible for re-enqueuing to Celery.
+
+    Args:
+        session: SQLAlchemy database session.
+        notification: The notification to schedule for retry.
+        policy: The retry policy defining backoff and limits.
+        error_message: Description of the delivery failure.
+        error_type: Classification of the error for policy matching.
+
+    Returns:
+        Countdown in seconds before the retry should be enqueued.
     """
     countdown = calculate_backoff(
         notification.retry_count,
@@ -137,7 +171,15 @@ def schedule_retry(
 
 
 def _build_retry_history(session: Session, notification_id: object) -> list[dict]:
-    """Build retry history from notification logs for DLQ archival."""
+    """Build retry history from notification logs for DLQ archival.
+
+    Args:
+        session: SQLAlchemy database session.
+        notification_id: UUID of the notification to extract history for.
+
+    Returns:
+        List of dicts with keys: attempt, error_type, error_message, timestamp.
+    """
     logs = (
         session.execute(
             select(NotificationLog)
@@ -169,7 +211,21 @@ def move_to_dead_letter(
     error_message: str | None,
     error_type: str | None,
 ) -> DeadLetterMessage:
-    """Move a notification to the dead letter queue after exhausting retries."""
+    """Move a notification to the dead letter queue after exhausting retries.
+
+    Creates a DeadLetterMessage record with retry history, updates notification
+    status to DEAD_LETTER, and logs the transition.
+
+    Args:
+        session: SQLAlchemy database session.
+        notification: The notification that exhausted retries.
+        event_payload: Original event payload for context.
+        error_message: Final error message from delivery attempt.
+        error_type: Classification of the error that caused DLQ move.
+
+    Returns:
+        The DeadLetterMessage record created for the notification.
+    """
     now = utc_now()
 
     notification.status = NotificationStatus.DEAD_LETTER

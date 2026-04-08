@@ -73,6 +73,7 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
         from app.services.template_service import preview_template
 
         template = session.get(Template, str(event.template_id))
+
         if template:
             variables = event.payload or {}
             rendered_subject, rendered_body = preview_template(
@@ -338,7 +339,7 @@ def _maybe_complete_event(session, event_id) -> None:  # type: ignore[type-arg]
         return
 
     notifications = (
-        session.execute(select(Notification).where(Notification.event_id == event_id))
+        session.execute(select(Notification).where(col(Notification.event_id) == event_id))
         .scalars()
         .all()
     )
