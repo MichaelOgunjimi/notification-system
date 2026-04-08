@@ -47,7 +47,7 @@ docker-rebuild:
 	docker compose down --rmi all && docker compose up -d --build
 
 worker-dispatcher:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation -l info
 
 worker-email:
 	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low -l info
@@ -59,10 +59,10 @@ worker-webhook:
 	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 worker-all:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.email.high,notifications.email.medium,notifications.email.low,notifications.sms.high,notifications.sms.medium,notifications.sms.low,notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation,notifications.email.high,notifications.email.medium,notifications.email.low,notifications.sms.high,notifications.sms.medium,notifications.sms.low,notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 celery-beat:
-	cd backend && uv run celery -A app.workers.celery_app beat -l info
+	cd backend && uv run celery -A app.workers.celery_app beat -l info --schedule=/tmp/celerybeat-schedule
 
 flower:
 	cd backend && uv run celery -A app.workers.celery_app flower --port=5555

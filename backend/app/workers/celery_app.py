@@ -40,7 +40,11 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
-    "reconcile-stuck-notifications": {"task": "reconciliation.sweep", "schedule": 60.0}
+    "reconcile-stuck-notifications": {
+        "task": "reconciliation.sweep",
+        "schedule": 60.0,
+        "options": {"queue": "notifications.reconciliation"},
+    }
 }
 
 
