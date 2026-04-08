@@ -272,6 +272,8 @@ def process_notification(
             notification.status = NotificationStatus.DELIVERED
             notification.delivered_at = utc_now()
             notification.updated_at = utc_now()
+            notification.error_message = None
+            notification.next_retry_at = None
             session.add(
                 NotificationLog(
                     notification_id=notification.id,
