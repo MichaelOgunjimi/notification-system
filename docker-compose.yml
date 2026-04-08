@@ -84,15 +84,15 @@ services:
 
   worker-email:
     <<: *worker-common
-    command: celery -A app.workers.celery_app worker -Q notifications.email -l info -n email@%h --concurrency=4
+    command: celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low -l info -n email@%h --concurrency=4
 
   worker-sms:
     <<: *worker-common
-    command: celery -A app.workers.celery_app worker -Q notifications.sms -l info -n sms@%h --concurrency=4
+    command: celery -A app.workers.celery_app worker -Q notifications.sms.high,notifications.sms.medium,notifications.sms.low -l info -n sms@%h --concurrency=4
 
   worker-webhook:
     <<: *worker-common
-    command: celery -A app.workers.celery_app worker -Q notifications.webhook -l info -n webhook@%h --concurrency=4
+    command: celery -A app.workers.celery_app worker -Q notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info -n webhook@%h --concurrency=4
 
   celery-beat:
     <<: *worker-common

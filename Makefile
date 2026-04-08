@@ -50,16 +50,16 @@ worker-dispatcher:
 	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low -l info
 
 worker-email:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.email -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low -l info
 
 worker-sms:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.sms -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.sms.high,notifications.sms.medium,notifications.sms.low -l info
 
 worker-webhook:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.webhook -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 worker-all:
-	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.email,notifications.sms,notifications.webhook -l info
+	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.email.high,notifications.email.medium,notifications.email.low,notifications.sms.high,notifications.sms.medium,notifications.sms.low,notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 celery-beat:
 	cd backend && uv run celery -A app.workers.celery_app beat -l info

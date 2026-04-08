@@ -14,6 +14,7 @@ from app.models.notification import Notification
 from app.utils.datetime import utc_now
 from app.workers.celery_app import celery_app
 from app.workers.database import get_sync_session
+from app.workers.queues import CHANNEL_TASK_NAMES, channel_queue
 from app.workers.retry import (
     load_retry_policy,
     move_to_dead_letter,
@@ -25,11 +26,6 @@ logger = logging.getLogger(__name__)
 
 _RECOVERY_MESSAGE = "Recovered by reconciliation: worker timeout"
 SWEEP_BATCH_LIMIT = 500
-_CHANNEL_TASK_NAMES = {
-    "email": "app.workers.email_worker.send_email",
-    "sms": "app.workers.sms_worker.send_sms",
-    "webhook": "app.workers.webhook_worker.send_webhook",
-}
 
 
 @celery_app.task(name="reconciliation.sweep", bind=True)
@@ -58,7 +54,7 @@ def reconcile_stuck_notifications(_self) -> dict:
         )
 
         for notification in missed_retry_notifications:
-            task_name = _CHANNEL_TASK_NAMES.get(str(notification.channel))
+            task_name = CHANNEL_TASK_NAMES.get(str(notification.channel))
             if task_name is None:
                 logger.warning(
                     "Reconciliation skipped notification %s with unknown channel %s",
@@ -68,7 +64,8 @@ def reconcile_stuck_notifications(_self) -> dict:
                 session.commit()
                 continue
 
-            celery_app.send_task(task_name, args=[str(notification.id)])
+            queue = channel_queue(str(notification.channel), str(notification.priority))
+            celery_app.send_task(task_name, args=[str(notification.id)], queue=queue)
             notification.next_retry_at = None
             notification.updated_at = utc_now()
             logger.info(
@@ -96,7 +93,7 @@ def reconcile_stuck_notifications(_self) -> dict:
 
         for notification in zombie_notifications:
             policy = load_retry_policy(session, str(notification.channel))
-            task_name = _CHANNEL_TASK_NAMES.get(str(notification.channel))
+            task_name = CHANNEL_TASK_NAMES.get(str(notification.channel))
 
             if policy and task_name and should_retry(notification, policy, "timeout"):
                 countdown = schedule_retry(
@@ -106,7 +103,13 @@ def reconcile_stuck_notifications(_self) -> dict:
                     _RECOVERY_MESSAGE,
                     "timeout",
                 )
-                celery_app.send_task(task_name, args=[str(notification.id)], countdown=countdown)
+                queue = channel_queue(str(notification.channel), str(notification.priority))
+                celery_app.send_task(
+                    task_name,
+                    args=[str(notification.id)],
+                    countdown=countdown,
+                    queue=queue,
+                )
                 logger.info(
                     "Reconciliation recovered zombie notification %s with retry in %.1fs",
                     notification.id,

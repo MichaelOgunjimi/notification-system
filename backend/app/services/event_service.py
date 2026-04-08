@@ -12,6 +12,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.schemas.events import EventCreate, RecipientCreate
+from app.workers.queues import dispatcher_queue
 
 logger = logging.getLogger(__name__)
 
@@ -159,8 +160,7 @@ def _enqueue_dispatch(event_id: str, priority: str) -> None:
     """
     from app.workers.dispatcher import dispatch_event
 
-    queue = f"notifications.{priority}"
-    dispatch_event.apply_async(args=[event_id], queue=queue)
+    dispatch_event.apply_async(args=[event_id], queue=dispatcher_queue(priority))
 
 
 async def get_event(

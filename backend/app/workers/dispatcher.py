@@ -12,6 +12,7 @@ from app.models.notification_log import NotificationLog
 from app.utils.datetime import utc_now
 from app.workers.celery_app import celery_app
 from app.workers.database import get_sync_session
+from app.workers.queues import channel_queue
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def dispatch_event(self, event_id: str) -> dict:
     """
     session = get_sync_session()
     try:
-        event = session.get(Event, event_id)
+        event = session.execute(select(Event).where(col(Event.id) == event_id)).scalar_one_or_none()
         if event is None:
             logger.error("Event %s not found", event_id)
             return {"status": "error", "reason": "event_not_found"}
@@ -95,21 +96,32 @@ def _enqueue_channel_task(
     notification: Notification,
     dispatcher_task_id: str | None = None,
 ) -> None:
-    """Route a notification to the appropriate channel worker."""
+    """Route a notification to the appropriate per-channel priority queue.
+
+    Queue format: notifications.{channel}.{priority}
+    e.g. notifications.email.high, notifications.sms.low
+
+    Priority is preserved end-to-end: the dispatcher ran on a priority queue
+    (notifications.high/medium/low) and now fans out to a per-channel queue
+    that also carries the priority. Each channel scales independently while
+    high-priority work is never blocked by a backlog of low-priority work
+    within the same channel.
+    """
     notification_id = str(notification.id)
+    queue = channel_queue(str(notification.channel), str(notification.priority))
 
     if notification.channel == NotificationChannel.EMAIL:
         from app.workers.email_worker import send_email
 
-        result = send_email.delay(notification_id)
+        result = send_email.apply_async(args=[notification_id], queue=queue)
     elif notification.channel == NotificationChannel.SMS:
         from app.workers.sms_worker import send_sms
 
-        result = send_sms.delay(notification_id)
+        result = send_sms.apply_async(args=[notification_id], queue=queue)
     elif notification.channel == NotificationChannel.WEBHOOK:
         from app.workers.webhook_worker import send_webhook
 
-        result = send_webhook.delay(notification_id)
+        result = send_webhook.apply_async(args=[notification_id], queue=queue)
     else:
         logger.warning(
             "Unknown channel %s for notification %s",
