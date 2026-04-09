@@ -80,7 +80,7 @@ services:
 
   worker-dispatcher:
     <<: *worker-common
-    command: celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low -l info -n dispatcher@%h --concurrency=4
+    command: celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation -l info -n dispatcher@%h --concurrency=4
 
   worker-email:
     <<: *worker-common
@@ -96,7 +96,7 @@ services:
 
   celery-beat:
     <<: *worker-common
-    command: celery -A app.workers.celery_app beat -l info
+    command: celery -A app.workers.celery_app beat -l info --schedule=/tmp/celerybeat-schedule
 
   flower:
     image: mher/flower:2.0

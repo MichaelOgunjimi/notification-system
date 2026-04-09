@@ -383,3 +383,145 @@ class TestMaybeCompleteEvent:
         event_refreshed = session.get(Event, event.id)
         assert event_refreshed.status == EventStatus.PROCESSING
         session.close()
+
+    def test_all_cancelled_marks_event_cancelled(self):
+        """All notifications CANCELLED → event status becomes CANCELLED, not COMPLETED."""
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(
+            session, status=NotificationStatus.CANCELLED
+        )
+
+        _maybe_complete_event(session, event.id)
+
+        event_refreshed = session.get(Event, event.id)
+        assert event_refreshed.status == EventStatus.CANCELLED
+        session.close()
+
+    def test_mixed_cancelled_and_delivered_marks_completed(self):
+        """Cancelled + delivered → COMPLETED (cancelled ones were intentionally skipped)."""
+        session = _get_test_session()
+        api_key = ApiKey(
+            id=uuid.uuid4(),
+            key_hash="testhash_" + uuid.uuid4().hex,
+            key_prefix="test_pref",
+            name="worker-test-key",
+            is_active=True,
+            created_at=utc_now(),
+        )
+        session.add(api_key)
+        session.flush()
+
+        event = Event(
+            id=uuid.uuid4(),
+            event_type="test.event",
+            payload={},
+            status=EventStatus.PROCESSING,
+            api_key_id=api_key.id,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        session.add(event)
+        session.flush()
+
+        n1 = Notification(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            channel="email",
+            recipient_user_id="test-user-1",
+            recipient_address="a@test.com",
+            status=NotificationStatus.DELIVERED,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        n2 = Notification(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            channel="sms",
+            recipient_user_id="test-user-1",
+            recipient_address="+15551234567",
+            status=NotificationStatus.CANCELLED,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        session.add_all([n1, n2])
+        session.commit()
+
+        _maybe_complete_event(session, event.id)
+
+        event_refreshed = session.get(Event, event.id)
+        assert event_refreshed.status == EventStatus.COMPLETED
+        session.close()
+
+    def test_all_failed_marks_event_failed(self):
+        """All notifications FAILED → event status becomes FAILED."""
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(
+            session, status=NotificationStatus.FAILED
+        )
+
+        _maybe_complete_event(session, event.id)
+
+        event_refreshed = session.get(Event, event.id)
+        assert event_refreshed.status == EventStatus.FAILED
+        session.close()
+
+    def test_cancelled_and_failed_marks_partially_failed(self):
+        """CANCELLED + FAILED (no DELIVERED) → PARTIALLY_FAILED.
+
+        CANCELLED means intentionally skipped, so the event isn't a total
+        failure — some notifications were never attempted. PARTIALLY_FAILED
+        correctly signals that delivery was attempted and failed for the
+        non-cancelled subset.
+        """
+        session = _get_test_session()
+        api_key = ApiKey(
+            id=uuid.uuid4(),
+            key_hash="testhash_" + uuid.uuid4().hex,
+            key_prefix="test_pref",
+            name="worker-test-key",
+            is_active=True,
+            created_at=utc_now(),
+        )
+        session.add(api_key)
+        session.flush()
+
+        event = Event(
+            id=uuid.uuid4(),
+            event_type="test.event",
+            payload={},
+            status=EventStatus.PROCESSING,
+            api_key_id=api_key.id,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        session.add(event)
+        session.flush()
+
+        n1 = Notification(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            channel="email",
+            recipient_user_id="test-user-1",
+            recipient_address="a@test.com",
+            status=NotificationStatus.CANCELLED,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        n2 = Notification(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            channel="sms",
+            recipient_user_id="test-user-1",
+            recipient_address="+15551234567",
+            status=NotificationStatus.FAILED,
+            created_at=utc_now(),
+            updated_at=utc_now(),
+        )
+        session.add_all([n1, n2])
+        session.commit()
+
+        _maybe_complete_event(session, event.id)
+
+        event_refreshed = session.get(Event, event.id)
+        assert event_refreshed.status == EventStatus.PARTIALLY_FAILED
+        session.close()

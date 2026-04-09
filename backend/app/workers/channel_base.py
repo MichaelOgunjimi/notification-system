@@ -272,6 +272,8 @@ def process_notification(
             notification.status = NotificationStatus.DELIVERED
             notification.delivered_at = utc_now()
             notification.updated_at = utc_now()
+            notification.error_message = None
+            notification.next_retry_at = None
             session.add(
                 NotificationLog(
                     notification_id=notification.id,
@@ -346,6 +348,10 @@ def _maybe_complete_event(session, event_id) -> None:  # type: ignore[type-arg]
 
     statuses = {n.status for n in notifications}
 
+    if not notifications:
+        session.commit()
+        return
+
     # If any notification is still in-flight, don't update event yet
     if not statuses.issubset(_TERMINAL):
         session.commit()  # Release the FOR UPDATE lock
@@ -353,12 +359,17 @@ def _maybe_complete_event(session, event_id) -> None:  # type: ignore[type-arg]
 
     if all(s == NotificationStatus.DELIVERED for s in statuses):
         event.status = EventStatus.COMPLETED
+    elif all(s == NotificationStatus.CANCELLED for s in statuses):
+        event.status = EventStatus.CANCELLED
     elif NotificationStatus.FAILED in statuses or NotificationStatus.DEAD_LETTER in statuses:
-        if NotificationStatus.DELIVERED in statuses:
+        # Treat CANCELLED as non-participants — they were intentionally skipped.
+        # If any non-cancelled notification delivered, it's a partial failure.
+        if NotificationStatus.DELIVERED in statuses or NotificationStatus.CANCELLED in statuses:
             event.status = EventStatus.PARTIALLY_FAILED
         else:
             event.status = EventStatus.FAILED
     else:
+        # Mixed delivered + cancelled: cancelled ones were skipped, delivered ones succeeded
         event.status = EventStatus.COMPLETED
 
     event.updated_at = utc_now()
