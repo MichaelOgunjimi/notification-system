@@ -355,12 +355,15 @@ def _maybe_complete_event(session, event_id) -> None:  # type: ignore[type-arg]
 
     if all(s == NotificationStatus.DELIVERED for s in statuses):
         event.status = EventStatus.COMPLETED
+    elif all(s == NotificationStatus.CANCELLED for s in statuses):
+        event.status = EventStatus.CANCELLED
     elif NotificationStatus.FAILED in statuses or NotificationStatus.DEAD_LETTER in statuses:
         if NotificationStatus.DELIVERED in statuses:
             event.status = EventStatus.PARTIALLY_FAILED
         else:
             event.status = EventStatus.FAILED
     else:
+        # Mixed delivered + cancelled: cancelled ones were skipped, delivered ones succeeded
         event.status = EventStatus.COMPLETED
 
     event.updated_at = utc_now()

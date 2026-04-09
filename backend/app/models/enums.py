@@ -9,6 +9,7 @@ class EventStatus(enum.StrEnum):
     COMPLETED = "completed"
     PARTIALLY_FAILED = "partially_failed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class EventPriority(enum.StrEnum):
