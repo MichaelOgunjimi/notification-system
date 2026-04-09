@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from app.api.deps import ApiKeyDep, SessionDep
 from app.schemas.events import (
@@ -25,11 +25,16 @@ async def create_event(
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
+    response: Response,
 ) -> EventResponse:
     try:
-        event, notification_ids = await event_service.create_event(db, body, api_key.id)
+        event, notification_ids, is_duplicate = await event_service.create_event(
+            db, body, api_key.id
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    if is_duplicate:
+        response.status_code = status.HTTP_200_OK
     return EventResponse(
         id=event.id,
         event_type=event.event_type,
