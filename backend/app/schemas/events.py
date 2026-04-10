@@ -94,7 +94,7 @@ class EventCreate(BaseModel):
     template_id: uuid.UUID | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
-    idempotency_key: str | None = Field(default=None, max_length=255)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class EventBatchCreate(BaseModel):

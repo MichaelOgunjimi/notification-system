@@ -237,13 +237,13 @@ async def test_idempotency_duplicate_returns_200(auth_client: AsyncClient) -> No
     with the same event ID — no duplicate created."""
     payload = _event_payload(idempotency_key="unique-key-001")
 
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         first = await auth_client.post("/api/v1/events", json=payload)
     assert first.status_code == 202
     first_id = first.json()["id"]
 
     # Second request: Redis miss → DB hit (event already exists)
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         second = await auth_client.post("/api/v1/events", json=payload)
     assert second.status_code == 200
     assert second.json()["id"] == first_id
@@ -254,13 +254,13 @@ async def test_idempotency_redis_cache_hit_returns_200(auth_client: AsyncClient)
     """When Redis has the cached event_id, the duplicate is detected on the fast path."""
     payload = _event_payload(idempotency_key="unique-key-002")
 
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         first = await auth_client.post("/api/v1/events", json=payload)
     assert first.status_code == 202
     first_id = first.json()["id"]
 
     # Simulate warm Redis cache hit
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_hit(first_id)):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_hit(first_id)):
         second = await auth_client.post("/api/v1/events", json=payload)
     assert second.status_code == 200
     assert second.json()["id"] == first_id
@@ -271,7 +271,7 @@ async def test_idempotency_different_keys_create_separate_events(
     auth_client: AsyncClient,
 ) -> None:
     """Different idempotency keys always create distinct events."""
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         r1 = await auth_client.post("/api/v1/events", json=_event_payload(idempotency_key="key-A"))
         r2 = await auth_client.post("/api/v1/events", json=_event_payload(idempotency_key="key-B"))
     assert r1.status_code == 202
@@ -282,7 +282,7 @@ async def test_idempotency_different_keys_create_separate_events(
 @pytest.mark.asyncio
 async def test_no_idempotency_key_always_creates(auth_client: AsyncClient) -> None:
     """Requests without an idempotency_key are never deduplicated."""
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         r1 = await auth_client.post("/api/v1/events", json=_event_payload())
         r2 = await auth_client.post("/api/v1/events", json=_event_payload())
     assert r1.status_code == 202
@@ -295,7 +295,7 @@ async def test_idempotency_redis_down_falls_back_to_db(auth_client: AsyncClient)
     """When Redis is unavailable, idempotency check falls back to DB — no 500."""
     payload = _event_payload(idempotency_key="unique-key-003")
 
-    with patch("app.core.redis.get_redis", return_value=_mock_redis_miss()):
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
         first = await auth_client.post("/api/v1/events", json=payload)
     assert first.status_code == 202
     first_id = first.json()["id"]
@@ -305,7 +305,7 @@ async def test_idempotency_redis_down_falls_back_to_db(auth_client: AsyncClient)
     broken_redis.get.side_effect = ConnectionError("Redis down")
     broken_redis.set.side_effect = ConnectionError("Redis down")
 
-    with patch("app.core.redis.get_redis", return_value=broken_redis):
+    with patch("app.services.idempotency.get_redis", return_value=broken_redis):
         second = await auth_client.post("/api/v1/events", json=payload)
     assert second.status_code == 200
     assert second.json()["id"] == first_id

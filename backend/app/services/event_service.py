@@ -4,6 +4,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
@@ -85,7 +86,18 @@ async def create_event(
         recipient_count=len(event_data.recipients),
     )
     db.add(event)
-    await db.flush()
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError:
+        # Concurrent request won the race on the unique (api_key_id, idempotency_key) index.
+        # The savepoint was rolled back — re-fetch the winner's event and return it.
+        if event_data.idempotency_key:
+            existing = await idempotency_service.check(db, api_key_id, event_data.idempotency_key)
+            if existing is not None:
+                existing_notification_ids = await get_event_notification_ids(db, existing.id)
+                return existing, existing_notification_ids, True
+        raise  # Unrelated integrity error — let it propagate
 
     notification_ids: list[uuid.UUID] = []
 
@@ -139,6 +151,7 @@ async def create_batch(
     batch_id = uuid.uuid4()
     results: list[tuple[Event, list[uuid.UUID]]] = []
     new_events: list[tuple[Event, str]] = []  # (event, priority) for post-commit enqueue
+    new_idempotency: list[tuple[str, uuid.UUID]] = []  # (key, event_id) for post-commit cache
 
     try:
         for event_data in events_data:
@@ -152,6 +165,8 @@ async def create_batch(
             results.append((event, notification_ids))
             if not is_duplicate:
                 new_events.append((event, str(event_data.priority)))
+                if event_data.idempotency_key:
+                    new_idempotency.append((event_data.idempotency_key, event.id))
         await db.commit()
     except ValueError:
         await db.rollback()
@@ -160,10 +175,10 @@ async def create_batch(
         await db.rollback()
         raise
 
-    # Cache idempotency keys and enqueue for newly created events only
-    for event_data, (event, _) in zip(events_data, results):
-        if event_data.idempotency_key:
-            await idempotency_service.store(api_key_id, event_data.idempotency_key, event.id)
+    # Cache idempotency keys for newly created events only (duplicates were already
+    # backfilled by idempotency_service.check() when they were detected).
+    for key, event_id in new_idempotency:
+        await idempotency_service.store(api_key_id, key, event_id)
 
     for event, priority in new_events:
         try:

@@ -60,7 +60,7 @@ async def check(
         redis = get_redis()
         cached_event_id = await redis.get(cache_key)
         if cached_event_id:
-            event = await db.get(Event, cached_event_id)
+            event = await db.get(Event, uuid.UUID(cached_event_id))
             if event is not None:
                 return event
             # Cache hit but event missing in DB — stale entry, fall through to DB check
