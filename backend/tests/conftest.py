@@ -12,6 +12,7 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 import app.models  # noqa: F401 — register all tables
+import app.services.integrations as _integrations
 from app.core.config import settings
 from app.core.database import get_db
 from app.main import create_app
@@ -48,13 +49,31 @@ async def _create_tables():
 
 @pytest.fixture(autouse=True)
 async def _clean_tables():
-    """Truncate all application tables between tests for isolation."""
-    yield
+    """Truncate all application tables before each test for isolation.
+
+    Truncating before (not after) ensures a clean state even when a previous
+    test run crashed before its teardown could complete.
+    # No post-yield teardown — the next test's pre-yield truncation handles cleanup.
+    """
     async with test_engine.begin() as conn:
         await conn.exec_driver_sql(
             "TRUNCATE notification_logs, dead_letter_messages, notifications, "
             "events, templates, channel_configs, retry_policies, api_keys CASCADE"
         )
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_adapter_cache():
+    """Clear the adapter singleton cache before each test.
+
+    get_adapter() caches instances in a module-level dict. Without this
+    fixture, adapter state from one test (or monkeypatched attributes)
+    leaks into subsequent tests in the same process.
+    """
+    _integrations._adapter_instances.clear()
+    yield
+    _integrations._adapter_instances.clear()
 
 
 @pytest.fixture

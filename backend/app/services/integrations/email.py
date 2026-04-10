@@ -18,13 +18,16 @@ from app.services.integrations.base import BaseAdapter, DeliveryResult
 
 logger = logging.getLogger(__name__)
 
+# Set the Resend API key once at module load — setting it per-call is
+# thread-unsafe and causes unpredictable behaviour in tests.
+if settings.RESEND_API_KEY:
+    resend.api_key = settings.RESEND_API_KEY
+
 
 class EmailAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.api_key = settings.RESEND_API_KEY
         self.from_address = settings.EMAIL_FROM_ADDRESS
-        if self.api_key:
-            resend.api_key = self.api_key
 
     def send(
         self,

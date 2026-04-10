@@ -15,6 +15,20 @@ from app.services.integrations.webhook import WebhookAdapter
 # ---------------------------------------------------------------------------
 
 
+def _mock_http_client(status_code: int = 200, text: str = "OK", side_effect=None) -> MagicMock:
+    """Return a mock httpx.Client that fakes a response from a remote server."""
+    mock_response = MagicMock()
+    mock_response.status_code = status_code
+    mock_response.text = text
+
+    mock_client = MagicMock()
+    if side_effect:
+        mock_client.post.side_effect = side_effect
+    else:
+        mock_client.post.return_value = mock_response
+    return mock_client
+
+
 class TestHmacSignature:
     """Verify the HMAC signature matches the exact bytes sent over the wire."""
 
@@ -22,19 +36,10 @@ class TestHmacSignature:
         """The signature in the header must verify against the body bytes sent."""
         secret = "my-webhook-secret"
         adapter = WebhookAdapter()
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "OK"
+        mock_client = _mock_http_client(200, "OK")
 
         with patch.object(adapter, "_validate_url", return_value=(True, None)):
-            with patch("app.services.integrations.webhook.httpx.Client") as mock_cls:
-                mock_client = MagicMock()
-                mock_client.__enter__ = MagicMock(return_value=mock_client)
-                mock_client.__exit__ = MagicMock(return_value=False)
-                mock_client.post.return_value = mock_response
-                mock_cls.return_value = mock_client
-
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
                     subject="Test",
@@ -53,18 +58,10 @@ class TestHmacSignature:
 
     def test_no_signature_without_secret(self):
         adapter = WebhookAdapter()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "OK"
+        mock_client = _mock_http_client(200, "OK")
 
         with patch.object(adapter, "_validate_url", return_value=(True, None)):
-            with patch("app.services.integrations.webhook.httpx.Client") as mock_cls:
-                mock_client = MagicMock()
-                mock_client.__enter__ = MagicMock(return_value=mock_client)
-                mock_client.__exit__ = MagicMock(return_value=False)
-                mock_client.post.return_value = mock_response
-                mock_cls.return_value = mock_client
-
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
                     subject="Test",
@@ -77,18 +74,10 @@ class TestHmacSignature:
     def test_content_bytes_used_not_json_kwarg(self):
         """Adapter must use content= (raw bytes) not json= (re-serialized)."""
         adapter = WebhookAdapter()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "OK"
+        mock_client = _mock_http_client(200, "OK")
 
         with patch.object(adapter, "_validate_url", return_value=(True, None)):
-            with patch("app.services.integrations.webhook.httpx.Client") as mock_cls:
-                mock_client = MagicMock()
-                mock_client.__enter__ = MagicMock(return_value=mock_client)
-                mock_client.__exit__ = MagicMock(return_value=False)
-                mock_client.post.return_value = mock_response
-                mock_cls.return_value = mock_client
-
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
                     subject=None,
@@ -177,18 +166,10 @@ class TestJsonParsing:
 
     def _get_sent_payload(self, body: str) -> dict:
         adapter = WebhookAdapter()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "OK"
+        mock_client = _mock_http_client(200, "OK")
 
         with patch.object(adapter, "_validate_url", return_value=(True, None)):
-            with patch("app.services.integrations.webhook.httpx.Client") as mock_cls:
-                mock_client = MagicMock()
-                mock_client.__enter__ = MagicMock(return_value=mock_client)
-                mock_client.__exit__ = MagicMock(return_value=False)
-                mock_client.post.return_value = mock_response
-                mock_cls.return_value = mock_client
-
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
                     subject=None,
@@ -228,65 +209,44 @@ class TestJsonParsing:
 
 
 class TestWebhookDelivery:
-    def _make_adapter_with_mock(self, status_code=200, text="OK", side_effect=None):
-        adapter = WebhookAdapter()
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.text = text
-
-        mock_cls = patch("app.services.integrations.webhook.httpx.Client")
-        mock_client_cls = mock_cls.start()
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        if side_effect:
-            mock_client.post.side_effect = side_effect
-        else:
-            mock_client.post.return_value = mock_response
-        mock_client_cls.return_value = mock_client
-
-        return adapter, mock_cls
-
     def test_successful_delivery(self):
-        adapter, mock_cls = self._make_adapter_with_mock(200, "OK")
-        try:
-            with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        adapter = WebhookAdapter()
+        mock_client = _mock_http_client(200, "OK")
+
+        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
                     subject="Test",
                     body="hello",
                 )
-            assert result.success
-            assert result.provider_response["status_code"] == 200
-        finally:
-            mock_cls.stop()
+        assert result.success
+        assert result.provider_response["status_code"] == 200
 
     def test_failed_delivery_500(self):
-        adapter, mock_cls = self._make_adapter_with_mock(500, "Internal Server Error")
-        try:
-            with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        adapter = WebhookAdapter()
+        mock_client = _mock_http_client(500, "Internal Server Error")
+
+        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
                     subject="Test",
                     body="hello",
                 )
-            assert not result.success
-            assert "500" in (result.error_message or "")
-        finally:
-            mock_cls.stop()
+        assert not result.success
+        assert "500" in (result.error_message or "")
 
     def test_timeout_delivery(self):
-        adapter, mock_cls = self._make_adapter_with_mock(
-            side_effect=httpx.TimeoutException("timed out")
-        )
-        try:
-            with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        adapter = WebhookAdapter()
+        mock_client = _mock_http_client(side_effect=httpx.TimeoutException("timed out"))
+
+        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+            with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
                     subject="Test",
                     body="hello",
                 )
-            assert not result.success
-            assert "timeout" in (result.error_message or "").lower()
-        finally:
-            mock_cls.stop()
+        assert not result.success
+        assert "timeout" in (result.error_message or "").lower()

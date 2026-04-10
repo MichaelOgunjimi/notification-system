@@ -76,6 +76,8 @@ class Settings(BaseSettings):
     DEFAULT_RATE_LIMIT_PER_MIN: int = 1000
     RATE_LIMIT_WINDOW_SECONDS: int = 60
     MAX_BATCH_SIZE: int = 1000
+    # 10 MB hard limit on incoming request bodies — prevents OOM from huge batch payloads.
+    MAX_REQUEST_BODY_BYTES: int = 10_485_760
 
     # Idempotency
     IDEMPOTENCY_TTL_SECONDS: int = 86400
@@ -105,7 +107,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
     # Auth
-    MASTER_API_KEY: str = ""
+    MASTER_API_KEY: str | None = None
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
