@@ -120,7 +120,6 @@ class EventDetailResponse(BaseModel):
     template_id: uuid.UUID | None
     payload: dict[str, Any]
     metadata: dict[str, Any] | None
-    api_key_id: uuid.UUID
     idempotency_key: str | None
     batch_id: uuid.UUID | None
     recipient_count: int

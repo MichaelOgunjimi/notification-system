@@ -100,7 +100,6 @@ async def get_event(
         template_id=event.template_id,
         payload=event.payload,
         metadata=event.metadata_,
-        api_key_id=event.api_key_id,
         idempotency_key=event.idempotency_key,
         batch_id=event.batch_id,
         recipient_count=event.recipient_count,

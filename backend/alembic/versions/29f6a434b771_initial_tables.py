@@ -216,4 +216,11 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_api_keys_key_hash'), table_name='api_keys')
     op.drop_index(op.f('ix_api_keys_is_active'), table_name='api_keys')
     op.drop_table('api_keys')
+    # Drop custom PostgreSQL enum types that were created with the tables.
+    # These are not dropped automatically when tables are dropped.
+    op.execute("DROP TYPE IF EXISTS notificationchannel")
+    op.execute("DROP TYPE IF EXISTS eventstatus")
+    op.execute("DROP TYPE IF EXISTS eventpriority")
+    op.execute("DROP TYPE IF EXISTS notificationstatus")
+    op.execute("DROP TYPE IF EXISTS deadletterstatus")
     # ### end Alembic commands ###

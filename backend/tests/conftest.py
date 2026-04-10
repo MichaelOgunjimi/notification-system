@@ -48,13 +48,17 @@ async def _create_tables():
 
 @pytest.fixture(autouse=True)
 async def _clean_tables():
-    """Truncate all application tables between tests for isolation."""
-    yield
+    """Truncate all application tables before each test for isolation.
+
+    Truncating before (not after) ensures a clean state even when a previous
+    test run crashed before its teardown could complete.
+    """
     async with test_engine.begin() as conn:
         await conn.exec_driver_sql(
             "TRUNCATE notification_logs, dead_letter_messages, notifications, "
             "events, templates, channel_configs, retry_policies, api_keys CASCADE"
         )
+    yield
 
 
 @pytest.fixture
