@@ -309,3 +309,43 @@ async def test_idempotency_redis_down_falls_back_to_db(auth_client: AsyncClient)
         second = await auth_client.post("/api/v1/events", json=payload)
     assert second.status_code == 200
     assert second.json()["id"] == first_id
+
+
+# ---------------------------------------------------------------------------
+# Payload / metadata size validation (#22)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_oversized_payload_returns_422(auth_client: AsyncClient) -> None:
+    """Payload exceeding MAX_PAYLOAD_BYTES must be rejected with HTTP 422."""
+    big_value = "x" * 70_000
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(payload={"data": big_value}),
+    )
+    assert resp.status_code == 422
+    assert "payload" in resp.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_oversized_metadata_returns_422(auth_client: AsyncClient) -> None:
+    """Metadata exceeding MAX_PAYLOAD_BYTES must be rejected with HTTP 422."""
+    big_value = "x" * 70_000
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(metadata={"data": big_value}),
+    )
+    assert resp.status_code == 422
+    assert "metadata" in resp.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_valid_sized_payload_accepted(auth_client: AsyncClient) -> None:
+    """Payload within MAX_PAYLOAD_BYTES must be accepted normally."""
+    small_payload = {"key": "value", "count": 42}
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(payload=small_payload),
+    )
+    assert resp.status_code == 202
