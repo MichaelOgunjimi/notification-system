@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from app.api.middleware import LoggingMiddleware, RequestIDMiddleware
 from app.api.v1.router import api_v1_router
+from app.core.redis import get_redis
 from app.utils.logging import setup_logging
 
 
@@ -18,6 +19,7 @@ from app.utils.logging import setup_logging
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     yield
+    await get_redis().aclose()
 
 
 def create_app() -> FastAPI:

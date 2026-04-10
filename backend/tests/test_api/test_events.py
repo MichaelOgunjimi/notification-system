@@ -1,6 +1,6 @@
 """Event endpoint tests."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -208,3 +208,104 @@ async def test_private_ip_webhook_url_rejected(auth_client: AsyncClient) -> None
     )
     resp = await auth_client.post("/api/v1/events", json=payload)
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Idempotency tests
+# ---------------------------------------------------------------------------
+
+
+def _mock_redis_miss():
+    """Return an AsyncMock that behaves like a Redis client with no cached keys."""
+    mock = AsyncMock()
+    mock.get.return_value = None
+    mock.set.return_value = True
+    return mock
+
+
+def _mock_redis_hit(event_id: str):
+    """Return an AsyncMock that returns a cached event_id on get()."""
+    mock = AsyncMock()
+    mock.get.return_value = event_id
+    mock.set.return_value = True
+    return mock
+
+
+@pytest.mark.asyncio
+async def test_idempotency_duplicate_returns_200(auth_client: AsyncClient) -> None:
+    """Sending the same idempotency_key twice returns 200 on the second call
+    with the same event ID — no duplicate created."""
+    payload = _event_payload(idempotency_key="unique-key-001")
+
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        first = await auth_client.post("/api/v1/events", json=payload)
+    assert first.status_code == 202
+    first_id = first.json()["id"]
+
+    # Second request: Redis miss → DB hit (event already exists)
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        second = await auth_client.post("/api/v1/events", json=payload)
+    assert second.status_code == 200
+    assert second.json()["id"] == first_id
+
+
+@pytest.mark.asyncio
+async def test_idempotency_redis_cache_hit_returns_200(auth_client: AsyncClient) -> None:
+    """When Redis has the cached event_id, the duplicate is detected on the fast path."""
+    payload = _event_payload(idempotency_key="unique-key-002")
+
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        first = await auth_client.post("/api/v1/events", json=payload)
+    assert first.status_code == 202
+    first_id = first.json()["id"]
+
+    # Simulate warm Redis cache hit
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_hit(first_id)):
+        second = await auth_client.post("/api/v1/events", json=payload)
+    assert second.status_code == 200
+    assert second.json()["id"] == first_id
+
+
+@pytest.mark.asyncio
+async def test_idempotency_different_keys_create_separate_events(
+    auth_client: AsyncClient,
+) -> None:
+    """Different idempotency keys always create distinct events."""
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        r1 = await auth_client.post("/api/v1/events", json=_event_payload(idempotency_key="key-A"))
+        r2 = await auth_client.post("/api/v1/events", json=_event_payload(idempotency_key="key-B"))
+    assert r1.status_code == 202
+    assert r2.status_code == 202
+    assert r1.json()["id"] != r2.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_no_idempotency_key_always_creates(auth_client: AsyncClient) -> None:
+    """Requests without an idempotency_key are never deduplicated."""
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        r1 = await auth_client.post("/api/v1/events", json=_event_payload())
+        r2 = await auth_client.post("/api/v1/events", json=_event_payload())
+    assert r1.status_code == 202
+    assert r2.status_code == 202
+    assert r1.json()["id"] != r2.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_idempotency_redis_down_falls_back_to_db(auth_client: AsyncClient) -> None:
+    """When Redis is unavailable, idempotency check falls back to DB — no 500."""
+    payload = _event_payload(idempotency_key="unique-key-003")
+
+    with patch("app.services.idempotency.get_redis", return_value=_mock_redis_miss()):
+        first = await auth_client.post("/api/v1/events", json=payload)
+    assert first.status_code == 202
+    first_id = first.json()["id"]
+
+    # Redis raises on every call — should fall back to DB
+    broken_redis = AsyncMock()
+    broken_redis.get.side_effect = ConnectionError("Redis down")
+    broken_redis.set.side_effect = ConnectionError("Redis down")
+
+    with patch("app.services.idempotency.get_redis", return_value=broken_redis):
+        second = await auth_client.post("/api/v1/events", json=payload)
+    assert second.status_code == 200
+    assert second.json()["id"] == first_id

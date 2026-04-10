@@ -4,6 +4,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
@@ -12,6 +13,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.schemas.events import EventCreate, RecipientCreate
+from app.services import idempotency as idempotency_service
 from app.workers.queues import dispatcher_queue
 
 logger = logging.getLogger(__name__)
@@ -54,13 +56,23 @@ async def create_event(
     *,
     batch_id: uuid.UUID | None = None,
     auto_commit: bool = True,
-) -> tuple[Event, list[uuid.UUID]]:
+) -> tuple[Event, list[uuid.UUID], bool]:
     """Create an Event and fan out Notification records for each recipient+channel.
+
+    Returns ``(event, notification_ids, is_duplicate)``.  When ``is_duplicate``
+    is True the event already existed and was not re-created — callers should
+    return HTTP 200 instead of 202.
 
     When ``auto_commit`` is False the caller is responsible for committing
     (or rolling back) the transaction — used by the batch endpoint so that
     all events in a batch are atomic.
     """
+    # --- Idempotency check ---
+    if event_data.idempotency_key:
+        existing = await idempotency_service.check(db, api_key_id, event_data.idempotency_key)
+        if existing is not None:
+            existing_notification_ids = await get_event_notification_ids(db, existing.id)
+            return existing, existing_notification_ids, True
     event = Event(
         event_type=event_data.event_type,
         priority=event_data.priority,
@@ -70,10 +82,22 @@ async def create_event(
         metadata_=event_data.metadata,
         api_key_id=api_key_id,
         batch_id=batch_id,
+        idempotency_key=event_data.idempotency_key,
         recipient_count=len(event_data.recipients),
     )
     db.add(event)
-    await db.flush()
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError:
+        # Concurrent request won the race on the unique (api_key_id, idempotency_key) index.
+        # The savepoint was rolled back — re-fetch the winner's event and return it.
+        if event_data.idempotency_key:
+            existing = await idempotency_service.check(db, api_key_id, event_data.idempotency_key)
+            if existing is not None:
+                existing_notification_ids = await get_event_notification_ids(db, existing.id)
+                return existing, existing_notification_ids, True
+        raise  # Unrelated integrity error — let it propagate
 
     notification_ids: list[uuid.UUID] = []
 
@@ -104,8 +128,10 @@ async def create_event(
     if auto_commit:
         await db.commit()
         await db.refresh(event)
+        if event_data.idempotency_key:
+            await idempotency_service.store(api_key_id, event_data.idempotency_key, event.id)
         _enqueue_dispatch(str(event.id), event_data.priority)
-    return event, notification_ids
+    return event, notification_ids, False
 
 
 async def create_batch(
@@ -118,13 +144,18 @@ async def create_batch(
     DB operations are atomic (single commit). Enqueue is best-effort after
     commit — if enqueue fails for some events, the committed events are
     still returned so the client knows what was created.
+
+    Idempotency keys within a batch are checked individually. Duplicate
+    events in the batch return their existing records without re-creating.
     """
     batch_id = uuid.uuid4()
     results: list[tuple[Event, list[uuid.UUID]]] = []
+    new_events: list[tuple[Event, str]] = []  # (event, priority) for post-commit enqueue
+    new_idempotency: list[tuple[str, uuid.UUID]] = []  # (key, event_id) for post-commit cache
 
     try:
         for event_data in events_data:
-            event, notification_ids = await create_event(
+            event, notification_ids, is_duplicate = await create_event(
                 db,
                 event_data,
                 api_key_id,
@@ -132,6 +163,10 @@ async def create_batch(
                 auto_commit=False,
             )
             results.append((event, notification_ids))
+            if not is_duplicate:
+                new_events.append((event, str(event_data.priority)))
+                if event_data.idempotency_key:
+                    new_idempotency.append((event_data.idempotency_key, event.id))
         await db.commit()
     except ValueError:
         await db.rollback()
@@ -140,10 +175,14 @@ async def create_batch(
         await db.rollback()
         raise
 
-    # Best-effort enqueue after commit — failures logged, not raised
-    for event, _ in results:
+    # Cache idempotency keys for newly created events only (duplicates were already
+    # backfilled by idempotency_service.check() when they were detected).
+    for key, event_id in new_idempotency:
+        await idempotency_service.store(api_key_id, key, event_id)
+
+    for event, priority in new_events:
         try:
-            _enqueue_dispatch(str(event.id), event.priority)
+            _enqueue_dispatch(str(event.id), priority)
         except Exception:
             logger.error(
                 "Failed to enqueue event %s — stuck in ACCEPTED, needs reprocessing",
