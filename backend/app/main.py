@@ -21,19 +21,35 @@ _MAX_BODY_BYTES = settings.MAX_REQUEST_BODY_BYTES
 
 
 class _BodySizeLimitMiddleware(BaseHTTPMiddleware):
-    """Reject requests whose Content-Length exceeds the configured limit.
+    """Reject requests whose body exceeds the configured limit.
 
-    Prevents a malicious or buggy client from sending a multi-GB batch
-    payload that would be fully buffered in memory before Pydantic validation.
+    Checks Content-Length for well-behaved clients (fast path) and falls back
+    to streaming the body for chunked transfer encoding, which carries no
+    Content-Length header. Both paths are required — checking only
+    Content-Length leaves chunked requests fully bypassable.
     """
 
     async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
+        # Fast path: well-behaved clients declare Content-Length.
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > _MAX_BODY_BYTES:
             return JSONResponse(
                 status_code=413,
                 content={"detail": f"Request body too large (limit {_MAX_BODY_BYTES} bytes)"},
             )
+
+        # Safe path: stream and count bytes for clients that omit Content-Length
+        # (e.g. chunked transfer encoding). Buffer the body so downstream can
+        # still read it via request.body().
+        body = b""
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > _MAX_BODY_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": f"Request body too large (limit {_MAX_BODY_BYTES} bytes)"},
+                )
+        request._body = body  # re-inject so route handlers can call await request.body()
         return await call_next(request)
 
 
@@ -51,9 +67,11 @@ def create_app() -> FastAPI:
         description="Event-driven notification system",
         lifespan=lifespan,
     )
-    app.add_middleware(_BodySizeLimitMiddleware)
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(RequestIDMiddleware)
+    # Added last → runs first on every incoming request.
+    # Must be outermost so oversized payloads are rejected before logging overhead.
+    app.add_middleware(_BodySizeLimitMiddleware)
     app.include_router(api_v1_router, prefix="/api/v1")
     return app
 

@@ -17,19 +17,12 @@ logger = logging.getLogger(__name__)
 
 # Module-level client reused across all webhook deliveries in this worker
 # process. Celery's prefork model gives each worker process its own instance,
-# so there is no cross-process sharing. Connection pooling avoids a new TCP +
-# TLS handshake per notification.
-_http_client: httpx.Client | None = None
-
-
-def _get_http_client() -> httpx.Client:
-    global _http_client
-    if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.Client(
-            timeout=settings.WEBHOOK_DEFAULT_TIMEOUT_SECONDS,
-            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-        )
-    return _http_client
+# so there is no cross-process sharing. Eager init is intentional — it removes
+# the check-then-assign race that would occur under thread/gevent pools.
+_http_client = httpx.Client(
+    timeout=settings.WEBHOOK_DEFAULT_TIMEOUT_SECONDS,
+    limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+)
 
 
 class WebhookAdapter(BaseAdapter):
@@ -119,15 +112,14 @@ class WebhookAdapter(BaseAdapter):
             headers["X-Webhook-Signature"] = f"sha256={signature}"
 
         try:
-            client = _get_http_client()
             if webhook_secret and isinstance(webhook_secret, str):
-                response = client.post(
+                response = _http_client.post(
                     recipient,
                     content=payload_bytes or b"",
                     headers=headers,
                 )
             else:
-                response = client.post(
+                response = _http_client.post(
                     recipient,
                     json=payload,
                     headers=headers,
