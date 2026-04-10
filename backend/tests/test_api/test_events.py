@@ -349,3 +349,62 @@ async def test_valid_sized_payload_accepted(auth_client: AsyncClient) -> None:
         json=_event_payload(payload=small_payload),
     )
     assert resp.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_payload_at_exact_limit_accepted(auth_client: AsyncClient) -> None:
+    """Payload of exactly MAX_PAYLOAD_BYTES must be accepted (validator uses >)."""
+    import json as _json
+
+    from app.core.config import settings
+
+    # Compute overhead using same serializer the validator uses (compact separators).
+    # {"data": ""} with separators=(",",":") → '{"data":""}' = 11 bytes
+    overhead = len(
+        _json.dumps({"data": ""}, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    )
+    value = "x" * (settings.MAX_PAYLOAD_BYTES - overhead)
+    serialized = _json.dumps({"data": value}, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
+    assert len(serialized) == settings.MAX_PAYLOAD_BYTES
+
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(payload={"data": value}),
+    )
+    assert resp.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_payload_one_byte_over_limit_rejected(auth_client: AsyncClient) -> None:
+    """Payload one byte over MAX_PAYLOAD_BYTES must be rejected with HTTP 422."""
+    import json as _json
+
+    from app.core.config import settings
+
+    overhead = len(
+        _json.dumps({"data": ""}, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    )
+    value = "x" * (settings.MAX_PAYLOAD_BYTES - overhead + 1)
+    serialized = _json.dumps({"data": value}, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
+    assert len(serialized) == settings.MAX_PAYLOAD_BYTES + 1
+
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(payload={"data": value}),
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_non_ascii_payload_measured_in_utf8_bytes(auth_client: AsyncClient) -> None:
+    """Non-ASCII characters must be measured as UTF-8 bytes, not ASCII-escaped length."""
+    # A single CJK character is 3 bytes in UTF-8 — should be well under the limit.
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(payload={"greeting": "日本語テスト"}),
+    )
+    assert resp.status_code == 202

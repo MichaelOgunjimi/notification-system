@@ -55,5 +55,5 @@ class TestPreviewTemplate:
             subject=None,
             variables={},
         )
-        # Should not expose the raw Python type repr
-        assert "<class 'str'>" not in body
+        # Sandbox blocks attribute introspection → Undefined → renders as empty string
+        assert body == ""

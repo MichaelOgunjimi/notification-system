@@ -102,7 +102,7 @@ class EventCreate(BaseModel):
     def validate_payload_size(cls, v: dict[str, Any]) -> dict[str, Any]:
         from app.core.config import settings as _settings
 
-        size = len(json.dumps(v, separators=(",", ":")))
+        size = len(json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
         if size > _settings.MAX_PAYLOAD_BYTES:
             raise ValueError(
                 f"payload exceeds maximum size of {_settings.MAX_PAYLOAD_BYTES} bytes "
@@ -117,7 +117,7 @@ class EventCreate(BaseModel):
             return v
         from app.core.config import settings as _settings
 
-        size = len(json.dumps(v, separators=(",", ":")))
+        size = len(json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
         if size > _settings.MAX_PAYLOAD_BYTES:
             raise ValueError(
                 f"metadata exceeds maximum size of {_settings.MAX_PAYLOAD_BYTES} bytes "

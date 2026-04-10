@@ -101,7 +101,7 @@ async def test_list_api_keys_does_not_expose_raw_key(master_client: AsyncClient)
     resp = await master_client.get("/api/v1/settings/api-keys")
     assert resp.status_code == 200
     for item in resp.json()["items"]:
-        assert "key" not in item or len(item.get("key", "")) == 0
+        assert not item.get("key")  # handles absent, None, or empty string
 
 
 # ---------------------------------------------------------------------------
