@@ -2,13 +2,12 @@
 
 import secrets
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from app.models.api_key import ApiKey
 from app.utils.crypto import hash_api_key
-from app.utils.datetime import utc_now
 
 
 async def validate_api_key(db: AsyncSession, raw_key: str) -> ApiKey | None:
@@ -23,12 +22,13 @@ async def validate_api_key(db: AsyncSession, raw_key: str) -> ApiKey | None:
     if api_key.revoked_at is not None:
         return None
 
-    # Commit last_used_at separately — this is observational tracking (like
-    # access logging) and should persist regardless of whether the request
-    # succeeds. Runs before the route handler, so it doesn't break batch
-    # or single-event atomicity.
-    api_key.last_used_at = utc_now()
-    db.add(api_key)
+    # Atomic UPDATE — avoids the read-modify-write race where two concurrent
+    # requests both read the old timestamp, both write it back, and one update
+    # is silently lost. A single UPDATE SET last_used_at = NOW() is serialised
+    # by the database and is also cheaper (no extra SELECT round-trip).
+    await db.execute(
+        update(ApiKey).where(col(ApiKey.id) == api_key.id).values(last_used_at=func.now())
+    )
     await db.commit()
     return api_key
 
