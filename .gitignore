@@ -65,3 +65,8 @@ yarn-error.log*
 .progress/
 error.msg
 docs/
+
+# Copilot skills
+.agents/
+.claude/
+skills-lock.json

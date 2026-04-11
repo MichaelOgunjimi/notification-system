@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     MAX_BATCH_SIZE: int = 1000
     # 10 MB hard limit on incoming request bodies — prevents OOM from huge batch payloads.
     MAX_REQUEST_BODY_BYTES: int = 10_485_760
+    # 64 KB per-field limit on payload and metadata dicts (serialized JSON).
+    MAX_PAYLOAD_BYTES: int = 65_536
 
     # Idempotency
     IDEMPOTENCY_TTL_SECONDS: int = 86400

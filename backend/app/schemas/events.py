@@ -1,6 +1,7 @@
 """Event request/response schemas — EventCreateRequest, EventDetailResponse, etc."""
 
 import ipaddress
+import json
 import re
 import socket
 import uuid
@@ -95,6 +96,34 @@ class EventCreate(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
+
+    @field_validator("payload")
+    @classmethod
+    def validate_payload_size(cls, v: dict[str, Any]) -> dict[str, Any]:
+        from app.core.config import settings as _settings
+
+        size = len(json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+        if size > _settings.MAX_PAYLOAD_BYTES:
+            raise ValueError(
+                f"payload exceeds maximum size of {_settings.MAX_PAYLOAD_BYTES} bytes "
+                f"(got {size} bytes)"
+            )
+        return v
+
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata_size(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is None:
+            return v
+        from app.core.config import settings as _settings
+
+        size = len(json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+        if size > _settings.MAX_PAYLOAD_BYTES:
+            raise ValueError(
+                f"metadata exceeds maximum size of {_settings.MAX_PAYLOAD_BYTES} bytes "
+                f"(got {size} bytes)"
+            )
+        return v
 
 
 class EventBatchCreate(BaseModel):
