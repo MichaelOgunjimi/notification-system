@@ -6,7 +6,6 @@ from httpx import AsyncClient
 from redis.asyncio import Redis
 
 from app.core.config import settings
-from app.core.redis import get_redis
 
 
 def _event_payload() -> dict:
@@ -36,12 +35,19 @@ async def _flush_rate_limit_keys(redis: Redis) -> None:
 
 @pytest_asyncio.fixture
 async def redis_client() -> Redis:
-    redis = get_redis()
+    # Create a fresh connection per test — never reuse the singleton, because
+    # redis.asyncio connection pools are bound to the event loop they were
+    # created in and pytest-asyncio creates a new loop per test function.
+    redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
     try:
         await redis.ping()
     except Exception as exc:
+        await redis.aclose()
         pytest.skip(f"Redis unavailable for rate-limit tests: {exc}")
-    return redis
+    try:
+        yield redis
+    finally:
+        await redis.aclose()
 
 
 @pytest_asyncio.fixture(autouse=True)
