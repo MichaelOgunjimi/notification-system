@@ -57,7 +57,8 @@ async def _clean_tables():
     """
     async with test_engine.begin() as conn:
         await conn.exec_driver_sql(
-            "TRUNCATE notification_logs, dead_letter_messages, notifications, "
+            "TRUNCATE api_key_usage, audit_logs, alert_rules, suppressions, "
+            "notification_logs, dead_letter_messages, notifications, "
             "events, templates, channel_configs, retry_policies, api_keys CASCADE"
         )
     yield
@@ -85,7 +86,10 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
 
 def _make_app():
     """Build a test FastAPI app with the DB dependency overridden."""
+    import app.api.middleware as api_middleware
+
     test_app = create_app()
+    api_middleware.async_session = TestSessionLocal
 
     async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
         async with TestSessionLocal() as session:

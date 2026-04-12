@@ -2,14 +2,21 @@
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlmodel import col, func
 
 from app.api.deps import MasterKeyDep, SessionDep
 from app.models.api_key import ApiKey
 from app.schemas.common import PaginatedResponse
-from app.schemas.settings import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse
+from app.schemas.settings import (
+    ApiKeyCreate,
+    ApiKeyCreateResponse,
+    ApiKeyResponse,
+    ChannelConfigResponse,
+    RetryPolicyResponse,
+)
+from app.utils.audit import log_action
 from app.utils.crypto import generate_api_key, hash_api_key
 from app.utils.datetime import utc_now
 
@@ -26,6 +33,7 @@ async def create_api_key(
     *,
     db: SessionDep,
     _: MasterKeyDep,
+    request: Request,
 ) -> ApiKeyCreateResponse:
     raw_key = generate_api_key()
     key_hash = hash_api_key(raw_key)
@@ -40,6 +48,16 @@ async def create_api_key(
     db.add(api_key)
     await db.commit()
     await db.refresh(api_key)
+    await log_action(
+        db,
+        api_key_id=api_key.id,
+        action="api_key.created",
+        resource_type="api_key",
+        resource_id=str(api_key.id),
+        metadata={"name": api_key.name, "key_prefix": api_key.key_prefix},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
 
     return ApiKeyCreateResponse(
         id=api_key.id,
@@ -86,6 +104,7 @@ async def revoke_api_key(
     *,
     db: SessionDep,
     _: MasterKeyDep,
+    request: Request,
 ) -> None:
     result = await db.execute(select(ApiKey).where(col(ApiKey.id) == key_id))
     api_key = result.scalar_one_or_none()
@@ -96,3 +115,41 @@ async def revoke_api_key(
     api_key.revoked_at = utc_now()
     db.add(api_key)
     await db.commit()
+    await log_action(
+        db,
+        api_key_id=api_key.id,
+        action="api_key.revoked",
+        resource_type="api_key",
+        resource_id=str(api_key.id),
+        metadata={"name": api_key.name},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+
+
+@router.get("/channels", response_model=list[ChannelConfigResponse])
+async def list_channel_configs(
+    *,
+    db: SessionDep,
+    _: MasterKeyDep,
+) -> list[ChannelConfigResponse]:
+    """List all channel configurations."""
+    from app.models.channel_config import ChannelConfig
+
+    result = await db.execute(select(ChannelConfig).order_by(col(ChannelConfig.channel)))
+    configs = result.scalars().all()
+    return [ChannelConfigResponse.model_validate(config) for config in configs]
+
+
+@router.get("/retry-policies", response_model=list[RetryPolicyResponse])
+async def list_retry_policies(
+    *,
+    db: SessionDep,
+    _: MasterKeyDep,
+) -> list[RetryPolicyResponse]:
+    """List all per-channel retry policies."""
+    from app.models.retry_policy import RetryPolicy
+
+    result = await db.execute(select(RetryPolicy).order_by(col(RetryPolicy.channel)))
+    policies = result.scalars().all()
+    return [RetryPolicyResponse.model_validate(policy) for policy in policies]

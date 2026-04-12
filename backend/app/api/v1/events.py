@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.api.deps import ApiKeyDep, SessionDep
 from app.schemas.events import (
@@ -13,6 +13,7 @@ from app.schemas.events import (
     EventResponse,
 )
 from app.services import event_service
+from app.utils.audit import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ async def create_event(
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
+    request: Request,
     response: Response,
 ) -> EventResponse:
     try:
@@ -35,6 +37,17 @@ async def create_event(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     if is_duplicate:
         response.status_code = status.HTTP_200_OK
+    else:
+        await log_action(
+            db,
+            api_key_id=api_key.id,
+            action="event.created",
+            resource_type="event",
+            resource_id=str(event.id),
+            metadata={"event_type": event.event_type, "priority": str(event.priority)},
+            ip_address=request.client.host if request.client else None,
+        )
+        await db.commit()
     return EventResponse(
         id=event.id,
         event_type=event.event_type,
@@ -51,6 +64,7 @@ async def create_batch_events(
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
+    request: Request,
 ) -> list[EventResponse]:
     """Create multiple events atomically — all succeed or all roll back."""
     api_key_id = api_key.id
@@ -67,6 +81,17 @@ async def create_batch_events(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Batch creation failed",
         )
+    for event, _notification_ids in event_results:
+        await log_action(
+            db,
+            api_key_id=api_key_id,
+            action="event.created",
+            resource_type="event",
+            resource_id=str(event.id),
+            metadata={"event_type": event.event_type, "batch": True},
+            ip_address=request.client.host if request.client else None,
+        )
+    await db.commit()
     return [
         EventResponse(
             id=event.id,

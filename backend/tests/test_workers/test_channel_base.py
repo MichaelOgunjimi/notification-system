@@ -49,7 +49,8 @@ def _clean_sync_tables():
     with sync_test_engine.connect() as conn:
         conn.execute(
             text(
-                "TRUNCATE notification_logs, dead_letter_messages, notifications, "
+                "TRUNCATE api_key_usage, audit_logs, alert_rules, suppressions, "
+                "notification_logs, dead_letter_messages, notifications, "
                 "events, templates, channel_configs, retry_policies, api_keys CASCADE"
             )
         )

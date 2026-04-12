@@ -26,8 +26,6 @@ from app.schemas.settings import (
 )
 from app.schemas.templates import (
     TemplateCreate,
-    TemplatePreview,
-    TemplatePreviewResponse,
     TemplateResponse,
     TemplateUpdate,
 )
@@ -50,8 +48,6 @@ __all__ = [
     "PaginationParams",
     "RecipientCreate",
     "TemplateCreate",
-    "TemplatePreview",
-    "TemplatePreviewResponse",
     "TemplateResponse",
     "TemplateUpdate",
 ]

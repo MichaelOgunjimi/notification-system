@@ -8,10 +8,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.middleware import LoggingMiddleware, RequestIDMiddleware
+from app.api.middleware import LoggingMiddleware, RequestIDMiddleware, UsageTrackingMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.redis import get_redis
@@ -69,6 +70,14 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(UsageTrackingMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     # Added last → runs first on every incoming request.
     # Must be outermost so oversized payloads are rejected before logging overhead.
     app.add_middleware(_BodySizeLimitMiddleware)

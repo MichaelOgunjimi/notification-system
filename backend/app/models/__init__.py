@@ -3,7 +3,9 @@
 Importing this module ensures Alembic autogenerate discovers every table.
 """
 
+from app.models.alert import AlertRule
 from app.models.api_key import ApiKey
+from app.models.audit_log import AuditLog
 from app.models.channel_config import ChannelConfig
 from app.models.dead_letter import DeadLetterMessage
 from app.models.enums import (
@@ -17,10 +19,15 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.models.retry_policy import RetryPolicy
+from app.models.suppression import Suppression
 from app.models.template import Template
+from app.models.usage import ApiKeyUsage
 
 __all__ = [
     "ApiKey",
+    "ApiKeyUsage",
+    "AlertRule",
+    "AuditLog",
     "ChannelConfig",
     "DeadLetterMessage",
     "DeadLetterStatus",
@@ -32,5 +39,6 @@ __all__ = [
     "NotificationLog",
     "NotificationStatus",
     "RetryPolicy",
+    "Suppression",
     "Template",
 ]

@@ -25,7 +25,7 @@ async def test_create_template(auth_client: AsyncClient, api_key_pair: tuple[Api
     assert data["name"] == "test_template"
     assert data["channel"] == "email"
     assert data["is_active"] is True
-    assert data["created_by"] == str(api_key_pair[0].id)
+    assert data["api_key_id"] == str(api_key_pair[0].id)
 
 
 @pytest.mark.asyncio
@@ -73,23 +73,6 @@ async def test_delete_template(auth_client: AsyncClient) -> None:
 
     resp = await auth_client.get(f"/api/v1/templates/{tid}")
     assert resp.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_template_preview(auth_client: AsyncClient) -> None:
-    create_resp = await auth_client.post(
-        "/api/v1/templates", json=_template_payload(name="preview_t")
-    )
-    tid = create_resp.json()["id"]
-
-    resp = await auth_client.post(
-        f"/api/v1/templates/{tid}/preview",
-        json={"template_id": tid, "variables": {"name": "Alice"}},
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "Alice" in data["body"]
-    assert "Alice" in data["subject"]
 
 
 @pytest.mark.asyncio
