@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.middleware import LoggingMiddleware, RequestIDMiddleware, UsageTrackingMiddleware
+from app.api.rate_limit import RateLimitMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.redis import get_redis
@@ -78,9 +79,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # Added last → runs first on every incoming request.
-    # Must be outermost so oversized payloads are rejected before logging overhead.
+    # Added before rate limiting so oversized payloads are rejected early.
     app.add_middleware(_BodySizeLimitMiddleware)
+    # Added last → runs first on every request (Starlette executes middleware in reverse order).
+    # This ensures 429 responses short-circuit before UsageTrackingMiddleware records usage.
+    app.add_middleware(RateLimitMiddleware)
     app.include_router(api_v1_router, prefix="/api/v1")
     return app
 
