@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Awaitable
+from datetime import datetime
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Query
@@ -33,7 +34,7 @@ class AdminKeyStats(BaseModel):
     key_prefix: str
     is_active: bool
     event_count: int
-    last_used_at: str | None
+    last_used_at: datetime | None
 
 
 class AdminQueueLength(BaseModel):
@@ -97,7 +98,7 @@ async def list_admin_keys(*, db: SessionDep, _: MasterKeyDep) -> list[AdminKeySt
             key_prefix=row.key_prefix,
             is_active=row.is_active,
             event_count=int(row.event_count or 0),
-            last_used_at=row.last_used_at.isoformat() if row.last_used_at else None,
+            last_used_at=row.last_used_at,
         )
         for row in rows
     ]
@@ -150,7 +151,9 @@ async def get_admin_health(*, db: SessionDep, _: MasterKeyDep) -> AdminHealthRes
             .select_from(Notification)
             .where(
                 col(Notification.created_at) >= func.now() - text("INTERVAL '1 hour'"),
-                col(Notification.status) == NotificationStatus.FAILED,
+                col(Notification.status).in_(
+                    [NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER]
+                ),
             )
         )
     ).scalar() or 0

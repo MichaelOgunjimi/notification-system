@@ -4,19 +4,28 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import EventPriority, ScheduledEventStatus
+from app.schemas.events import RecipientCreate
+from app.utils.datetime import utc_now
 
 
 class ScheduledEventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=255)
-    recipients: list[dict[str, Any]]
+    recipients: list[RecipientCreate]
     scheduled_for: datetime
     priority: EventPriority = EventPriority.MEDIUM
     template_id: uuid.UUID | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
+
+    @field_validator("scheduled_for")
+    @classmethod
+    def must_be_future(cls, v: datetime) -> datetime:
+        if v <= utc_now():
+            raise ValueError("scheduled_for must be a future datetime")
+        return v
 
 
 class ScheduledEventResponse(BaseModel):

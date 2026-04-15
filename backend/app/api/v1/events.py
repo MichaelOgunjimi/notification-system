@@ -153,7 +153,7 @@ async def get_event(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> EventDetailResponse:
-    event = await event_service.get_event(db, event_id, api_key_id=api_key.id)
+    event = await event_service.get_event(db, event_id, api_key_id=api_key_filter_id(api_key))
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 

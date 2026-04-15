@@ -52,9 +52,15 @@ def dispatch_scheduled_events() -> None:
                     )
                     scheduled.status = ScheduledEventStatus.EXPIRED
                 else:
-                    logger.info("Dispatching scheduled event %s", scheduled.id)
                     # Full event creation/dispatch wiring lands in the next phase.
-                    scheduled.status = ScheduledEventStatus.DISPATCHED
+                    # Mark FAILED so the row remains visible and recoverable rather
+                    # than silently disappearing as DISPATCHED without any delivery.
+                    logger.warning(
+                        "Scheduled event %s is due but dispatch is not yet implemented; "
+                        "marking FAILED for manual recovery",
+                        scheduled.id,
+                    )
+                    scheduled.status = ScheduledEventStatus.FAILED
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.exception("Failed to dispatch scheduled event %s: %s", scheduled.id, exc)
                 scheduled.status = ScheduledEventStatus.FAILED
