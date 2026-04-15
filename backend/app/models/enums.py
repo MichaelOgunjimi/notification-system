@@ -38,3 +38,11 @@ class DeadLetterStatus(enum.StrEnum):
     ACTIVE = "active"
     RETRIED = "retried"
     DISCARDED = "discarded"
+
+
+class ScheduledEventStatus(enum.StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    DISPATCHED = "dispatched"
+    CANCELLED = "cancelled"
+    FAILED = "failed"

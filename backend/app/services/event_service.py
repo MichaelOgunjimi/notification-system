@@ -219,3 +219,38 @@ async def get_event_notification_ids(db: AsyncSession, event_id: uuid.UUID) -> l
         select(col(Notification.id)).where(col(Notification.event_id) == event_id)
     )
     return list(result.scalars().all())
+
+
+async def list_events(
+    db: AsyncSession,
+    api_key_id: uuid.UUID | None,
+    *,
+    status: EventStatus | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[Event], int]:
+    """List events scoped to an API key (None = master key, sees all)."""
+    from sqlmodel import func as sqlfunc
+
+    query = select(Event)
+    if api_key_id is not None:
+        query = query.where(col(Event.api_key_id) == api_key_id)
+    if status is not None:
+        query = query.where(col(Event.status) == status)
+    total_result = await db.execute(select(sqlfunc.count()).select_from(query.subquery()))
+    total = int(total_result.scalar() or 0)
+    offset = (page - 1) * per_page
+    result = await db.execute(
+        query.order_by(col(Event.created_at).desc()).offset(offset).limit(per_page)
+    )
+    return list(result.scalars().all()), total
+
+
+async def get_event_notifications(db: AsyncSession, event_id: uuid.UUID) -> list[Notification]:
+    """Fetch all Notification rows for an event, ordered by creation time."""
+    result = await db.execute(
+        select(Notification)
+        .where(col(Notification.event_id) == event_id)
+        .order_by(col(Notification.created_at).asc())
+    )
+    return list(result.scalars().all())

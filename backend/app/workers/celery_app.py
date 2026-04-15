@@ -36,6 +36,7 @@ celery_app.conf.update(
         "app.workers.sms_worker",
         "app.workers.webhook_worker",
         "app.workers.reconciliation",
+        "app.workers.tasks.dispatch_scheduled",
     ],
 )
 
@@ -44,7 +45,11 @@ celery_app.conf.beat_schedule = {
         "task": "reconciliation.sweep",
         "schedule": 60.0,
         "options": {"queue": "notifications.reconciliation"},
-    }
+    },
+    "dispatch-scheduled-events": {
+        "task": "workers.dispatch_scheduled_events",
+        "schedule": 60.0,
+    },
 }
 
 

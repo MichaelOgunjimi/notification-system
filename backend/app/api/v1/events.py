@@ -3,15 +3,18 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
+from app.models.enums import EventStatus
+from app.schemas.common import PaginatedResponse
 from app.schemas.events import (
     EventBatchCreate,
     EventCreate,
     EventDetailResponse,
     EventResponse,
 )
+from app.schemas.notifications import NotificationResponse
 from app.services import event_service
 from app.utils.audit import log_action
 
@@ -53,8 +56,11 @@ async def create_event(
         event_type=event.event_type,
         priority=event.priority,
         status=event.status,
+        recipient_count=event.recipient_count,
+        idempotency_key=event.idempotency_key,
         notification_ids=notification_ids,
         created_at=event.created_at,
+        updated_at=event.updated_at,
     )
 
 
@@ -98,11 +104,51 @@ async def create_batch_events(
             event_type=event.event_type,
             priority=event.priority,
             status=event.status,
+            recipient_count=event.recipient_count,
+            idempotency_key=event.idempotency_key,
             notification_ids=notification_ids,
             created_at=event.created_at,
+            updated_at=event.updated_at,
         )
         for event, notification_ids in event_results
     ]
+
+
+@router.get("", response_model=PaginatedResponse[EventResponse])
+async def list_events(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+    status: EventStatus | None = Query(default=None),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
+) -> PaginatedResponse[EventResponse]:
+    api_key_filter = api_key_filter_id(api_key)
+    events, total = await event_service.list_events(
+        db, api_key_filter, status=status, page=page, per_page=per_page
+    )
+    items: list[EventResponse] = []
+    for event in events:
+        notification_ids = await event_service.get_event_notification_ids(db, event.id)
+        items.append(
+            EventResponse(
+                id=event.id,
+                event_type=event.event_type,
+                priority=event.priority,
+                status=event.status,
+                recipient_count=event.recipient_count,
+                idempotency_key=event.idempotency_key,
+                notification_ids=notification_ids,
+                created_at=event.created_at,
+                updated_at=event.updated_at,
+            )
+        )
+    return PaginatedResponse.create(
+        items,
+        total,
+        page,
+        per_page,
+    )
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)
@@ -117,6 +163,7 @@ async def get_event(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
     notification_ids = await event_service.get_event_notification_ids(db, event_id)
+    notifications = await event_service.get_event_notifications(db, event_id)
     return EventDetailResponse(
         id=event.id,
         event_type=event.event_type,
@@ -129,6 +176,7 @@ async def get_event(
         batch_id=event.batch_id,
         recipient_count=event.recipient_count,
         notification_ids=notification_ids,
+        notifications=[NotificationResponse.model_validate(n) for n in notifications],
         created_at=event.created_at,
         updated_at=event.updated_at,
     )

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, HttpUrl, TypeAdapter, field_validator
 
 from app.core.config import settings as app_settings
 from app.models.enums import EventPriority, EventStatus, NotificationChannel
+from app.schemas.notifications import NotificationResponse
 
 _PHONE_RE = re.compile(r"^\+[1-9]\d{6,14}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -135,8 +136,11 @@ class EventResponse(BaseModel):
     event_type: str
     priority: EventPriority
     status: EventStatus
+    recipient_count: int
+    idempotency_key: str | None
     notification_ids: list[uuid.UUID]
     created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -153,6 +157,7 @@ class EventDetailResponse(BaseModel):
     batch_id: uuid.UUID | None
     recipient_count: int
     notification_ids: list[uuid.UUID]
+    notifications: list[NotificationResponse]
     created_at: datetime
     updated_at: datetime
 

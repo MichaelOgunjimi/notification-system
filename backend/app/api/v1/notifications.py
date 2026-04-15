@@ -47,12 +47,17 @@ async def list_notifications(
             id=n.id,
             event_id=n.event_id,
             channel=n.channel,
-            recipient=n.recipient_address,
             status=n.status,
+            recipient_address=n.recipient_address,
             retry_count=n.retry_count,
+            max_retries=n.max_retries,
+            rendered_subject=n.rendered_subject,
+            error_message=n.error_message,
+            delivered_at=n.delivered_at,
+            failed_at=n.failed_at,
+            next_retry_at=n.next_retry_at,
             created_at=n.created_at,
             updated_at=n.updated_at,
-            delivered_at=n.delivered_at,
         )
         for n in items
     ]
@@ -89,7 +94,7 @@ async def get_notification(
         id=notification.id,
         event_id=notification.event_id,
         channel=notification.channel,
-        recipient=notification.recipient_address,
+        recipient_address=notification.recipient_address,
         status=notification.status,
         priority=notification.priority,
         recipient_user_id=notification.recipient_user_id,
@@ -101,5 +106,6 @@ async def get_notification(
         created_at=notification.created_at,
         updated_at=notification.updated_at,
         delivered_at=notification.delivered_at,
-        logs=log_responses,
+        failed_at=notification.failed_at,
+        notification_logs=log_responses,
     )

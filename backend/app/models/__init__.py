@@ -19,6 +19,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.models.retry_policy import RetryPolicy
+from app.models.scheduled_event import ScheduledEvent
 from app.models.suppression import Suppression
 from app.models.template import Template
 from app.models.usage import ApiKeyUsage
@@ -39,6 +40,7 @@ __all__ = [
     "NotificationLog",
     "NotificationStatus",
     "RetryPolicy",
+    "ScheduledEvent",
     "Suppression",
     "Template",
 ]

@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Awaitable
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlmodel import col, func
@@ -12,12 +12,16 @@ from sqlmodel import col, func
 from app.api.deps import MASTER_KEY_ID, MasterKeyDep, SessionDep
 from app.core.redis import get_redis
 from app.models.api_key import ApiKey
+from app.models.audit_log import AuditLog
 from app.models.enums import NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
 from app.models.template import Template
+from app.models.usage import ApiKeyUsage
+from app.schemas.audit_log import AuditLogResponse
 from app.schemas.common import PaginatedResponse
 from app.schemas.templates import TemplateCreate, TemplateResponse, TemplateUpdate
+from app.schemas.usage import UsageResponse
 from app.services import template_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -215,24 +219,82 @@ async def get_admin_analytics(*, db: SessionDep, _: MasterKeyDep) -> AdminAnalyt
     )
 
 
-@router.get("/audit-log", response_model=PaginatedResponse[dict])
+@router.get("/audit-log", response_model=PaginatedResponse[AuditLogResponse])
 async def list_admin_audit_log(
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=200),
+    api_key_id: uuid.UUID | None = Query(default=None),
+    action: str | None = Query(default=None),
     *,
+    db: SessionDep,
     _: MasterKeyDep,
-) -> PaginatedResponse[dict]:
-    return PaginatedResponse.create([], 0, page, per_page)
+) -> PaginatedResponse[AuditLogResponse]:
+    """List all audit log entries (master key only).
+
+    Optionally filter by api_key_id or action.
+    """
+    from sqlmodel import func as sqlfunc
+
+    query = select(AuditLog)
+    if api_key_id is not None:
+        query = query.where(col(AuditLog.api_key_id) == api_key_id)
+    if action is not None:
+        query = query.where(col(AuditLog.action) == action)
+    total = int(
+        (await db.execute(select(sqlfunc.count()).select_from(query.subquery()))).scalar() or 0
+    )
+    offset = (page - 1) * per_page
+    rows = (
+        (
+            await db.execute(
+                query.order_by(col(AuditLog.created_at).desc()).offset(offset).limit(per_page)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return PaginatedResponse.create(
+        [AuditLogResponse.model_validate(r) for r in rows], total, page, per_page
+    )
 
 
-@router.get("/usage", response_model=PaginatedResponse[dict])
+@router.get("/usage", response_model=PaginatedResponse[UsageResponse])
 async def list_admin_usage(
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=200),
+    api_key_id: uuid.UUID | None = Query(default=None),
+    endpoint: str | None = Query(default=None),
     *,
+    db: SessionDep,
     _: MasterKeyDep,
-) -> PaginatedResponse[dict]:
-    return PaginatedResponse.create([], 0, page, per_page)
+) -> PaginatedResponse[UsageResponse]:
+    """List usage records across all keys (master key only).
+
+    Optionally filter by api_key_id or endpoint.
+    """
+    from sqlmodel import func as sqlfunc
+
+    query = select(ApiKeyUsage)
+    if api_key_id is not None:
+        query = query.where(col(ApiKeyUsage.api_key_id) == api_key_id)
+    if endpoint is not None:
+        query = query.where(col(ApiKeyUsage.endpoint) == endpoint)
+    total = int(
+        (await db.execute(select(sqlfunc.count()).select_from(query.subquery()))).scalar() or 0
+    )
+    offset = (page - 1) * per_page
+    rows = (
+        (
+            await db.execute(
+                query.order_by(col(ApiKeyUsage.hour_bucket).desc()).offset(offset).limit(per_page)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return PaginatedResponse.create(
+        [UsageResponse.model_validate(r) for r in rows], total, page, per_page
+    )
 
 
 @router.get("/templates", response_model=PaginatedResponse[TemplateResponse])

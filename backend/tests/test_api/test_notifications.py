@@ -50,7 +50,7 @@ async def test_get_notification_detail(auth_client: AsyncClient) -> None:
     assert resp.status_code == 200
     detail = resp.json()
     assert detail["id"] == nid
-    assert "logs" in detail
+    assert "notification_logs" in detail
 
 
 @pytest.mark.asyncio
