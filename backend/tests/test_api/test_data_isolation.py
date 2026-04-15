@@ -138,3 +138,46 @@ async def test_template_delete_isolation(
     # Key A can still see the template
     resp_a = await auth_client.get(f"/api/v1/templates/{tid}")
     assert resp_a.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_suppression_isolation(auth_client: AsyncClient, auth_client_b: AsyncClient) -> None:
+    """Key B cannot list or delete key A's suppressions."""
+    create_resp = await auth_client.post(
+        "/api/v1/suppressions",
+        json={"channel": "email", "recipient": "test@example.com"},
+    )
+    assert create_resp.status_code == 201
+    suppression_id = create_resp.json()["id"]
+
+    list_resp = await auth_client_b.get("/api/v1/suppressions")
+    assert list_resp.status_code == 200
+    ids = [item["id"] for item in list_resp.json()["items"]]
+    assert suppression_id not in ids
+
+    delete_resp = await auth_client_b.delete(f"/api/v1/suppressions/{suppression_id}")
+    assert delete_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_alert_rule_isolation(auth_client: AsyncClient, auth_client_b: AsyncClient) -> None:
+    """Key B cannot list or delete key A's alert rules."""
+    create_resp = await auth_client.post(
+        "/api/v1/alerts",
+        json={
+            "name": "High failure",
+            "metric": "failure_rate",
+            "threshold": 0.1,
+            "window_minutes": 60,
+        },
+    )
+    assert create_resp.status_code == 201
+    rule_id = create_resp.json()["id"]
+
+    list_resp = await auth_client_b.get("/api/v1/alerts")
+    assert list_resp.status_code == 200
+    ids = [item["id"] for item in list_resp.json()]
+    assert rule_id not in ids
+
+    delete_resp = await auth_client_b.delete(f"/api/v1/alerts/{rule_id}")
+    assert delete_resp.status_code == 404

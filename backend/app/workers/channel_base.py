@@ -36,6 +36,8 @@ from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.services.integrations import get_adapter
 from app.services.integrations.base import DeliveryResult
+from app.services.suppression_service import is_suppressed
+from app.services.template_service import render_template, resolve_template
 from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
 from app.workers.retry import (
@@ -68,19 +70,15 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
     if notification.rendered_body is not None:
         return
 
-    if event.template_id:
-        from app.models.template import Template
-        from app.services.template_service import preview_template
+    payload = event.payload or {}
+    template_ref = payload.get("template_id") or payload.get("template_name")
+    if template_ref is None and event.template_id is not None:
+        template_ref = str(event.template_id)
 
-        template = session.get(Template, str(event.template_id))
-
+    if template_ref is not None:
+        template = resolve_template(session, str(template_ref), event.api_key_id)
         if template:
-            variables = event.payload or {}
-            rendered_subject, rendered_body = preview_template(
-                body=template.body,
-                subject=template.subject,
-                variables=variables,
-            )
+            rendered_subject, rendered_body = render_template(template, payload)
             notification.rendered_subject = rendered_subject
             notification.rendered_body = rendered_body
 
@@ -225,6 +223,32 @@ def process_notification(
         event = session.get(Event, str(notification.event_id))
         if event is None:
             raise ValueError(f"Event {notification.event_id} not found for notification")
+
+        if is_suppressed(
+            session,
+            api_key_id=event.api_key_id,
+            channel=notification.channel,
+            recipient=notification.recipient_address,
+        ):
+            notification.status = NotificationStatus.CANCELLED
+            notification.error_message = "suppressed"
+            notification.updated_at = utc_now()
+            session.add(
+                NotificationLog(
+                    notification_id=notification.id,
+                    previous_status=NotificationStatus.PROCESSING,
+                    new_status=NotificationStatus.CANCELLED,
+                    error_message="suppressed",
+                )
+            )
+            session.commit()
+            _maybe_complete_event(session, notification.event_id)
+            return {
+                "status": "cancelled",
+                "notification_id": notification_id,
+                "channel": channel,
+                "reason": "suppressed",
+            }
 
         # --- Render body (template errors caught and recorded) ---
         try:

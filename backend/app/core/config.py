@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # Rate Limiting
     DEFAULT_RATE_LIMIT_PER_MIN: int = 1000
     RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_DEFAULT: int = 100
+    RATE_LIMIT_EVENTS: int = 30
+    RATE_LIMIT_ENABLED: bool = True
     MAX_BATCH_SIZE: int = 1000
     # 10 MB hard limit on incoming request bodies — prevents OOM from huge batch payloads.
     MAX_REQUEST_BODY_BYTES: int = 10_485_760
@@ -110,6 +113,13 @@ class Settings(BaseSettings):
 
     # Auth
     MASTER_API_KEY: str | None = None
+
+    # CORS — space-separated list of allowed origins
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:3000 http://localhost:3001"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split() if o.strip()]
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
