@@ -6,6 +6,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TablePagination } from "@/components/shared/table-pagination";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,10 +14,12 @@ import { formatRelativeTime } from "@/lib/utils";
 import { getAnalytics, listNotifications } from "@/lib/api";
 
 const channelFilters = ["All", "Email", "SMS", "Webhook", "Failed"];
+const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
 
 export default function NotificationsPage() {
   const [page] = useState(1);
   const [activeFilter, setActiveFilter] = useState("All");
+  const router = useRouter();
   const channelParam = ["Email", "SMS", "Webhook"].includes(activeFilter)
     ? activeFilter.toLowerCase()
     : undefined;
@@ -53,10 +56,10 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Delivered" value={(analytics?.delivered_today ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5" />} />
-        <StatCard label="Retry Queue" value={String((analytics?.notifications_today ?? 0) - (analytics?.delivered_today ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5" />} />
-        <StatCard label="Median Latency" value={analytics?.avg_latency_ms ? `${analytics.avg_latency_ms}ms` : "N/A"} icon={<Clock className="h-3.5 w-3.5" />} />
-        <StatCard label="Fail Rate" value={`${(100 - (analytics?.success_rate ?? 0)).toFixed(1)}%`} icon={<Activity className="h-3.5 w-3.5" />} />
+        <StatCard label="Delivered" value={(analytics?.notifications_delivered ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        <StatCard label="Retry Queue" value={String((analytics?.notifications_queued ?? 0) + (analytics?.notifications_processing ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        <StatCard label="Median Latency" value={analytics?.avg_delivery_latency_ms ? `${analytics.avg_delivery_latency_ms}ms` : "N/A"} icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-6)]" />} />
+        <StatCard label="Fail Rate" value={`${(100 - (analytics?.success_rate ?? 0)).toFixed(1)}%`} icon={<Activity className="h-3.5 w-3.5 text-[#f87171]" />} />
       </div>
 
       {/* Filters */}
@@ -105,12 +108,18 @@ export default function NotificationsPage() {
             </thead>
             <tbody className="divide-y divide-[var(--gray-3)]">
               {data?.items.map((row) => (
-                <tr key={row.id} className="group hover:bg-[var(--gray-1)] transition-colors">
+                <tr
+                  key={row.id}
+                  className="group cursor-pointer transition-colors hover:bg-[var(--gray-1)]"
+                  onClick={() => router.push(`/notifications/${row.id}`)}
+                >
                   <td className="px-4 py-3.5 sm:px-5">
                     <p className="text-[13px] font-medium text-[var(--gray-9)]">{row.event_id || row.channel}</p>
                     <p className="mt-0.5 font-mono text-[11px] text-[var(--gray-8)]">{row.id.slice(0, 24)}…</p>
                   </td>
-                  <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{row.channel}</td>
+                  <td className="px-4 py-3.5 sm:px-5">
+                    <span className={`text-xs font-medium ${channelColor[row.channel] ?? ""}`}>{row.channel}</span>
+                  </td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{row.recipient_address}</td>
                   <td className="px-4 py-3.5 sm:px-5"><StatusBadge status={row.status} /></td>
                   <td className="px-4 py-3.5 sm:px-5">
@@ -118,7 +127,11 @@ export default function NotificationsPage() {
                   </td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{formatRelativeTime(row.created_at)}</td>
                   <td className="px-4 py-3.5 text-right sm:px-5">
-                    <Link href={`/notifications/${row.id}`} className="inline-flex items-center gap-1 rounded-md border border-[color:rgba(245,158,11,0.2)] bg-[color:rgba(245,158,11,0.06)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)] transition-colors hover:border-[color:rgba(245,158,11,0.4)] hover:bg-[color:rgba(245,158,11,0.14)] hover:text-[#fbbf24]">
+                    <Link
+                      href={`/notifications/${row.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="inline-flex items-center gap-1 rounded-md border border-[color:rgba(245,158,11,0.2)] bg-[color:rgba(245,158,11,0.06)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)] transition-colors hover:border-[color:rgba(245,158,11,0.4)] hover:bg-[color:rgba(245,158,11,0.14)] hover:text-[#fbbf24]"
+                    >
                       View <ArrowUpRight className="h-3 w-3" />
                     </Link>
                   </td>

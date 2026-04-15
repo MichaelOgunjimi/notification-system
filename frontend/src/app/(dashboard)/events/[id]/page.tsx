@@ -3,7 +3,7 @@
 import { ArrowUpRight, CheckCircle2, Circle, Clock, Hash, Mail, Shield, Zap } from "lucide-react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getEvent } from "@/lib/api";
@@ -12,6 +12,7 @@ import { formatDate, formatRelativeTime } from "@/lib/utils";
 export default function EventDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const {
     data: event,
     isLoading,
@@ -37,6 +38,14 @@ export default function EventDetailPage() {
     { step: "Processing", done: event.status !== "accepted" },
     { step: "Completed", done: event.status === "completed" || event.status === "partially_failed" },
   ];
+  const statusIconColor =
+    event.status === "completed"
+      ? "text-[#4ade80]"
+      : event.status === "failed"
+        ? "text-[#f87171]"
+        : event.status === "processing"
+          ? "text-[#fbbf24]"
+          : "text-[var(--gray-6)]";
 
   return (
     <div className="space-y-5">
@@ -67,17 +76,17 @@ export default function EventDetailPage() {
         </div>
         <div className="grid grid-cols-1 divide-y divide-[var(--gray-3)] sm:grid-cols-2 sm:divide-y-0 sm:divide-x">
           {[
-            { icon: Hash, label: "Event ID", value: event.id, mono: true },
-            { icon: Zap, label: "Event Type", value: event.event_type, mono: true },
-            { icon: Mail, label: "Priority", value: event.priority.toUpperCase(), mono: false },
-            { icon: Clock, label: "Created At", value: formatDate(event.created_at), mono: false },
-            { icon: Shield, label: "Status", value: event.status, mono: true },
-            { icon: Hash, label: "Idempotency Key", value: event.idempotency_key ?? "—", mono: true },
+            { icon: Hash, iconColor: "text-[var(--gray-6)]", label: "Event ID", value: event.id, mono: true },
+            { icon: Zap, iconColor: "text-[#60a5fa]", label: "Event Type", value: event.event_type, mono: true },
+            { icon: Mail, iconColor: "text-[#fbbf24]", label: "Priority", value: event.priority.toUpperCase(), mono: false },
+            { icon: Clock, iconColor: "text-[var(--gray-6)]", label: "Created At", value: formatDate(event.created_at), mono: false },
+            { icon: Shield, iconColor: statusIconColor, label: "Status", value: event.status, mono: true },
+            { icon: Hash, iconColor: "text-[var(--gray-6)]", label: "Idempotency Key", value: event.idempotency_key ?? "—", mono: true },
           ].map((item) => {
             const Icon = item.icon;
             return (
               <div key={item.label} className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)] text-[var(--gray-6)]">
+                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)] ${item.iconColor}`}>
                   <Icon className="h-3 w-3" />
                 </span>
                 <div className="min-w-0">
@@ -112,7 +121,11 @@ export default function EventDetailPage() {
             </thead>
             <tbody className="divide-y divide-[var(--gray-3)]">
               {event.notifications.map((n) => (
-                <tr key={n.id} className="group hover:bg-[var(--gray-1)] transition-colors">
+                <tr
+                  key={n.id}
+                  className="group cursor-pointer transition-colors hover:bg-[var(--gray-1)]"
+                  onClick={() => router.push(`/notifications/${n.id}`)}
+                >
                   <td className="px-4 py-3.5 sm:px-5">
                     <p className="font-mono text-[12px] text-[var(--gray-7)]">{n.id.slice(0, 24)}…</p>
                   </td>
@@ -121,7 +134,11 @@ export default function EventDetailPage() {
                   <td className="px-4 py-3.5 sm:px-5"><StatusBadge status={n.status} /></td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-6)] sm:px-5">{formatRelativeTime(n.created_at)}</td>
                   <td className="px-4 py-3.5 text-right sm:px-5">
-                    <Link href={`/notifications/${n.id}`} className="inline-flex items-center gap-1 text-[13px] text-[var(--primary)] opacity-0 group-hover:opacity-100 hover:text-[#fbbf24] transition-all">
+                    <Link
+                      href={`/notifications/${n.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-[13px] text-[var(--primary)] opacity-0 group-hover:opacity-100 hover:text-[#fbbf24] transition-all"
+                    >
                       View <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
                   </td>

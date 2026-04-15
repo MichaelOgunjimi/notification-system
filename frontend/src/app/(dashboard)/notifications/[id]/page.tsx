@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CheckCircle2, Circle, Clock, Mail, RotateCcw, Zap } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Circle, Clock, Mail, RotateCcw, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -31,6 +31,20 @@ export default function NotificationDetailPage() {
     return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
   }
 
+  const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
+  const detailItems = [
+    { icon: Mail, iconColor: "text-[#60a5fa]", label: "Recipient", value: notification.recipient_address },
+    { icon: RotateCcw, iconColor: "text-[#fbbf24]", label: "Attempts", value: `${notification.retry_count} of ${notification.max_retries}` },
+    { icon: Clock, iconColor: "text-[#f87171]", label: "Error", value: notification.error_message ?? "None" },
+  ];
+  const stepIcon = (status: string) => {
+    if (status === "delivered") return <CheckCircle2 className="h-4 w-4 text-[#4ade80]" />;
+    if (status === "failed") return <XCircle className="h-4 w-4 text-[#f87171]" />;
+    if (status === "processing") return <Clock className="h-4 w-4 text-[#fbbf24]" />;
+    if (status === "queued") return <Circle className="h-4 w-4 text-[#60a5fa]" />;
+    return <Circle className="h-4 w-4 text-[var(--gray-5)]" />;
+  };
+
   return (
     <div className="space-y-5">
       {/* Heading */}
@@ -47,7 +61,7 @@ export default function NotificationDetailPage() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-[var(--gray-6)]">{notification.channel}</span>
+          <span className={`rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] ${channelColor[notification.channel] ?? "text-[var(--gray-6)]"}`}>{notification.channel}</span>
         </div>
       </div>
 
@@ -57,18 +71,18 @@ export default function NotificationDetailPage() {
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
             <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
               <h2 className="text-sm font-semibold text-[var(--gray-10)]">Delivery Timeline</h2>
-              <p className="mt-0.5 text-xs text-[var(--gray-6)]">Step-by-step delivery trace.</p>
+              <p className="mt-0.5 text-xs text-[var(--gray-7)]">Step-by-step delivery trace.</p>
             </div>
             <div className="p-4 sm:p-5">
               <div className="space-y-0">
                 {(notification.notification_logs ?? []).map((step, i) => (
                   <div key={step.id} className="flex items-start gap-3">
                     <div className="flex flex-col items-center">
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step.status === "delivered" ? "bg-[color:rgba(34,197,94,0.12)] text-[var(--status-delivered)]" : "bg-[var(--gray-3)] text-[var(--gray-5)]"}`}>
-                        {step.status === "delivered" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gray-3)]">
+                        {stepIcon(step.status)}
                       </span>
                       {i < (notification.notification_logs ?? []).length - 1 && (
-                        <div className="my-1 h-5 w-px bg-[var(--gray-3)]" />
+                        <div className="my-1 h-5 w-px bg-[var(--gray-4)]" />
                       )}
                     </div>
                     <div className="pb-4">
@@ -102,19 +116,15 @@ export default function NotificationDetailPage() {
               <h2 className="text-sm font-semibold text-[var(--gray-10)]">Details</h2>
             </div>
             <div className="divide-y divide-[var(--gray-3)]">
-              {[
-                { icon: Mail, label: "Recipient", value: notification.recipient_address },
-                { icon: RotateCcw, label: "Attempts", value: `${notification.retry_count} of ${notification.max_retries}` },
-                { icon: Clock, label: "Error", value: notification.error_message ?? "None" },
-              ].map((item) => {
+              {detailItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <div key={item.label} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)] text-[var(--gray-6)]">
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)] ${item.iconColor}`}>
                       <Icon className="h-3 w-3" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-5)]">{item.label}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-7)]">{item.label}</p>
                       <p className={`truncate text-[13px] text-[var(--gray-9)] ${(item as any).mono ? "font-mono" : ""}`}>{item.value}</p>
                     </div>
                   </div>
@@ -129,7 +139,7 @@ export default function NotificationDetailPage() {
             </div>
             <div className="p-4 sm:p-5">
               <p className="truncate font-mono text-[12px] text-[var(--gray-7)]">{notification.event_id}</p>
-              <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--gray-5)]">{notification.event_id.slice(0, 26)}…</p>
+              <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--gray-7)]">{notification.event_id.slice(0, 26)}…</p>
               <Link href={`/events/${notification.event_id}`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-[var(--primary)] hover:text-[#fbbf24] transition-colors">
                 View event <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>

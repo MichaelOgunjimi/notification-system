@@ -52,23 +52,23 @@ export default function DashboardPage() {
       time: formatRelativeTime(n.updated_at),
     })) ?? [];
   const channelHealth =
-    analytics?.channel_breakdown.map((ch) => {
-      const pct = ch.total > 0 ? Math.round((ch.delivered / ch.total) * 100) : 0;
+    analytics?.channel_stats?.map((ch) => {
+      const total = ch.delivered + ch.failed + ch.pending + ch.dead_letter;
+      const pct = total > 0 ? Math.round((ch.delivered / total) * 100) : 0;
       return {
         label: ch.channel.toUpperCase(),
-        value: `${ch.total > 0 ? ((ch.delivered / ch.total) * 100).toFixed(1) : "0.0"}%`,
-        volume: `${ch.total} sent`,
+        value: `${total > 0 ? ((ch.delivered / total) * 100).toFixed(1) : "0.0"}%`,
+        volume: `${total} sent`,
         pct,
         icon: ch.channel === "email" ? Mail : ch.channel === "sms" ? Bell : Webhook,
       };
     }) ?? [];
+  const notificationsQueued = analytics?.notifications_queued ?? 0;
+  const notificationsProcessing = analytics?.notifications_processing ?? 0;
+  const notificationsDelivered = analytics?.notifications_delivered ?? 0;
   const queueSnapshot = [
-    { label: "Queued", value: String(analytics?.notifications_today ?? 0), color: "text-[var(--gray-10)]" },
-    {
-      label: "Retrying",
-      value: String((analytics?.notifications_today ?? 0) - (analytics?.delivered_today ?? 0) - (analytics?.failed_today ?? 0)),
-      color: "text-[#fdba74]",
-    },
+    { label: "Queued", value: String(notificationsQueued), color: "text-[var(--gray-10)]" },
+    { label: "Retrying", value: String(notificationsProcessing), color: "text-[#fdba74]" },
     { label: "Dead Letter", value: String(analytics?.dlq_active ?? 0), color: "text-[#fca5a5]" },
   ];
 
@@ -80,22 +80,22 @@ export default function DashboardPage() {
         <StatCard
           label="Events Today"
           value={(analytics?.events_today ?? 0).toLocaleString()}
-          icon={<Activity className="h-3.5 w-3.5" />}
+          icon={<Activity className="h-3.5 w-3.5 text-[#60a5fa]" />}
         />
         <StatCard
           label="Delivery Rate"
-          value={`${(analytics?.success_rate ?? 0).toFixed(1)}%`}
-          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+          value={(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
+          icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />}
         />
         <StatCard
           label="Retry Queue"
-          value={String((analytics?.notifications_today ?? 0) - (analytics?.delivered_today ?? 0))}
-          icon={<Send className="h-3.5 w-3.5" />}
+          value={String(notificationsQueued + notificationsProcessing)}
+          icon={<Send className="h-3.5 w-3.5 text-[#fbbf24]" />}
         />
         <StatCard
           label="Dead Letters"
           value={String(analytics?.dlq_active ?? 0)}
-          icon={<AlertTriangle className="h-3.5 w-3.5" />}
+          icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />}
         />
       </div>
 
@@ -155,6 +155,9 @@ export default function DashboardPage() {
             <p className="mt-0.5 text-xs text-[var(--gray-6)]">Success rate by delivery channel.</p>
 
             <div className="mt-4 space-y-4">
+              {channelHealth.length === 0 && (
+                <p className="py-4 text-center text-xs text-[var(--gray-5)]">No channel activity yet.</p>
+              )}
               {channelHealth.map((item) => {
                 const Icon = item.icon;
                 return (

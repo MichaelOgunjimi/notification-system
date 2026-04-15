@@ -137,20 +137,25 @@ export interface DeadLetterDetailResponse {
 
 export interface AnalyticsResponse {
   events_today: number;
-  notifications_today: number;
-  delivered_today: number;
-  failed_today: number;
+  events_completed: number;
+  events_failed: number;
+  events_processing: number;
+  notifications_delivered: number;
+  notifications_failed: number;
+  notifications_processing: number;
+  notifications_queued: number;
   dlq_active: number;
-  avg_latency_ms: number | null;
+  avg_delivery_latency_ms: number | null;
   success_rate: number;
-  channel_breakdown: ChannelStat[];
+  channel_stats: ChannelStat[];
 }
 
 export interface ChannelStat {
   channel: NotificationChannel;
-  total: number;
   delivered: number;
   failed: number;
+  pending: number;
+  dead_letter: number;
 }
 
 export interface ApiKeyResponse {

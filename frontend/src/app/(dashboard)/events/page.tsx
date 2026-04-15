@@ -7,16 +7,17 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TablePagination } from "@/components/shared/table-pagination";
 import { Activity, Zap, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime } from "@/lib/utils";
 import { getAnalytics, listEvents } from "@/lib/api";
 
-const priorityConfig: Record<string, string> = {
-  high: "text-[#fdba74]",
-  medium: "text-[var(--gray-6)]",
-  low: "text-[var(--gray-5)]",
+const priorityColor = {
+  high: "text-[#f87171]",
+  medium: "text-[#fbbf24]",
+  low: "text-[#60a5fa]",
 };
 
 const filters = ["All Events", "Completed", "Failed", "Processing"];
@@ -24,6 +25,7 @@ const filters = ["All Events", "Completed", "Failed", "Processing"];
 export default function EventsPage() {
   const [page] = useState(1);
   const [status, setStatus] = useState("");
+  const router = useRouter();
   const { data, isLoading, error } = useQuery({
     queryKey: ["events", { page, status }],
     queryFn: () => listEvents({ page, per_page: 20, status: status || undefined }),
@@ -49,10 +51,10 @@ export default function EventsPage() {
     <div className="space-y-5">
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Total Today" value={(analytics?.events_today ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5" />} />
-        <StatCard label="Delivered" value={(analytics?.delivered_today ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5" />} />
-        <StatCard label="Failures" value={(analytics?.failed_today ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
-        <StatCard label="Avg Latency" value={analytics?.avg_latency_ms ? `${analytics.avg_latency_ms}ms` : "N/A"} icon={<Activity className="h-3.5 w-3.5" />} />
+        <StatCard label="Total Today" value={(analytics?.events_today ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
+        <StatCard label="Completed" value={(analytics?.events_completed ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        <StatCard label="Failed" value={(analytics?.events_failed ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard label="Processing" value={(analytics?.events_processing ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
       </div>
 
       {/* Filters + actions */}
@@ -113,7 +115,7 @@ export default function EventsPage() {
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-[var(--gray-3)]">
-                {["Event", "Recipients", "Priority", "Status", "Created", ""].map((h) => (
+                {["Event", "Recipients", "Priority", "Status", "Created", "Actions"].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)] sm:px-5">
                     {h}
                   </th>
@@ -122,14 +124,18 @@ export default function EventsPage() {
             </thead>
             <tbody className="divide-y divide-[var(--gray-3)]">
               {data?.items.map((row) => (
-                <tr key={row.id} className="group transition-colors hover:bg-[var(--gray-1)]">
+                <tr
+                  key={row.id}
+                  className="group cursor-pointer transition-colors hover:bg-[var(--gray-1)]"
+                  onClick={() => router.push(`/events/${row.id}`)}
+                >
                   <td className="px-4 py-3.5 sm:px-5">
                     <p className="truncate text-[13px] font-medium text-[var(--gray-9)] max-w-[220px]">{row.event_type}</p>
                     <p className="mt-0.5 font-mono text-[11px] text-[var(--gray-8)]">{row.id.slice(0, 24)}…</p>
                   </td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{row.recipient_count}</td>
                   <td className="px-4 py-3.5 sm:px-5">
-                    <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${priorityConfig[row.priority] ?? "text-[var(--gray-9)]"}`}>
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${priorityColor[row.priority as keyof typeof priorityColor] ?? "text-[var(--gray-6)]"}`}>
                       {row.priority}
                     </span>
                   </td>
@@ -140,6 +146,7 @@ export default function EventsPage() {
                   <td className="px-4 py-3.5 text-right sm:px-5">
                     <Link
                       href={`/events/${row.id}`}
+                      onClick={(event) => event.stopPropagation()}
                       className="inline-flex items-center gap-1 rounded-md border border-[color:rgba(245,158,11,0.2)] bg-[color:rgba(245,158,11,0.06)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)] transition-colors hover:border-[color:rgba(245,158,11,0.4)] hover:bg-[color:rgba(245,158,11,0.14)] hover:text-[#fbbf24]"
                     >
                       View <ArrowUpRight className="h-3 w-3" />

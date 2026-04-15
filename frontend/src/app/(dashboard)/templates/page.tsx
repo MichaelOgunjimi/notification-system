@@ -27,6 +27,7 @@ export default function TemplatesPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [newChannel, setNewChannel] = useState<"email" | "sms" | "webhook">("email");
+  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
@@ -48,6 +49,7 @@ export default function TemplatesPage() {
       toast.success("Template created");
       setOpen(false);
       setName("");
+      setSubject("");
       setBody("");
       setNewChannel("email");
     },
@@ -128,10 +130,10 @@ export default function TemplatesPage() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <p className="truncate font-mono text-[12px] text-[var(--gray-6)]">{t.subject}</p>
+                <p className="truncate font-mono text-[12px] text-[var(--gray-8)]">{t.subject}</p>
                 <div className="flex flex-wrap gap-1">
                   {t.variables.slice(0, 3).map((v) => (
-                    <span key={v} className="rounded bg-[var(--gray-3)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--gray-7)]">{`{{${v}}}`}</span>
+                    <span key={v} className="rounded bg-[var(--gray-3)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--gray-8)]">{`{{${v}}}`}</span>
                   ))}
                   {t.variables.length > 3 && (
                     <span className="rounded bg-[var(--gray-3)] px-1.5 py-0.5 text-[11px] text-[var(--gray-6)]">+{t.variables.length - 3}</span>
@@ -170,6 +172,10 @@ export default function TemplatesPage() {
               </select>
             </div>
             <div className="space-y-1">
+              <Label>Subject <span className="text-[var(--gray-5)]">(email only)</span></Label>
+              <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Welcome to {{app_name}}" />
+            </div>
+            <div className="space-y-1">
               <Label>Body</Label>
               <textarea
                 className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
@@ -180,7 +186,13 @@ export default function TemplatesPage() {
           </div>
           <DialogFooter>
             <Button
-              onClick={() => createMutation.mutate({ name, channel: newChannel, body })}
+              onClick={() => {
+                if (!name.trim() || !body.trim()) {
+                  toast.error("Name and body are required");
+                  return;
+                }
+                createMutation.mutate({ name, channel: newChannel, subject: subject || undefined, body });
+              }}
             >
               Save
             </Button>
