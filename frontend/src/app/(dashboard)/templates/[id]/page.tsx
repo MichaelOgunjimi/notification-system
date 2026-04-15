@@ -1,0 +1,196 @@
+"use client";
+
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getTemplate, updateTemplate } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+export default function TemplateDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [editVariables, setEditVariables] = useState<string[]>([]);
+  const [newVariable, setNewVariable] = useState("");
+  const { data: template, isLoading, error } = useQuery({
+    queryKey: ["templates", id],
+    queryFn: () => getTemplate(id),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: {
+      name: string;
+      subject?: string;
+      body: string;
+      variables: string[];
+    }) =>
+      updateTemplate(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      queryClient.invalidateQueries({ queryKey: ["templates", id] });
+      toast.success("Template updated");
+      setIsEditing(false);
+    },
+    onError: () => toast.error("Failed to update template"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error || !template) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
+
+  const handleEditToggle = () => {
+    if (!isEditing) {
+      setName(template.name);
+      setSubject(template.subject ?? "");
+      setBody(template.body);
+      setEditVariables(template.variables);
+      setNewVariable("");
+      setIsEditing(true);
+      return;
+    }
+    updateMutation.mutate({ name, subject: subject || undefined, body, variables: editVariables });
+  };
+
+  const sectionLabel = template.channel === "email" ? "Subject" : "Message";
+
+  const addVariable = () => {
+    const candidate = newVariable.trim();
+    if (!candidate || editVariables.includes(candidate)) {
+      return;
+    }
+    setEditVariables((prev) => [...prev, candidate]);
+    setNewVariable("");
+  };
+
+  const removeVariable = (variable: string) => {
+    setEditVariables((prev) => prev.filter((item) => item !== variable));
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Heading */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[18px] font-semibold tracking-tight text-[var(--gray-10)]">{template.name}</h1>
+            <span className="rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-[var(--gray-6)]">{template.channel}</span>
+          </div>
+          <p className="mt-1.5 text-[12px] text-[var(--gray-6)]">Modified {formatDate(template.updated_at)}</p>
+        </div>
+        <button type="button" onClick={handleEditToggle} className="shrink-0 rounded-lg bg-[var(--primary)] px-3.5 py-2 text-[13px] font-medium text-black hover:bg-[#fbbf24] transition-colors">
+          {isEditing ? "Save Template" : "Edit Template"}
+        </button>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
+        <div className="space-y-5">
+          {/* Subject */}
+          <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+            <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
+              <h2 className="text-sm font-semibold text-[var(--gray-10)]">{sectionLabel}</h2>
+            </div>
+            <div className="px-4 py-3.5 sm:px-5">
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                  {template.channel === "email" ? (
+                    <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+                  ) : null}
+                </div>
+              ) : (
+                <p className="font-mono text-[13px] text-[var(--gray-8)]">
+                  {template.channel === "email" ? template.subject : template.body}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Body preview */}
+          <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+            <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
+              <h2 className="text-sm font-semibold text-[var(--gray-10)]">Body Preview</h2>
+              <p className="mt-0.5 text-xs text-[var(--gray-6)]">Template source with variable placeholders.</p>
+            </div>
+            <div className="p-4 sm:p-5">
+              {isEditing ? (
+                <textarea
+                  className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap w-full min-h-48"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              ) : (
+                <pre className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap">
+                  {template.body}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Variables */}
+        <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)] self-start">
+          <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
+            <h2 className="text-sm font-semibold text-[var(--gray-10)]">Variables</h2>
+            <p className="mt-0.5 text-xs text-[var(--gray-6)]">
+              {(isEditing ? editVariables : template.variables).length} declared
+            </p>
+          </div>
+          {isEditing ? (
+            <div className="flex gap-2 border-b border-[var(--gray-3)] px-4 py-3 sm:px-5">
+              <Input
+                value={newVariable}
+                onChange={(e) => setNewVariable(e.target.value)}
+                placeholder="variable_name"
+              />
+              <Button type="button" onClick={addVariable}>
+                Add
+              </Button>
+            </div>
+          ) : null}
+          <div className="divide-y divide-[var(--gray-3)]">
+            {(isEditing ? editVariables : template.variables).map((v) => (
+              <div key={v} className="px-4 py-3 sm:px-5">
+                <div className="flex items-center justify-between gap-2">
+                  <code className="text-[12px] font-mono text-[var(--primary)]">{`{{ ${v} }}`}</code>
+                  {isEditing ? (
+                    <button
+                      type="button"
+                      className="text-sm text-[var(--gray-6)] hover:text-[var(--status-failed)]"
+                      onClick={() => removeVariable(v)}
+                      aria-label={`Remove ${v}`}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+          {isEditing ? (
+            <div className="px-4 pb-4 sm:px-5">
+              <Button onClick={handleEditToggle} className="w-full">
+                Save
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
