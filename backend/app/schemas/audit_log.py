@@ -13,7 +13,7 @@ class AuditLogResponse(BaseModel):
     action: str
     resource_type: str
     resource_id: str | None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     ip_address: str | None
     created_at: datetime
 

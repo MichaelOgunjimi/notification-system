@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.notifications import (
@@ -40,19 +40,24 @@ async def list_notifications(
         recipient=recipient,
     )
     items, total = await notification_service.list_notifications(
-        db, filters, page, per_page, api_key_id=api_key.id
+        db, filters, page, per_page, api_key_id=api_key_filter_id(api_key)
     )
     response_items = [
         NotificationResponse(
             id=n.id,
             event_id=n.event_id,
             channel=n.channel,
-            recipient=n.recipient_address,
             status=n.status,
+            recipient_address=n.recipient_address,
             retry_count=n.retry_count,
+            max_retries=n.max_retries,
+            rendered_subject=n.rendered_subject,
+            error_message=n.error_message,
+            delivered_at=n.delivered_at,
+            failed_at=n.failed_at,
+            next_retry_at=n.next_retry_at,
             created_at=n.created_at,
             updated_at=n.updated_at,
-            delivered_at=n.delivered_at,
         )
         for n in items
     ]
@@ -67,13 +72,13 @@ async def get_notification(
     api_key: ApiKeyDep,
 ) -> NotificationDetailResponse:
     notification = await notification_service.get_notification(
-        db, notification_id, api_key_id=api_key.id
+        db, notification_id, api_key_id=api_key_filter_id(api_key)
     )
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
     logs = await notification_service.get_notification_logs(
-        db, notification_id, api_key_id=api_key.id
+        db, notification_id, api_key_id=api_key_filter_id(api_key)
     )
     log_responses = [
         NotificationLogResponse(
@@ -89,7 +94,7 @@ async def get_notification(
         id=notification.id,
         event_id=notification.event_id,
         channel=notification.channel,
-        recipient=notification.recipient_address,
+        recipient_address=notification.recipient_address,
         status=notification.status,
         priority=notification.priority,
         recipient_user_id=notification.recipient_user_id,
@@ -101,5 +106,6 @@ async def get_notification(
         created_at=notification.created_at,
         updated_at=notification.updated_at,
         delivered_at=notification.delivered_at,
-        logs=log_responses,
+        failed_at=notification.failed_at,
+        notification_logs=log_responses,
     )

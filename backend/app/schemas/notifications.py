@@ -22,12 +22,17 @@ class NotificationResponse(BaseModel):
     id: uuid.UUID
     event_id: uuid.UUID
     channel: NotificationChannel
-    recipient: str
     status: NotificationStatus
+    recipient_address: str
     retry_count: int
+    max_retries: int
+    rendered_subject: str | None
+    error_message: str | None
+    delivered_at: datetime | None
+    failed_at: datetime | None
+    next_retry_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    delivered_at: datetime | None
 
     model_config = {"from_attributes": True}
 
@@ -36,10 +41,10 @@ class NotificationDetailResponse(BaseModel):
     id: uuid.UUID
     event_id: uuid.UUID
     channel: NotificationChannel
-    recipient: str
+    recipient_address: str
     status: NotificationStatus
     priority: str
-    recipient_user_id: str
+    recipient_user_id: str | None
     rendered_subject: str | None
     rendered_body: str | None
     retry_count: int
@@ -48,7 +53,8 @@ class NotificationDetailResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     delivered_at: datetime | None
-    logs: list[NotificationLogResponse]
+    failed_at: datetime | None
+    notification_logs: list[NotificationLogResponse]
 
     model_config = {"from_attributes": True}
 

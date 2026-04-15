@@ -53,7 +53,8 @@ async def test_notification_isolation(auth_client: AsyncClient, auth_client_b: A
     """Notification from key A's event is not visible to key B."""
     resp = await auth_client.post("/api/v1/events", json=_event_payload())
     assert resp.status_code == 202
-    nid = resp.json()["notification_ids"][0]
+    list_resp = await auth_client.get("/api/v1/notifications")
+    nid = list_resp.json()["items"][0]["id"]
 
     # Key A can read its own notification
     resp_a = await auth_client.get(f"/api/v1/notifications/{nid}")

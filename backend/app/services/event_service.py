@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -217,5 +217,73 @@ async def get_event_notification_ids(db: AsyncSession, event_id: uuid.UUID) -> l
     """Get all notification IDs for an event."""
     result = await db.execute(
         select(col(Notification.id)).where(col(Notification.event_id) == event_id)
+    )
+    return list(result.scalars().all())
+
+
+async def event_has_failures(db: AsyncSession, event_id: uuid.UUID) -> bool:
+    """Return True if any notification for this event is in failed/dead-letter state."""
+    result = await db.execute(
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            col(Notification.event_id) == event_id,
+            col(Notification.status).in_(
+                [NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER]
+            ),
+        )
+    )
+    return int(result.scalar() or 0) > 0
+
+
+async def bulk_has_failures(db: AsyncSession, event_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+    """Return the set of event IDs that have at least one failed/dead-letter notification.
+
+    Single query for the whole page — avoids N+1 in list_events.
+    """
+    if not event_ids:
+        return set()
+    result = await db.execute(
+        select(col(Notification.event_id))
+        .where(
+            col(Notification.event_id).in_(event_ids),
+            col(Notification.status).in_(
+                [NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER]
+            ),
+        )
+        .distinct()
+    )
+    return set(result.scalars().all())
+
+
+async def list_events(
+    db: AsyncSession,
+    api_key_id: uuid.UUID | None,
+    *,
+    status: EventStatus | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[Event], int]:
+    """List events scoped to an API key (None = master key, sees all)."""
+    query = select(Event)
+    if api_key_id is not None:
+        query = query.where(col(Event.api_key_id) == api_key_id)
+    if status is not None:
+        query = query.where(col(Event.status) == status)
+    total_result = await db.execute(select(func.count()).select_from(query.subquery()))
+    total = int(total_result.scalar() or 0)
+    offset = (page - 1) * per_page
+    result = await db.execute(
+        query.order_by(col(Event.created_at).desc()).offset(offset).limit(per_page)
+    )
+    return list(result.scalars().all()), total
+
+
+async def get_event_notifications(db: AsyncSession, event_id: uuid.UUID) -> list[Notification]:
+    """Fetch all Notification rows for an event, ordered by creation time."""
+    result = await db.execute(
+        select(Notification)
+        .where(col(Notification.event_id) == event_id)
+        .order_by(col(Notification.created_at).asc())
     )
     return list(result.scalars().all())

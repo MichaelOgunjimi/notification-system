@@ -31,7 +31,8 @@ async def test_create_event(auth_client: AsyncClient) -> None:
     assert data["event_type"] == "user.signup"
     assert data["priority"] == "high"
     assert data["status"] == "accepted"
-    assert len(data["notification_ids"]) == 1
+    assert data["recipient_count"] >= 1
+    assert "notification_ids" not in data
 
 
 @pytest.mark.asyncio

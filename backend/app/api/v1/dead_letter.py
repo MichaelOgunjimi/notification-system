@@ -11,7 +11,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
 from app.models.enums import DeadLetterStatus, NotificationChannel
 from app.schemas.common import PaginatedResponse
 from app.schemas.dead_letter import DeadLetterDetailResponse, DeadLetterResponse
@@ -33,7 +33,7 @@ async def list_dead_letters(
     """List dead letter queue messages, scoped to the authenticated API key."""
     items, total = await dead_letter_service.list_dead_letters(
         db,
-        api_key_id=api_key.id,
+        api_key_id=api_key_filter_id(api_key),
         page=page,
         per_page=per_page,
         status=status_filter,
@@ -51,7 +51,9 @@ async def get_dead_letter(
     api_key: ApiKeyDep,
 ) -> DeadLetterDetailResponse:
     """Get full detail of a DLQ message including retry history."""
-    dlq = await dead_letter_service.get_dead_letter(db, dlq_id, api_key_id=api_key.id)
+    dlq = await dead_letter_service.get_dead_letter(
+        db, dlq_id, api_key_id=api_key_filter_id(api_key)
+    )
     if dlq is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -72,7 +74,9 @@ async def retry_dead_letter(
     Resets the notification to QUEUED with retry_count=0 and enqueues to
     the appropriate channel worker. Only ACTIVE messages can be retried.
     """
-    dlq = await dead_letter_service.retry_dead_letter(db, dlq_id, api_key_id=api_key.id)
+    dlq = await dead_letter_service.retry_dead_letter(
+        db, dlq_id, api_key_id=api_key_filter_id(api_key)
+    )
     if dlq is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -92,7 +96,9 @@ async def discard_dead_letter(
 
     Only ACTIVE messages can be discarded.
     """
-    dlq = await dead_letter_service.discard_dead_letter(db, dlq_id, api_key_id=api_key.id)
+    dlq = await dead_letter_service.discard_dead_letter(
+        db, dlq_id, api_key_id=api_key_filter_id(api_key)
+    )
     if dlq is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

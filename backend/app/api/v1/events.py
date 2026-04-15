@@ -3,15 +3,18 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id, is_master_key
+from app.models.enums import EventStatus
+from app.schemas.common import PaginatedResponse
 from app.schemas.events import (
     EventBatchCreate,
     EventCreate,
     EventDetailResponse,
     EventResponse,
 )
+from app.schemas.notifications import NotificationResponse
 from app.services import event_service
 from app.utils.audit import log_action
 
@@ -29,8 +32,13 @@ async def create_event(
     request: Request,
     response: Response,
 ) -> EventResponse:
+    if is_master_key(api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Master key cannot create events. Use a project API key.",
+        )
     try:
-        event, notification_ids, is_duplicate = await event_service.create_event(
+        event, _notification_ids, is_duplicate = await event_service.create_event(
             db, body, api_key.id
         )
     except ValueError as exc:
@@ -40,7 +48,7 @@ async def create_event(
     else:
         await log_action(
             db,
-            api_key_id=api_key.id,
+            api_key_id=api_key_filter_id(api_key),
             action="event.created",
             resource_type="event",
             resource_id=str(event.id),
@@ -53,8 +61,11 @@ async def create_event(
         event_type=event.event_type,
         priority=event.priority,
         status=event.status,
-        notification_ids=notification_ids,
+        recipient_count=event.recipient_count,
+        has_failures=False,
+        idempotency_key=event.idempotency_key,
         created_at=event.created_at,
+        updated_at=event.updated_at,
     )
 
 
@@ -67,6 +78,11 @@ async def create_batch_events(
     request: Request,
 ) -> list[EventResponse]:
     """Create multiple events atomically — all succeed or all roll back."""
+    if is_master_key(api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Master key cannot create events. Use a project API key.",
+        )
     api_key_id = api_key.id
     try:
         event_results = await event_service.create_batch(db, body.events, api_key_id)
@@ -84,7 +100,7 @@ async def create_batch_events(
     for event, _notification_ids in event_results:
         await log_action(
             db,
-            api_key_id=api_key_id,
+            api_key_id=api_key_filter_id(api_key),
             action="event.created",
             resource_type="event",
             resource_id=str(event.id),
@@ -98,11 +114,46 @@ async def create_batch_events(
             event_type=event.event_type,
             priority=event.priority,
             status=event.status,
-            notification_ids=notification_ids,
+            recipient_count=event.recipient_count,
+            has_failures=False,
+            idempotency_key=event.idempotency_key,
             created_at=event.created_at,
+            updated_at=event.updated_at,
         )
-        for event, notification_ids in event_results
+        for event, _notification_ids in event_results
     ]
+
+
+@router.get("", response_model=PaginatedResponse[EventResponse])
+async def list_events(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+    status: EventStatus | None = Query(default=None),
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
+) -> PaginatedResponse[EventResponse]:
+    api_key_filter = api_key_filter_id(api_key)
+    events, total = await event_service.list_events(
+        db, api_key_filter, status=status, page=page, per_page=per_page
+    )
+    event_ids = [e.id for e in events]
+    failed_ids = await event_service.bulk_has_failures(db, event_ids)
+    items = [
+        EventResponse(
+            id=event.id,
+            event_type=event.event_type,
+            priority=event.priority,
+            status=event.status,
+            recipient_count=event.recipient_count,
+            has_failures=event.id in failed_ids,
+            idempotency_key=event.idempotency_key,
+            created_at=event.created_at,
+            updated_at=event.updated_at,
+        )
+        for event in events
+    ]
+    return PaginatedResponse.create(items, total, page, per_page)
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)
@@ -112,11 +163,12 @@ async def get_event(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> EventDetailResponse:
-    event = await event_service.get_event(db, event_id, api_key_id=api_key.id)
+    event = await event_service.get_event(db, event_id, api_key_id=api_key_filter_id(api_key))
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    notification_ids = await event_service.get_event_notification_ids(db, event_id)
+    notifications = await event_service.get_event_notifications(db, event_id)
+    has_failures = await event_service.event_has_failures(db, event.id)
     return EventDetailResponse(
         id=event.id,
         event_type=event.event_type,
@@ -128,7 +180,8 @@ async def get_event(
         idempotency_key=event.idempotency_key,
         batch_id=event.batch_id,
         recipient_count=event.recipient_count,
-        notification_ids=notification_ids,
+        has_failures=has_failures,
+        notifications=[NotificationResponse.model_validate(n) for n in notifications],
         created_at=event.created_at,
         updated_at=event.updated_at,
     )

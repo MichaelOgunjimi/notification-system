@@ -48,6 +48,7 @@ def reconcile_stuck_notifications(_self) -> dict:
                     col(Notification.next_retry_at) <= now,
                 )
                 .limit(SWEEP_BATCH_LIMIT)
+                .with_for_update(skip_locked=True)
             )
             .scalars()
             .all()
@@ -86,6 +87,7 @@ def reconcile_stuck_notifications(_self) -> dict:
                     col(Notification.updated_at) < zombie_cutoff,
                 )
                 .limit(SWEEP_BATCH_LIMIT)
+                .with_for_update(skip_locked=True)
             )
             .scalars()
             .all()

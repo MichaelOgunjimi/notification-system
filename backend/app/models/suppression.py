@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from app.models.enums import NotificationChannel
+from app.models.enums import NotificationChannel, SuppressionReason, SuppressionSource
 from app.utils.datetime import utc_now
 
 
@@ -25,5 +25,6 @@ class Suppression(SQLModel, table=True):
     api_key_id: uuid.UUID = Field(foreign_key="api_keys.id", index=True)
     channel: NotificationChannel
     recipient: str
-    reason: str | None = None
+    reason: SuppressionReason = Field(default=SuppressionReason.MANUAL)
+    source: SuppressionSource = Field(default=SuppressionSource.CLIENT)
     created_at: datetime = Field(default_factory=utc_now)

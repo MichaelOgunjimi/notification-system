@@ -7,6 +7,7 @@ This ensures strict cross-tenant isolation.
 """
 
 import uuid
+from datetime import timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.utils.datetime import utc_now
 from app.workers.celery_app import celery_app
+from app.workers.queues import channel_queue
 
 _CHANNEL_TASKS: dict[str, str] = {
     "email": "app.workers.email_worker.send_email",
@@ -30,30 +32,32 @@ _CHANNEL_TASKS: dict[str, str] = {
 }
 
 
-def _scoped_query(api_key_id: uuid.UUID):  # type: ignore[type-arg]
-    """Base query scoped to the owning API key."""
-    return (
+def _scoped_query(api_key_id: uuid.UUID | None):
+    """Base query scoped to the owning API key (or unscoped for master key)."""
+    q = (
         select(DeadLetterMessage)
         .join(
             Notification,
             col(DeadLetterMessage.notification_id) == col(Notification.id),
         )
         .join(Event, col(Notification.event_id) == col(Event.id))
-        .where(col(Event.api_key_id) == api_key_id)
     )
+    if api_key_id is not None:
+        q = q.where(col(Event.api_key_id) == api_key_id)
+    return q
 
 
 async def list_dead_letters(
     db: AsyncSession,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
     page: int,
     per_page: int,
     status: DeadLetterStatus | None = None,
     channel: NotificationChannel | None = None,
 ) -> tuple[list[DeadLetterMessage], int]:
-    """List DLQ messages scoped to the API key, with optional filters."""
+    """List DLQ messages scoped to the API key (or all for master key)."""
     query = _scoped_query(api_key_id)
-    count_query = (
+    count_q = (
         select(func.count())
         .select_from(DeadLetterMessage)
         .join(
@@ -61,17 +65,18 @@ async def list_dead_letters(
             col(DeadLetterMessage.notification_id) == col(Notification.id),
         )
         .join(Event, col(Notification.event_id) == col(Event.id))
-        .where(col(Event.api_key_id) == api_key_id)
     )
+    if api_key_id is not None:
+        count_q = count_q.where(col(Event.api_key_id) == api_key_id)
 
     if status is not None:
         query = query.where(col(DeadLetterMessage.status) == status)
-        count_query = count_query.where(col(DeadLetterMessage.status) == status)
+        count_q = count_q.where(col(DeadLetterMessage.status) == status)
     if channel is not None:
         query = query.where(col(DeadLetterMessage.channel) == channel)
-        count_query = count_query.where(col(DeadLetterMessage.channel) == channel)
+        count_q = count_q.where(col(DeadLetterMessage.channel) == channel)
 
-    total_result = await db.execute(count_query)
+    total_result = await db.execute(count_q)
     total = total_result.scalar() or 0
 
     offset = (page - 1) * per_page
@@ -85,7 +90,7 @@ async def list_dead_letters(
 async def get_dead_letter(
     db: AsyncSession,
     dlq_id: uuid.UUID,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
 ) -> DeadLetterMessage | None:
     """Get a single DLQ message by ID, scoped to the API key."""
     query = _scoped_query(api_key_id).where(col(DeadLetterMessage.id) == dlq_id)
@@ -96,14 +101,17 @@ async def get_dead_letter(
 async def retry_dead_letter(
     db: AsyncSession,
     dlq_id: uuid.UUID,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
 ) -> DeadLetterMessage | None:
     """Re-enqueue a DLQ message for delivery.
 
     Resets the notification to QUEUED with retry_count=0 and marks the
     DLQ record as RETRIED. Returns None if not found or not ACTIVE.
     """
-    dlq = await get_dead_letter(db, dlq_id, api_key_id)
+    # SELECT FOR UPDATE to prevent concurrent retries of the same record
+    query = _scoped_query(api_key_id).where(col(DeadLetterMessage.id) == dlq_id).with_for_update()
+    result = await db.execute(query)
+    dlq = result.scalar_one_or_none()
     if dlq is None:
         return None
     if dlq.status != DeadLetterStatus.ACTIVE:
@@ -114,7 +122,8 @@ async def retry_dead_letter(
     if notification is not None:
         notification.status = NotificationStatus.QUEUED
         notification.retry_count = 0
-        notification.next_retry_at = None
+        # Safety net: set next_retry_at so reconciliation can recover if enqueue fails
+        notification.next_retry_at = utc_now() + timedelta(minutes=2)
         notification.error_message = None
         notification.failed_at = None
         notification.updated_at = utc_now()
@@ -126,21 +135,25 @@ async def retry_dead_letter(
     dlq.updated_at = now
     await db.commit()
 
-    # Re-enqueue to Celery
+    # Re-enqueue to the correct channel queue
     if notification is not None:
         task_name = _CHANNEL_TASKS.get(str(notification.channel))
         if task_name:
-            celery_app.send_task(task_name, args=[str(notification.id)])
+            q = channel_queue(str(notification.channel), str(notification.priority))
+            celery_app.send_task(task_name, args=[str(notification.id)], queue=q)
+            # Clear safety net now that enqueue succeeded
+            notification.next_retry_at = None
+            await db.commit()
 
     # Refresh to return updated state
     await db.refresh(dlq)
-    return dlq
+    return dlq  # type: ignore[no-any-return]
 
 
 async def discard_dead_letter(
     db: AsyncSession,
     dlq_id: uuid.UUID,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
 ) -> DeadLetterMessage | None:
     """Mark a DLQ message as discarded (acknowledged, won't retry).
 

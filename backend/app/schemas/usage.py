@@ -11,3 +11,5 @@ class UsageResponse(BaseModel):
     endpoint: str
     hour_bucket: datetime
     request_count: int
+
+    model_config = {"from_attributes": True}
