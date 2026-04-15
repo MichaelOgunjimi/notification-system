@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
 from app.models.enums import NotificationChannel
 from app.schemas.common import PaginatedResponse
 from app.schemas.templates import (
@@ -33,8 +33,7 @@ async def list_templates(
         db,
         page=page,
         per_page=per_page,
-        api_key_id=api_key.id,
-        channel=channel,
+        api_key_id=api_key_filter_id(api_key),
     )
     return PaginatedResponse.create(
         [TemplateResponse.model_validate(item) for item in items],
@@ -52,10 +51,10 @@ async def create_template(
     api_key: ApiKeyDep,
     request: Request,
 ) -> TemplateResponse:
-    template = await template_service.create_template(db, body, api_key.id)
+    template = await template_service.create_template(db, body, api_key_filter_id(api_key))
     await log_action(
         db,
-        api_key_id=api_key.id,
+        api_key_id=api_key_filter_id(api_key),
         action="template.created",
         resource_type="template",
         resource_id=str(template.id),
@@ -73,7 +72,9 @@ async def get_template(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.get_template_for_key(db, template_id, api_key_id=api_key.id)
+    template = await template_service.get_template_for_key(
+        db, template_id, api_key_id=api_key_filter_id(api_key)
+    )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return TemplateResponse.model_validate(template)
@@ -88,7 +89,9 @@ async def update_template(
     api_key: ApiKeyDep,
     request: Request,
 ) -> TemplateResponse:
-    template = await template_service.get_owned_template(db, template_id, api_key_id=api_key.id)
+    template = await template_service.get_owned_template(
+        db, template_id, api_key_id=api_key_filter_id(api_key)
+    )
     if template is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -98,7 +101,7 @@ async def update_template(
     updated = await template_service.update_template(db, template, body)
     await log_action(
         db,
-        api_key_id=api_key.id,
+        api_key_id=api_key_filter_id(api_key),
         action="template.updated",
         resource_type="template",
         resource_id=str(updated.id),
@@ -117,7 +120,9 @@ async def preview_template(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> TemplatePreviewResponse:
-    template = await template_service.get_template_for_key(db, template_id, api_key_id=api_key.id)
+    template = await template_service.get_template_for_key(
+        db, template_id, api_key_id=api_key_filter_id(api_key)
+    )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     rendered_subject, rendered_body = template_service.preview_template(
@@ -137,7 +142,9 @@ async def delete_template(
     api_key: ApiKeyDep,
     request: Request,
 ) -> None:
-    template = await template_service.get_owned_template(db, template_id, api_key_id=api_key.id)
+    template = await template_service.get_owned_template(
+        db, template_id, api_key_id=api_key_filter_id(api_key)
+    )
     if template is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -146,7 +153,7 @@ async def delete_template(
     await template_service.soft_delete_template(db, template)
     await log_action(
         db,
-        api_key_id=api_key.id,
+        api_key_id=api_key_filter_id(api_key),
         action="template.deleted",
         resource_type="template",
         resource_id=str(template.id),
