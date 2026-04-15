@@ -20,7 +20,8 @@ from app.schemas.analytics import AnalyticsResponse, ChannelStat
 
 
 def _today_start() -> datetime:
-    return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    # Return naive UTC midnight — DB columns are TIMESTAMP WITHOUT TIME ZONE
+    return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
 
 
 async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> AnalyticsResponse:
