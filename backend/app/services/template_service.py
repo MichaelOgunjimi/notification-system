@@ -43,13 +43,14 @@ async def list_templates(
     *,
     page: int,
     per_page: int,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
     channel: NotificationChannel | None = None,
 ) -> tuple[list[Template], int]:
-    filters = [
-        col(Template.is_active),
-        or_(col(Template.api_key_id) == api_key_id, col(Template.api_key_id).is_(None)),
-    ]
+    filters: list = [col(Template.is_active)]
+    if api_key_id is not None:
+        filters.append(
+            or_(col(Template.api_key_id) == api_key_id, col(Template.api_key_id).is_(None))
+        )
     if channel is not None:
         filters.append(col(Template.channel) == channel)
 
@@ -72,15 +73,14 @@ async def get_template_for_key(
     db: AsyncSession,
     template_id: uuid.UUID,
     *,
-    api_key_id: uuid.UUID,
+    api_key_id: uuid.UUID | None,
 ) -> Template | None:
-    result = await db.execute(
-        select(Template).where(
-            col(Template.id) == template_id,
-            col(Template.is_active),
-            or_(col(Template.api_key_id) == api_key_id, col(Template.api_key_id).is_(None)),
+    filters = [col(Template.id) == template_id, col(Template.is_active)]
+    if api_key_id is not None:
+        filters.append(
+            or_(col(Template.api_key_id) == api_key_id, col(Template.api_key_id).is_(None))
         )
-    )
+    result = await db.execute(select(Template).where(*filters))
     return result.scalar_one_or_none()
 
 
