@@ -236,6 +236,26 @@ async def event_has_failures(db: AsyncSession, event_id: uuid.UUID) -> bool:
     return int(result.scalar() or 0) > 0
 
 
+async def bulk_has_failures(db: AsyncSession, event_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+    """Return the set of event IDs that have at least one failed/dead-letter notification.
+
+    Single query for the whole page — avoids N+1 in list_events.
+    """
+    if not event_ids:
+        return set()
+    result = await db.execute(
+        select(col(Notification.event_id))
+        .where(
+            col(Notification.event_id).in_(event_ids),
+            col(Notification.status).in_(
+                [NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER]
+            ),
+        )
+        .distinct()
+    )
+    return set(result.scalars().all())
+
+
 async def list_events(
     db: AsyncSession,
     api_key_id: uuid.UUID | None,

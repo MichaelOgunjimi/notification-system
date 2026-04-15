@@ -44,7 +44,7 @@ class NotificationDetailResponse(BaseModel):
     recipient_address: str
     status: NotificationStatus
     priority: str
-    recipient_user_id: str
+    recipient_user_id: str | None
     rendered_subject: str | None
     rendered_body: str | None
     retry_count: int

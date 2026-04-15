@@ -33,7 +33,7 @@ async def create_event(
     response: Response,
 ) -> EventResponse:
     try:
-        event, notification_ids, is_duplicate = await event_service.create_event(
+        event, _notification_ids, is_duplicate = await event_service.create_event(
             db, body, api_key.id
         )
     except ValueError as exc:
@@ -59,7 +59,6 @@ async def create_event(
         recipient_count=event.recipient_count,
         has_failures=False,
         idempotency_key=event.idempotency_key,
-        notification_ids=notification_ids,
         created_at=event.created_at,
         updated_at=event.updated_at,
     )
@@ -108,11 +107,10 @@ async def create_batch_events(
             recipient_count=event.recipient_count,
             has_failures=False,
             idempotency_key=event.idempotency_key,
-            notification_ids=notification_ids,
             created_at=event.created_at,
             updated_at=event.updated_at,
         )
-        for event, notification_ids in event_results
+        for event, _notification_ids in event_results
     ]
 
 
@@ -129,30 +127,23 @@ async def list_events(
     events, total = await event_service.list_events(
         db, api_key_filter, status=status, page=page, per_page=per_page
     )
-    items: list[EventResponse] = []
-    for event in events:
-        notification_ids = await event_service.get_event_notification_ids(db, event.id)
-        has_failures = await event_service.event_has_failures(db, event.id)
-        items.append(
-            EventResponse(
-                id=event.id,
-                event_type=event.event_type,
-                priority=event.priority,
-                status=event.status,
-                recipient_count=event.recipient_count,
-                has_failures=has_failures,
-                idempotency_key=event.idempotency_key,
-                notification_ids=notification_ids,
-                created_at=event.created_at,
-                updated_at=event.updated_at,
-            )
+    event_ids = [e.id for e in events]
+    failed_ids = await event_service.bulk_has_failures(db, event_ids)
+    items = [
+        EventResponse(
+            id=event.id,
+            event_type=event.event_type,
+            priority=event.priority,
+            status=event.status,
+            recipient_count=event.recipient_count,
+            has_failures=event.id in failed_ids,
+            idempotency_key=event.idempotency_key,
+            created_at=event.created_at,
+            updated_at=event.updated_at,
         )
-    return PaginatedResponse.create(
-        items,
-        total,
-        page,
-        per_page,
-    )
+        for event in events
+    ]
+    return PaginatedResponse.create(items, total, page, per_page)
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)
@@ -166,7 +157,6 @@ async def get_event(
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    notification_ids = await event_service.get_event_notification_ids(db, event_id)
     notifications = await event_service.get_event_notifications(db, event_id)
     has_failures = await event_service.event_has_failures(db, event.id)
     return EventDetailResponse(
@@ -181,7 +171,6 @@ async def get_event(
         batch_id=event.batch_id,
         recipient_count=event.recipient_count,
         has_failures=has_failures,
-        notification_ids=notification_ids,
         notifications=[NotificationResponse.model_validate(n) for n in notifications],
         created_at=event.created_at,
         updated_at=event.updated_at,

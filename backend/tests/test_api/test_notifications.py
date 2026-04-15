@@ -43,8 +43,9 @@ async def test_list_notifications_after_event(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_notification_detail(auth_client: AsyncClient) -> None:
-    event_resp = await auth_client.post("/api/v1/events", json=_event_payload())
-    nid = event_resp.json()["notification_ids"][0]
+    await auth_client.post("/api/v1/events", json=_event_payload())
+    list_resp = await auth_client.get("/api/v1/notifications")
+    nid = list_resp.json()["items"][0]["id"]
 
     resp = await auth_client.get(f"/api/v1/notifications/{nid}")
     assert resp.status_code == 200
