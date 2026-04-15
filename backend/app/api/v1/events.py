@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
-from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id, is_master_key
 from app.models.enums import EventStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.events import (
@@ -32,6 +32,11 @@ async def create_event(
     request: Request,
     response: Response,
 ) -> EventResponse:
+    if is_master_key(api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Master key cannot create events. Use a project API key.",
+        )
     try:
         event, _notification_ids, is_duplicate = await event_service.create_event(
             db, body, api_key.id
@@ -43,7 +48,7 @@ async def create_event(
     else:
         await log_action(
             db,
-            api_key_id=api_key.id,
+            api_key_id=api_key_filter_id(api_key),
             action="event.created",
             resource_type="event",
             resource_id=str(event.id),
@@ -73,6 +78,11 @@ async def create_batch_events(
     request: Request,
 ) -> list[EventResponse]:
     """Create multiple events atomically — all succeed or all roll back."""
+    if is_master_key(api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Master key cannot create events. Use a project API key.",
+        )
     api_key_id = api_key.id
     try:
         event_results = await event_service.create_batch(db, body.events, api_key_id)
@@ -90,7 +100,7 @@ async def create_batch_events(
     for event, _notification_ids in event_results:
         await log_action(
             db,
-            api_key_id=api_key_id,
+            api_key_id=api_key_filter_id(api_key),
             action="event.created",
             resource_type="event",
             resource_id=str(event.id),

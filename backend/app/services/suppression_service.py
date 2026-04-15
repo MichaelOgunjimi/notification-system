@@ -22,7 +22,7 @@ async def is_suppressed_async(
         select(col(Suppression.id)).where(
             col(Suppression.api_key_id) == api_key_id,
             col(Suppression.channel) == channel,
-            col(Suppression.recipient) == recipient,
+            col(Suppression.recipient) == recipient.lower(),
         )
     )
     return result.scalar_one_or_none() is not None
@@ -39,7 +39,7 @@ def is_suppressed(
         select(col(Suppression.id)).where(
             col(Suppression.api_key_id) == api_key_id,
             col(Suppression.channel) == channel,
-            col(Suppression.recipient) == recipient,
+            col(Suppression.recipient) == recipient.lower(),
         )
     )
     return result.scalar_one_or_none() is not None

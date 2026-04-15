@@ -90,7 +90,7 @@ async def create_suppression(
     suppression = Suppression(
         api_key_id=api_key.id,
         channel=body.channel,
-        recipient=body.recipient,
+        recipient=body.recipient.lower(),
         reason=body.reason,
         source=body.source,
     )

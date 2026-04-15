@@ -49,6 +49,7 @@ celery_app.conf.beat_schedule = {
     "dispatch-scheduled-events": {
         "task": "workers.dispatch_scheduled_events",
         "schedule": 60.0,
+        "options": {"queue": "notifications.reconciliation"},
     },
 }
 

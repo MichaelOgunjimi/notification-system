@@ -209,10 +209,11 @@ class TestRetryDeadLetter:
         assert notification.retry_count == 0
         assert notification.error_message is None
 
-        # Verify Celery enqueue
+        # Verify Celery enqueue with correct queue
         mock_send_task.assert_called_once_with(
             "app.workers.email_worker.send_email",
             args=[str(notification.id)],
+            queue="notifications.email.medium",
         )
 
     async def test_retry_already_retried_returns_404(

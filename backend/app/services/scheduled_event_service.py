@@ -21,7 +21,7 @@ async def create_scheduled_event(
         api_key_id=api_key_id,
         payload={
             "event_type": data.event_type,
-            "recipients": data.recipients,
+            "recipients": [r.model_dump() for r in data.recipients],
             "payload": data.payload,
             "metadata": data.metadata,
             "template_id": str(data.template_id) if data.template_id else None,
@@ -71,7 +71,9 @@ async def cancel_scheduled_event(
     event_id: uuid.UUID,
     api_key_id: uuid.UUID | None,
 ) -> ScheduledEvent | None:
-    result = await db.execute(select(ScheduledEvent).where(col(ScheduledEvent.id) == event_id))
+    result = await db.execute(
+        select(ScheduledEvent).where(col(ScheduledEvent.id) == event_id).with_for_update()
+    )
     event = result.scalar_one_or_none()
     if event is None:
         return None

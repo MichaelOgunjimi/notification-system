@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
 from app.schemas.analytics import AnalyticsResponse
 from app.services import analytics_service
 
@@ -16,4 +16,4 @@ async def get_analytics(
     api_key: ApiKeyDep,
 ) -> AnalyticsResponse:
     """Return delivery metrics and channel statistics for today."""
-    return await analytics_service.get_analytics(db, api_key.id)
+    return await analytics_service.get_analytics(db, api_key_filter_id(api_key))

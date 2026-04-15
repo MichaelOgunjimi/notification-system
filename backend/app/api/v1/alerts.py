@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlmodel import col
 
@@ -34,7 +34,7 @@ class AlertRuleCreate(BaseModel):
     metric: str = Field(max_length=100)
     threshold: float
     window_minutes: int = 60
-    notify_email: str | None = None
+    notify_email: EmailStr | None = None
     is_active: bool = True
 
 
@@ -43,7 +43,7 @@ class AlertRuleUpdate(BaseModel):
     metric: str | None = None
     threshold: float | None = None
     window_minutes: int | None = None
-    notify_email: str | None = None
+    notify_email: EmailStr | None = None
     is_active: bool | None = None
 
 

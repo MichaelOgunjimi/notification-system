@@ -1,6 +1,7 @@
 """Analytics service — aggregation queries for delivery metrics."""
 
-from datetime import UTC, date, datetime
+import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,18 +20,17 @@ from app.schemas.analytics import AnalyticsResponse, ChannelStat
 
 
 def _today_start() -> datetime:
-    today = date.today()
-    return datetime(today.year, today.month, today.day, tzinfo=UTC)
+    return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-async def get_analytics(db: AsyncSession, api_key_id) -> AnalyticsResponse:  # type: ignore[type-arg]
+async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> AnalyticsResponse:
     start = _today_start()
 
     event_status_rows = (
         await db.execute(
             select(col(Event.status), func.count().label("cnt"))
-            .where(col(Event.api_key_id) == api_key_id)
             .where(col(Event.created_at) >= start)
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .group_by(col(Event.status))
         )
     ).all()
@@ -50,7 +50,7 @@ async def get_analytics(db: AsyncSession, api_key_id) -> AnalyticsResponse:  # t
         await db.execute(
             select(col(Notification.status), func.count().label("cnt"))
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(col(Event.api_key_id) == api_key_id)
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.created_at) >= start)
             .group_by(col(Notification.status))
         )
@@ -79,7 +79,7 @@ async def get_analytics(db: AsyncSession, api_key_id) -> AnalyticsResponse:  # t
                 ).label("avg_ms")
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(col(Event.api_key_id) == api_key_id)
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
             .where(col(Notification.created_at) >= start)
@@ -96,7 +96,7 @@ async def get_analytics(db: AsyncSession, api_key_id) -> AnalyticsResponse:  # t
                 col(DeadLetterMessage.notification_id) == col(Notification.id),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(col(Event.api_key_id) == api_key_id)
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE)
         )
     ).scalar() or 0
@@ -109,7 +109,7 @@ async def get_analytics(db: AsyncSession, api_key_id) -> AnalyticsResponse:  # t
                 func.count().label("cnt"),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(col(Event.api_key_id) == api_key_id)
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.created_at) >= start)
             .group_by(col(Notification.channel), col(Notification.status))
         )

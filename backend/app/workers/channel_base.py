@@ -40,6 +40,7 @@ from app.services.suppression_service import is_suppressed
 from app.services.template_service import render_template, resolve_template
 from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
+from app.workers.queues import channel_queue
 from app.workers.retry import (
     load_retry_policy,
     move_to_dead_letter,
@@ -113,10 +114,11 @@ def _handle_failure(
         notification.provider_response = result.provider_response
         session.commit()
 
-        # Re-enqueue to same Celery task with countdown
+        # Re-enqueue to same Celery task with countdown, routing to the correct queue
         celery_task.apply_async(
             args=[str(notification.id)],
             countdown=countdown,
+            queue=channel_queue(str(notification.channel), str(notification.priority)),
         )
 
         return {

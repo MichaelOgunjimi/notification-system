@@ -74,7 +74,7 @@ async def create_api_key(
         rate_limit_per_min=body.rate_limit_per_min,
     )
     db.add(api_key)
-    await db.commit()
+    await db.flush()
     await db.refresh(api_key)
     await log_action(
         db,
@@ -142,7 +142,7 @@ async def revoke_api_key(
     api_key.is_active = False
     api_key.revoked_at = utc_now()
     db.add(api_key)
-    await db.commit()
+    await db.flush()
     await log_action(
         db,
         api_key_id=api_key.id,

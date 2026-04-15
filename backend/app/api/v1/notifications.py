@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.notifications import (
@@ -40,7 +40,7 @@ async def list_notifications(
         recipient=recipient,
     )
     items, total = await notification_service.list_notifications(
-        db, filters, page, per_page, api_key_id=api_key.id
+        db, filters, page, per_page, api_key_id=api_key_filter_id(api_key)
     )
     response_items = [
         NotificationResponse(
@@ -72,13 +72,13 @@ async def get_notification(
     api_key: ApiKeyDep,
 ) -> NotificationDetailResponse:
     notification = await notification_service.get_notification(
-        db, notification_id, api_key_id=api_key.id
+        db, notification_id, api_key_id=api_key_filter_id(api_key)
     )
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
     logs = await notification_service.get_notification_logs(
-        db, notification_id, api_key_id=api_key.id
+        db, notification_id, api_key_id=api_key_filter_id(api_key)
     )
     log_responses = [
         NotificationLogResponse(
