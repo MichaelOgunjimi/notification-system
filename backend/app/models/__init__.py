@@ -14,6 +14,8 @@ from app.models.enums import (
     EventStatus,
     NotificationChannel,
     NotificationStatus,
+    SuppressionReason,
+    SuppressionSource,
 )
 from app.models.event import Event
 from app.models.notification import Notification
@@ -42,5 +44,7 @@ __all__ = [
     "RetryPolicy",
     "ScheduledEvent",
     "Suppression",
+    "SuppressionReason",
+    "SuppressionSource",
     "Template",
 ]

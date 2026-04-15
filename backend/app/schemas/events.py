@@ -137,6 +137,7 @@ class EventResponse(BaseModel):
     priority: EventPriority
     status: EventStatus
     recipient_count: int
+    has_failures: bool
     idempotency_key: str | None
     notification_ids: list[uuid.UUID]
     created_at: datetime
@@ -156,6 +157,7 @@ class EventDetailResponse(BaseModel):
     idempotency_key: str | None
     batch_id: uuid.UUID | None
     recipient_count: int
+    has_failures: bool
     notification_ids: list[uuid.UUID]
     notifications: list[NotificationResponse]
     created_at: datetime

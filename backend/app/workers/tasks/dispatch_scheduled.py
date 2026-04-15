@@ -1,6 +1,7 @@
 """Celery beat task — picks up due scheduled events and dispatches them."""
 
 import logging
+from datetime import timedelta
 
 from celery import shared_task
 from sqlalchemy import select
@@ -11,6 +12,7 @@ from app.utils.datetime import utc_now
 from app.workers.database import get_sync_session
 
 logger = logging.getLogger(__name__)
+GRACE_PERIOD = timedelta(hours=1)
 
 
 @shared_task(name="workers.dispatch_scheduled_events")
@@ -39,10 +41,20 @@ def dispatch_scheduled_events() -> None:
             scheduled.status = ScheduledEventStatus.PROCESSING
             db.flush()
             try:
-                logger.info("Dispatching scheduled event %s", scheduled.id)
-                # Phase 7 placeholder: mark as dispatched.
-                # Full event creation/dispatch wiring lands in the next phase.
-                scheduled.status = ScheduledEventStatus.DISPATCHED
+                if scheduled.scheduled_for < now - GRACE_PERIOD:
+                    logger.warning(
+                        (
+                            "Scheduled event %s missed grace window (scheduled_for=%s), "
+                            "marking EXPIRED"
+                        ),
+                        scheduled.id,
+                        scheduled.scheduled_for,
+                    )
+                    scheduled.status = ScheduledEventStatus.EXPIRED
+                else:
+                    logger.info("Dispatching scheduled event %s", scheduled.id)
+                    # Full event creation/dispatch wiring lands in the next phase.
+                    scheduled.status = ScheduledEventStatus.DISPATCHED
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.exception("Failed to dispatch scheduled event %s: %s", scheduled.id, exc)
                 scheduled.status = ScheduledEventStatus.FAILED

@@ -57,6 +57,7 @@ async def create_event(
         priority=event.priority,
         status=event.status,
         recipient_count=event.recipient_count,
+        has_failures=False,
         idempotency_key=event.idempotency_key,
         notification_ids=notification_ids,
         created_at=event.created_at,
@@ -105,6 +106,7 @@ async def create_batch_events(
             priority=event.priority,
             status=event.status,
             recipient_count=event.recipient_count,
+            has_failures=False,
             idempotency_key=event.idempotency_key,
             notification_ids=notification_ids,
             created_at=event.created_at,
@@ -130,6 +132,7 @@ async def list_events(
     items: list[EventResponse] = []
     for event in events:
         notification_ids = await event_service.get_event_notification_ids(db, event.id)
+        has_failures = await event_service.event_has_failures(db, event.id)
         items.append(
             EventResponse(
                 id=event.id,
@@ -137,6 +140,7 @@ async def list_events(
                 priority=event.priority,
                 status=event.status,
                 recipient_count=event.recipient_count,
+                has_failures=has_failures,
                 idempotency_key=event.idempotency_key,
                 notification_ids=notification_ids,
                 created_at=event.created_at,
@@ -164,6 +168,7 @@ async def get_event(
 
     notification_ids = await event_service.get_event_notification_ids(db, event_id)
     notifications = await event_service.get_event_notifications(db, event_id)
+    has_failures = await event_service.event_has_failures(db, event.id)
     return EventDetailResponse(
         id=event.id,
         event_type=event.event_type,
@@ -175,6 +180,7 @@ async def get_event(
         idempotency_key=event.idempotency_key,
         batch_id=event.batch_id,
         recipient_count=event.recipient_count,
+        has_failures=has_failures,
         notification_ids=notification_ids,
         notifications=[NotificationResponse.model_validate(n) for n in notifications],
         created_at=event.created_at,

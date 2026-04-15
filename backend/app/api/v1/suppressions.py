@@ -9,7 +9,11 @@ from sqlalchemy import select
 from sqlmodel import col, func
 
 from app.api.deps import ApiKeyDep, SessionDep, is_master_key
-from app.models.enums import NotificationChannel
+from app.models.enums import (
+    NotificationChannel,
+    SuppressionReason,
+    SuppressionSource,
+)
 from app.models.suppression import Suppression
 from app.schemas.common import PaginatedResponse
 
@@ -21,7 +25,8 @@ class SuppressionResponse(BaseModel):
     api_key_id: uuid.UUID
     channel: NotificationChannel
     recipient: str
-    reason: str | None
+    reason: SuppressionReason
+    source: SuppressionSource
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -30,7 +35,8 @@ class SuppressionResponse(BaseModel):
 class SuppressionCreate(BaseModel):
     channel: NotificationChannel
     recipient: str = Field(max_length=500)
-    reason: str | None = None
+    reason: SuppressionReason = SuppressionReason.MANUAL
+    source: SuppressionSource = SuppressionSource.CLIENT
 
 
 @router.get("", response_model=PaginatedResponse[SuppressionResponse])
@@ -86,6 +92,7 @@ async def create_suppression(
         channel=body.channel,
         recipient=body.recipient,
         reason=body.reason,
+        source=body.source,
     )
     db.add(suppression)
     await db.commit()

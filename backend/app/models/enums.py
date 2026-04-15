@@ -46,3 +46,15 @@ class ScheduledEventStatus(enum.StrEnum):
     DISPATCHED = "dispatched"
     CANCELLED = "cancelled"
     FAILED = "failed"
+    EXPIRED = "expired"
+
+
+class SuppressionSource(enum.StrEnum):
+    SYSTEM = "system"
+    CLIENT = "client"
+
+
+class SuppressionReason(enum.StrEnum):
+    HARD_BOUNCE = "hard_bounce"
+    SPAM_COMPLAINT = "spam_complaint"
+    MANUAL = "manual"

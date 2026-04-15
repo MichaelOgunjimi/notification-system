@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -221,6 +221,21 @@ async def get_event_notification_ids(db: AsyncSession, event_id: uuid.UUID) -> l
     return list(result.scalars().all())
 
 
+async def event_has_failures(db: AsyncSession, event_id: uuid.UUID) -> bool:
+    """Return True if any notification for this event is in failed/dead-letter state."""
+    result = await db.execute(
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            col(Notification.event_id) == event_id,
+            col(Notification.status).in_(
+                [NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER]
+            ),
+        )
+    )
+    return int(result.scalar() or 0) > 0
+
+
 async def list_events(
     db: AsyncSession,
     api_key_id: uuid.UUID | None,
@@ -230,14 +245,12 @@ async def list_events(
     per_page: int = 20,
 ) -> tuple[list[Event], int]:
     """List events scoped to an API key (None = master key, sees all)."""
-    from sqlmodel import func as sqlfunc
-
     query = select(Event)
     if api_key_id is not None:
         query = query.where(col(Event.api_key_id) == api_key_id)
     if status is not None:
         query = query.where(col(Event.status) == status)
-    total_result = await db.execute(select(sqlfunc.count()).select_from(query.subquery()))
+    total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = int(total_result.scalar() or 0)
     offset = (page - 1) * per_page
     result = await db.execute(
