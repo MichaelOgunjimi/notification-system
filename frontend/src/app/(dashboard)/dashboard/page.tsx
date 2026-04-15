@@ -5,7 +5,6 @@ import {
   Activity,
   AlertTriangle,
   Bell,
-  ChevronRight,
   CheckCircle2,
   Clock,
   Mail,
@@ -82,6 +81,7 @@ export default function DashboardPage() {
     { name: "Processing", value: analytics?.notifications_processing ?? 0, color: "#fbbf24" },
     { name: "Queued", value: analytics?.notifications_queued ?? 0, color: "#60a5fa" },
   ];
+  const notifStatusTotal = notifStatusData.reduce((s, d) => s + d.value, 0);
 
   // Channel performance bar chart data
   const channelPerfData = (analytics?.channel_stats ?? []).map((ch) => ({
@@ -220,45 +220,43 @@ export default function DashboardPage() {
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Queue Snapshot</h2>
             <p className="mt-0.5 text-xs text-[var(--gray-6)]">Current pipeline status.</p>
 
-            <div className="mt-4 flex items-stretch gap-0">
+            <div className="mt-4 space-y-0">
               {/* Queued */}
-              <div className="flex-1 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-3">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:rgba(96,165,250,0.12)]">
                   <span className="h-2 w-2 rounded-full bg-[#60a5fa]" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-7)]">Queued</p>
+                  <p className="text-[11px] text-[var(--gray-6)]">waiting</p>
                 </div>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[#60a5fa]">{analytics?.notifications_queued ?? 0}</p>
-                <p className="mt-0.5 text-[10px] text-[var(--gray-6)]">waiting</p>
+                <p className="text-lg font-semibold tabular-nums text-[#60a5fa]">{analytics?.notifications_queued ?? 0}</p>
               </div>
-
-              {/* arrow */}
-              <div className="flex items-center px-1.5 text-[var(--gray-5)]">
-                <ChevronRight className="h-3.5 w-3.5" />
-              </div>
-
+              {/* connector */}
+              <div className="ml-[22px] h-4 w-px bg-[var(--gray-5)]" />
               {/* Processing */}
-              <div className="flex-1 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-3">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:rgba(251,191,36,0.12)]">
                   <span className="h-2 w-2 rounded-full bg-[#fbbf24]" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-7)]">Processing</p>
+                  <p className="text-[11px] text-[var(--gray-6)]">in-flight</p>
                 </div>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[#fbbf24]">{analytics?.notifications_processing ?? 0}</p>
-                <p className="mt-0.5 text-[10px] text-[var(--gray-6)]">in-flight</p>
+                <p className="text-lg font-semibold tabular-nums text-[#fbbf24]">{analytics?.notifications_processing ?? 0}</p>
               </div>
-
-              {/* arrow */}
-              <div className="flex items-center px-1.5 text-[var(--gray-5)]">
-                <ChevronRight className="h-3.5 w-3.5" />
-              </div>
-
+              {/* connector */}
+              <div className="ml-[22px] h-4 w-px bg-[var(--gray-5)]" />
               {/* Dead Letter */}
-              <div className="flex-1 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-3">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:rgba(248,113,113,0.12)]">
                   <span className="h-2 w-2 rounded-full bg-[#f87171]" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-7)]">Dead Letter</p>
+                  <p className="text-[11px] text-[var(--gray-6)]">failed permanently</p>
                 </div>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[#f87171]">{analytics?.dlq_active ?? 0}</p>
-                <p className="mt-0.5 text-[10px] text-[var(--gray-6)]">failed permanently</p>
+                <p className="text-lg font-semibold tabular-nums text-[#f87171]">{analytics?.dlq_active ?? 0}</p>
               </div>
             </div>
           </div>
@@ -274,24 +272,33 @@ export default function DashboardPage() {
           <h2 className="text-sm font-semibold text-[var(--gray-10)]">Notification Status</h2>
           <p className="mt-0.5 text-xs text-[var(--gray-6)]">Breakdown of all notifications today.</p>
           <div className="mt-4 flex items-center gap-6">
-            <ResponsiveContainer width={120} height={120}>
-              <PieChart>
-                <Pie
-                  data={notifStatusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={38}
-                  outerRadius={56}
-                  paddingAngle={notifStatusData.filter(d => d.value > 0).length > 1 ? 3 : 0}
-                  dataKey="value"
-                  strokeWidth={0}
-                >
-                  {notifStatusData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+            {notifStatusTotal === 0 ? (
+              <div className="relative flex h-[120px] w-[120px] shrink-0 items-center justify-center">
+                <svg width="120" height="120">
+                  <circle cx="60" cy="60" r="47" fill="none" stroke="var(--gray-3)" strokeWidth="18" />
+                </svg>
+                <span className="absolute text-[10px] text-[var(--gray-6)]">No data</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width={120} height={120}>
+                <PieChart>
+                  <Pie
+                    data={notifStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={38}
+                    outerRadius={56}
+                    paddingAngle={notifStatusData.filter(d => d.value > 0).length > 1 ? 3 : 0}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {notifStatusData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            )}
             <div className="space-y-2">
               {notifStatusData.map((d) => (
                 <div key={d.name} className="flex items-center gap-2">
