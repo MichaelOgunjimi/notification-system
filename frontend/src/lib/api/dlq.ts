@@ -25,5 +25,5 @@ export async function retryDLQ(id: string): Promise<void> {
 }
 
 export async function discardDLQ(id: string): Promise<void> {
-  await apiClient.delete(`/dead-letter/${id}`);
+  await apiClient.post(`/dead-letter/${id}/discard`);
 }

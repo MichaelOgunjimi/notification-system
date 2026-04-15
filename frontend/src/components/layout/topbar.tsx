@@ -15,7 +15,7 @@ interface TopbarProps {
 
 export function Topbar({ onOpenMobileNav, breadcrumbs }: TopbarProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-3 border-b border-[var(--gray-3)] bg-[var(--gray-1)] px-4 sm:px-5">
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-[var(--gray-3)] bg-[var(--gray-1)] px-4 sm:px-5">
       {/* Mobile hamburger */}
       <button
         type="button"

@@ -62,7 +62,15 @@ export default function DLQPage() {
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Failed Deliveries</h2>
             <p className="mt-0.5 text-xs text-[var(--gray-6)]">Notifications that exhausted all retry attempts.</p>
           </div>
-          <button type="button" className="flex items-center gap-1.5 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-7)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors">
+          <button
+            type="button"
+            onClick={() => {
+              const active = failed.filter(i => i.status === "active");
+              active.forEach(i => retryMutation.mutate(i.id));
+            }}
+            disabled={!failed.some(i => i.status === "active") || retryMutation.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-7)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+          >
             <RotateCcw className="h-3.5 w-3.5" />
             Retry All
           </button>
@@ -96,14 +104,16 @@ export default function DLQPage() {
                   <button
                     type="button"
                     onClick={() => retryMutation.mutate(item.id)}
-                    className="rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-7)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors"
+                    disabled={item.status !== "active" || retryMutation.isPending}
+                    className="rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-7)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Retry
                   </button>
                   <button
                     type="button"
                     onClick={() => discardMutation.mutate(item.id)}
-                    className="rounded-lg border border-[color:rgba(239,68,68,0.2)] bg-[color:rgba(239,68,68,0.08)] px-3 py-1.5 text-[13px] text-[#fca5a5] hover:bg-[color:rgba(239,68,68,0.14)] transition-colors"
+                    disabled={item.status !== "active" || discardMutation.isPending}
+                    className="rounded-lg border border-[color:rgba(239,68,68,0.2)] bg-[color:rgba(239,68,68,0.08)] px-3 py-1.5 text-[13px] text-[#fca5a5] hover:bg-[color:rgba(239,68,68,0.14)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Discard
                   </button>
