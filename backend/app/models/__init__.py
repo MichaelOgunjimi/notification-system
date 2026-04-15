@@ -3,7 +3,7 @@
 Importing this module ensures Alembic autogenerate discovers every table.
 """
 
-from app.models.alert import AlertRule
+from app.models.alert_rule import AlertRule
 from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
 from app.models.channel_config import ChannelConfig

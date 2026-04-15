@@ -1,20 +1,36 @@
 """Suppression endpoints."""
 
 import uuid
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
-from sqlmodel import col
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlmodel import col, func
 
-from app.api.deps import ApiKeyDep, SessionDep
+from app.api.deps import ApiKeyDep, SessionDep, is_master_key
 from app.models.enums import NotificationChannel
 from app.models.suppression import Suppression
 from app.schemas.common import PaginatedResponse
-from app.schemas.suppressions import SuppressionCreate, SuppressionResponse
-from app.utils.audit import log_action
 
 router = APIRouter(prefix="/suppressions", tags=["suppressions"])
+
+
+class SuppressionResponse(BaseModel):
+    id: uuid.UUID
+    api_key_id: uuid.UUID
+    channel: NotificationChannel
+    recipient: str
+    reason: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SuppressionCreate(BaseModel):
+    channel: NotificationChannel
+    recipient: str = Field(max_length=500)
+    reason: str | None = None
 
 
 @router.get("", response_model=PaginatedResponse[SuppressionResponse])
@@ -26,23 +42,30 @@ async def list_suppressions(
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> PaginatedResponse[SuppressionResponse]:
-    filters = [col(Suppression.api_key_id) == api_key.id]
+    filters = []
+    if not is_master_key(api_key):
+        filters.append(col(Suppression.api_key_id) == api_key.id)
     if channel:
         filters.append(col(Suppression.channel) == channel)
 
-    total_result = await db.execute(select(func.count()).select_from(Suppression).where(*filters))
-    total = int(total_result.scalar() or 0)
+    count_query = select(func.count()).select_from(Suppression)
+    if filters:
+        count_query = count_query.where(*filters)
+    total = int((await db.execute(count_query)).scalar() or 0)
 
     offset = (page - 1) * per_page
-    result = await db.execute(
+    query = (
         select(Suppression)
-        .where(*filters)
         .order_by(col(Suppression.created_at).desc())
         .offset(offset)
         .limit(per_page)
     )
-    items = [SuppressionResponse.model_validate(row) for row in result.scalars().all()]
-    return PaginatedResponse.create(items, total, page, per_page)
+    if filters:
+        query = query.where(*filters)
+    items = (await db.execute(query)).scalars().all()
+    return PaginatedResponse.create(
+        [SuppressionResponse.model_validate(item) for item in items], total, page, per_page
+    )
 
 
 @router.post("", response_model=SuppressionResponse, status_code=status.HTTP_201_CREATED)
@@ -51,33 +74,21 @@ async def create_suppression(
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
-    request: Request,
 ) -> SuppressionResponse:
+    if is_master_key(api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Use a project key to create suppressions",
+        )
+
     suppression = Suppression(
         api_key_id=api_key.id,
         channel=body.channel,
         recipient=body.recipient,
         reason=body.reason,
     )
-    try:
-        db.add(suppression)
-        await db.flush()
-        await log_action(
-            db,
-            api_key_id=api_key.id,
-            action="suppression.added",
-            resource_type="suppression",
-            resource_id=str(suppression.id),
-            metadata={"channel": str(suppression.channel), "recipient": suppression.recipient},
-            ip_address=request.client.host if request.client else None,
-        )
-        await db.commit()
-    except IntegrityError as exc:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Suppression already exists",
-        ) from exc
+    db.add(suppression)
+    await db.commit()
     await db.refresh(suppression)
     return SuppressionResponse.model_validate(suppression)
 
@@ -88,27 +99,14 @@ async def delete_suppression(
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
-    request: Request,
 ) -> None:
-    result = await db.execute(
-        select(Suppression).where(
-            col(Suppression.id) == suppression_id,
-            col(Suppression.api_key_id) == api_key.id,
-        )
-    )
-    suppression = result.scalar_one_or_none()
+    suppression = (
+        await db.execute(select(Suppression).where(col(Suppression.id) == suppression_id))
+    ).scalar_one_or_none()
     if suppression is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suppression not found")
+    if not is_master_key(api_key) and suppression.api_key_id != api_key.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suppression not found")
 
     await db.delete(suppression)
-    await db.flush()
-    await log_action(
-        db,
-        api_key_id=api_key.id,
-        action="suppression.removed",
-        resource_type="suppression",
-        resource_id=str(suppression_id),
-        metadata={"channel": str(suppression.channel), "recipient": suppression.recipient},
-        ip_address=request.client.host if request.client else None,
-    )
     await db.commit()
