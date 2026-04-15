@@ -15,6 +15,14 @@ from app.utils.crypto import hash_api_key
 
 logger = logging.getLogger(__name__)
 
+# Atomically increment counter and set TTL on first request.
+# Using Lua ensures INCR + EXPIRE are a single Redis operation — no orphaned keys.
+_INCR_WITH_EXPIRE = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+return count
+"""
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Apply per-minute fixed-window rate limits per API key."""
@@ -47,9 +55,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         try:
             redis = get_redis()
-            count = await redis.incr(key)
-            if count == 1:
-                await redis.expire(key, 60)
+            count = int(await redis.eval(_INCR_WITH_EXPIRE, 1, key, "60"))  # type: ignore[misc]
         except Exception:
             logger.warning(
                 "Rate limit Redis operation failed for path %s; allowing request",

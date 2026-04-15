@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -37,3 +38,12 @@ class TemplateResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TemplatePreviewRequest(BaseModel):
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+
+class TemplatePreviewResponse(BaseModel):
+    subject: str | None
+    body: str

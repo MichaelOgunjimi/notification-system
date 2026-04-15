@@ -1,5 +1,6 @@
 """Custom middleware — request ID injection, logging, and error handling."""
 
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -19,6 +20,12 @@ from app.models.usage import ApiKeyUsage
 from app.utils.crypto import hash_api_key
 
 logger = structlog.get_logger(__name__)
+
+# Collapse UUID path segments into {id} so usage rows group by route, not per-resource.
+# e.g. /api/v1/templates/550e8400-... → /api/v1/templates/{id}
+_UUID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
+)
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -81,9 +88,10 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
                 return response
 
             hour_bucket = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+            normalized_path = _UUID_RE.sub("{id}", request.url.path)
             stmt = insert(ApiKeyUsage).values(
                 api_key_id=api_key_id,
-                endpoint=request.url.path,
+                endpoint=normalized_path,
                 method=request.method,
                 status_code=response.status_code,
                 hour_bucket=hour_bucket,

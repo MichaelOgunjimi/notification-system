@@ -37,8 +37,17 @@ TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_o
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def _create_tables():
-    """Create all tables once at the start; drop them at the end."""
+    """Create all tables once at the start; drop them at the end.
+
+    Terminates any stale connections left by previously interrupted test runs
+    before attempting DROP/CREATE to avoid lock deadlocks.
+    """
     async with test_engine.begin() as conn:
+        # Kill zombie connections from prior interrupted runs so DROP doesn't hang.
+        await conn.exec_driver_sql(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+        )
         await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
     yield

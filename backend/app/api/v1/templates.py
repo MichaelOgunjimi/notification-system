@@ -7,7 +7,13 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from app.api.deps import ApiKeyDep, SessionDep
 from app.models.enums import NotificationChannel
 from app.schemas.common import PaginatedResponse
-from app.schemas.templates import TemplateCreate, TemplateResponse, TemplateUpdate
+from app.schemas.templates import (
+    TemplateCreate,
+    TemplatePreviewRequest,
+    TemplatePreviewResponse,
+    TemplateResponse,
+    TemplateUpdate,
+)
 from app.services import template_service
 from app.utils.audit import log_action
 
@@ -101,6 +107,26 @@ async def update_template(
     )
     await db.commit()
     return TemplateResponse.model_validate(updated)
+
+
+@router.post("/{template_id}/preview", response_model=TemplatePreviewResponse)
+async def preview_template(
+    template_id: uuid.UUID,
+    body: TemplatePreviewRequest,
+    *,
+    db: SessionDep,
+    api_key: ApiKeyDep,
+) -> TemplatePreviewResponse:
+    template = await template_service.get_template_for_key(db, template_id, api_key_id=api_key.id)
+    if template is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+    rendered_subject, rendered_body = template_service.preview_template(
+        template.body,
+        template.subject,
+        channel=template.channel,
+        variables=body.variables,
+    )
+    return TemplatePreviewResponse(subject=rendered_subject, body=rendered_body)
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

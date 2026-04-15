@@ -149,8 +149,10 @@ def render_template(template: Template, payload_vars: dict[str, Any]) -> tuple[s
 def preview_template(
     body: str,
     subject: str | None,
+    channel: NotificationChannel,
     variables: dict[str, Any],
 ) -> tuple[str | None, str]:
-    rendered_subject = _jinja_env_html.from_string(subject).render(**variables) if subject else None
-    rendered_body = _jinja_env_html.from_string(body).render(**variables)
+    env = _jinja_env_html if channel == NotificationChannel.EMAIL else _jinja_env_text
+    rendered_subject = env.from_string(subject).render(**variables) if subject else None
+    rendered_body = env.from_string(body).render(**variables)
     return rendered_subject, rendered_body
