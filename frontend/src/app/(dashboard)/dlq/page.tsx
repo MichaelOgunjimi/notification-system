@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, RotateCcw, ShieldAlert, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, RotateCcw, ShieldAlert, Inbox } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -90,9 +91,9 @@ export default function DLQPage() {
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-        <StatCard label="Awaiting Review" value={data?.total ?? 0} icon={<ShieldAlert className="h-3.5 w-3.5" />} />
-        <StatCard label="Total on Page" value={items.length} icon={<RotateCcw className="h-3.5 w-3.5" />} />
-        <StatCard label="Active (Actionable)" value={activeItems.length} icon={<Trash2 className="h-3.5 w-3.5" />} />
+        <StatCard label="Awaiting Review" value={data?.total ?? 0} icon={<ShieldAlert className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard label="Total on Page" value={items.length} icon={<Inbox className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        <StatCard label="Active (Actionable)" value={activeItems.length} icon={<RotateCcw className="h-3.5 w-3.5 text-[#4ade80]" />} />
       </div>
 
       {/* Failed deliveries */}
@@ -136,9 +137,12 @@ export default function DLQPage() {
             <EmptyState title="No dead letters" description="No notifications in the dead letter queue." />
           ) : null}
           {items.map((item) => (
-            <div key={item.id} className="px-4 py-4 sm:px-5">
+            <div key={item.id} className="px-4 py-4 sm:px-5 hover:bg-[var(--gray-3)] transition-colors">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
+                <Link
+                  href={`/notifications/${item.notification_id}`}
+                  className="min-w-0 flex-1 cursor-pointer"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#fca5a5]" />
                     <p className="text-[13px] font-medium text-[var(--gray-9)]">{item.notification_id}</p>
@@ -154,7 +158,7 @@ export default function DLQPage() {
                     <span className="mx-2 text-[var(--gray-4)]">·</span>
                     {formatRelativeTime(item.created_at)}
                   </p>
-                </div>
+                </Link>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
@@ -178,15 +182,13 @@ export default function DLQPage() {
           ))}
         </div>
 
-        {(data?.total_pages ?? 1) > 1 && (
-          <TablePagination
+        <TablePagination
             page={page}
             totalPages={data?.total_pages ?? 1}
             total={data?.total ?? 0}
             perPage={PER_PAGE}
             onPageChange={setPage}
           />
-        )}
       </div>
     </div>
   );
