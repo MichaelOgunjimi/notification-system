@@ -2,11 +2,12 @@
 
 import logging
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
 from app.api.deps import ApiKeyDep, SessionDep, api_key_filter_id, is_master_key
-from app.models.enums import EventStatus
+from app.models.enums import EventPriority, EventStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.events import (
     EventBatchCreate,
@@ -129,13 +130,25 @@ async def list_events(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     status: EventStatus | None = Query(default=None),
+    priority: EventPriority | None = Query(default=None),
+    event_type: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     *,
     db: SessionDep,
     api_key: ApiKeyDep,
 ) -> PaginatedResponse[EventResponse]:
     api_key_filter = api_key_filter_id(api_key)
     events, total = await event_service.list_events(
-        db, api_key_filter, status=status, page=page, per_page=per_page
+        db,
+        api_key_filter,
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        date_from=date_from,
+        date_to=date_to,
+        page=page,
+        per_page=per_page,
     )
     event_ids = [e.id for e in events]
     failed_ids = await event_service.bulk_has_failures(db, event_ids)

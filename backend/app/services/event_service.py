@@ -2,13 +2,14 @@
 
 import logging
 import uuid
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from app.models.enums import EventStatus, NotificationStatus
+from app.models.enums import EventPriority, EventStatus, NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
@@ -261,6 +262,10 @@ async def list_events(
     api_key_id: uuid.UUID | None,
     *,
     status: EventStatus | None = None,
+    priority: EventPriority | None = None,
+    event_type: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> tuple[list[Event], int]:
@@ -270,6 +275,16 @@ async def list_events(
         query = query.where(col(Event.api_key_id) == api_key_id)
     if status is not None:
         query = query.where(col(Event.status) == status)
+    if priority is not None:
+        query = query.where(col(Event.priority) == priority)
+    if event_type is not None:
+        query = query.where(col(Event.event_type).ilike(f"%{event_type}%"))
+    if date_from is not None:
+        dt = date_from.replace(tzinfo=None) if date_from.tzinfo is not None else date_from
+        query = query.where(col(Event.created_at) >= dt)
+    if date_to is not None:
+        dt = date_to.replace(tzinfo=None) if date_to.tzinfo is not None else date_to
+        query = query.where(col(Event.created_at) <= dt)
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = int(total_result.scalar() or 0)
     offset = (page - 1) * per_page

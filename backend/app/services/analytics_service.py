@@ -24,13 +24,26 @@ def _today_start() -> datetime:
     return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
 
 
-async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> AnalyticsResponse:
-    start = _today_start()
+def _to_naive(dt: datetime) -> datetime:
+    """Strip timezone info — DB columns are TIMESTAMP WITHOUT TIME ZONE."""
+    return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
+
+
+async def get_analytics(
+    db: AsyncSession,
+    api_key_id: uuid.UUID | None,
+    *,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+) -> AnalyticsResponse:
+    start = _to_naive(date_from) if date_from is not None else _today_start()
+    end = _to_naive(date_to) if date_to is not None else None
 
     event_status_rows = (
         await db.execute(
             select(col(Event.status), func.count().label("cnt"))
             .where(col(Event.created_at) >= start)
+            .where(*([col(Event.created_at) <= end] if end is not None else []))
             .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .group_by(col(Event.status))
         )
@@ -53,6 +66,7 @@ async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> Analy
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.created_at) >= start)
+            .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.status))
         )
     ).all()
@@ -84,6 +98,7 @@ async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> Analy
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
             .where(col(Notification.created_at) >= start)
+            .where(*([col(Notification.created_at) <= end] if end is not None else []))
         )
     ).scalar_one_or_none()
     avg_latency = float(latency_result) if latency_result is not None else None
@@ -112,6 +127,7 @@ async def get_analytics(db: AsyncSession, api_key_id: uuid.UUID | None) -> Analy
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.created_at) >= start)
+            .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.channel), col(Notification.status))
         )
     ).all()
