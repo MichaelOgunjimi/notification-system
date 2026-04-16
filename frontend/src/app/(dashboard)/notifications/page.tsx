@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ArrowUpRight, Bell, Clock, Filter, RotateCcw } from "lucide-react";
+import { Activity, ArrowUpRight, Bell, Clock, RotateCcw } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TablePagination } from "@/components/shared/table-pagination";
+import { DateRangeFilter, type DatePreset, type DateRange, presetToDateRange } from "@/components/shared/date-range-filter";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -19,20 +20,26 @@ const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: 
 export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [preset, setPreset] = useState<DatePreset>("today");
+  const [customRange, setCustomRange] = useState<DateRange | null>(null);
   const router = useRouter();
+
+  const dateRange = presetToDateRange(preset, customRange);
   const channelParam = ["Email", "SMS", "Webhook"].includes(activeFilter)
     ? activeFilter.toLowerCase()
     : undefined;
   const statusParam = activeFilter === "Failed" ? "failed" : undefined;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["notifications", { page, channel: channelParam, status: statusParam }],
+    queryKey: ["notifications", { page, channel: channelParam, status: statusParam, preset, customRange }],
     queryFn: () =>
       listNotifications({
         page,
         per_page: 20,
         channel: channelParam,
         status: statusParam,
+        date_from: dateRange.from,
+        date_to: dateRange.to,
       }),
   });
 
@@ -41,6 +48,11 @@ export default function NotificationsPage() {
   const { data: totalQueued } = useQuery({ queryKey: ["notif-count", "queued"], queryFn: () => listNotifications({ per_page: 1, status: "queued" }) });
   const { data: totalProcessing } = useQuery({ queryKey: ["notif-count", "processing"], queryFn: () => listNotifications({ per_page: 1, status: "processing" }) });
   const { data: totalFailed } = useQuery({ queryKey: ["notif-count", "failed"], queryFn: () => listNotifications({ per_page: 1, status: "failed" }) });
+
+  function setFilter(f: string) {
+    setActiveFilter(f);
+    setPage(1);
+  }
 
   if (isLoading) {
     return (
@@ -73,29 +85,34 @@ export default function NotificationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {channelFilters.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setActiveFilter(f)}
-              className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${activeFilter === f ? "border-[color:rgba(245,158,11,0.24)] bg-[color:rgba(245,158,11,0.1)] text-[var(--gray-10)]" : "border-[var(--gray-3)] bg-transparent text-[var(--gray-6)] hover:bg-[var(--gray-2)] hover:text-[var(--gray-9)]"}`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="space-y-3">
+        {/* Channel + status tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {channelFilters.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${activeFilter === f ? "border-[color:rgba(245,158,11,0.24)] bg-[color:rgba(245,158,11,0.1)] text-[var(--gray-10)]" : "border-[var(--gray-3)] bg-transparent text-[var(--gray-6)] hover:bg-[var(--gray-2)] hover:text-[var(--gray-9)]"}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-1.5 rounded-full border border-[color:rgba(34,197,94,0.2)] bg-[color:rgba(34,197,94,0.07)] px-2.5 py-1 text-[11px] font-medium text-[var(--status-delivered)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-delivered)] animate-pulse" />
             Live polling
           </div>
-          <button type="button" className="flex items-center gap-2 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-6)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors">
-            <Filter className="h-3.5 w-3.5" />
-            Filters
-          </button>
         </div>
+
+        {/* Date range */}
+        <DateRangeFilter
+          preset={preset}
+          customRange={customRange}
+          onPreset={(p) => { setPreset(p); setPage(1); }}
+          onCustomRange={(r) => { setCustomRange(r); setPage(1); }}
+        />
       </div>
 
       {/* Table */}
@@ -105,7 +122,7 @@ export default function NotificationsPage() {
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Notification Stream</h2>
             <p className="mt-0.5 text-xs text-[var(--gray-6)]">Latest delivery attempts and state changes.</p>
           </div>
-          <span className="shrink-0 rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] text-[var(--gray-9)]">Last 30 min</span>
+          <span className="shrink-0 rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] text-[var(--gray-9)]">{data?.total ?? 0}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full">
@@ -128,7 +145,7 @@ export default function NotificationsPage() {
                     <p className="mt-0.5 font-mono text-[11px] text-[var(--gray-8)]">{row.id.slice(0, 24)}…</p>
                   </td>
                   <td className="px-4 py-3.5 sm:px-5">
-                    <span className={`text-xs font-medium ${channelColor[row.channel] ?? ""}`}>{row.channel}</span>
+                    <span className={`text-xs font-medium ${channelColor[row.channel as keyof typeof channelColor] ?? ""}`}>{row.channel}</span>
                   </td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{row.recipient_address}</td>
                   <td className="px-4 py-3.5 sm:px-5"><StatusBadge status={row.status} /></td>
@@ -139,7 +156,7 @@ export default function NotificationsPage() {
                   <td className="px-4 py-3.5 text-right sm:px-5">
                     <Link
                       href={`/notifications/${row.id}`}
-                      onClick={(event) => event.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 rounded-md border border-[color:rgba(245,158,11,0.2)] bg-[color:rgba(245,158,11,0.06)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)] transition-colors hover:border-[color:rgba(245,158,11,0.4)] hover:bg-[color:rgba(245,158,11,0.14)] hover:text-[#fbbf24]"
                     >
                       View <ArrowUpRight className="h-3 w-3" />

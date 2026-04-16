@@ -12,6 +12,8 @@ export async function listNotifications(params?: {
   per_page?: number;
   status?: string;
   channel?: string;
+  date_from?: string;
+  date_to?: string;
 }): Promise<PaginatedResponse<NotificationResponse>> {
   const { data } = await apiClient.get("/notifications", { params });
   return data;

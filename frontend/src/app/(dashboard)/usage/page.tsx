@@ -13,7 +13,7 @@ export default function UsagePage() {
     queryKey: ["usage"],
     queryFn: () => getUsage({ per_page: 200 }),
   });
-  const { data: analytics } = useQuery({ queryKey: ["analytics"], queryFn: getAnalytics });
+  const { data: analytics } = useQuery({ queryKey: ["analytics"], queryFn: () => getAnalytics() });
 
   const totals = useMemo(() => {
     const items = data?.items ?? [];

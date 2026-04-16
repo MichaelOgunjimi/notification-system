@@ -12,19 +12,26 @@ import {
   Webhook,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { DateRangeFilter, type DatePreset, type DateRange, presetToDateRange } from "@/components/shared/date-range-filter";
 import { getAnalytics, listNotifications } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default function DashboardPage() {
+  const [preset, setPreset] = useState<DatePreset>("today");
+  const [customRange, setCustomRange] = useState<DateRange | null>(null);
+
+  const dateRange = presetToDateRange(preset, customRange);
+
   const analyticsQuery = useQuery({
-    queryKey: ["analytics"],
-    queryFn: getAnalytics,
+    queryKey: ["analytics", preset, customRange],
+    queryFn: () => getAnalytics({ date_from: dateRange.from, date_to: dateRange.to }),
   });
   const notificationsQuery = useQuery({
     queryKey: ["notifications", { per_page: 5 }],
@@ -104,6 +111,19 @@ export default function DashboardPage() {
   return (
     <div className="space-y-5">
 
+      {/* ── Date range filter ── */}
+      <div className="flex items-center justify-between gap-3">
+        <DateRangeFilter
+          preset={preset}
+          customRange={customRange}
+          onPreset={setPreset}
+          onCustomRange={setCustomRange}
+        />
+        <span className="shrink-0 text-[11px] text-[var(--gray-5)]">
+          {preset === "today" ? "Showing today" : preset === "7d" ? "Last 7 days" : preset === "30d" ? "Last 30 days" : "Custom range"}
+        </span>
+      </div>
+
       {/* ── Pipeline chart (hidden on mobile) ── */}
       <div className="hidden overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[#161616] p-4 sm:block">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Notification Pipeline</p>
@@ -136,7 +156,7 @@ export default function DashboardPage() {
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#2e2e2e] pt-3">
           <div className="text-center">
-            <p className="text-[10px] text-[#6b7280]">Events Today</p>
+            <p className="text-[10px] text-[#6b7280]">{preset === "today" ? "Events Today" : "Events"}</p>
             <p className="text-[15px] font-semibold text-[#e5e5e5]">{(analytics?.events_today ?? 0).toLocaleString()}</p>
           </div>
           <div className="text-center">
@@ -155,7 +175,7 @@ export default function DashboardPage() {
       {/* ── Stat cards (always visible) ── */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <StatCard
-          label="Events Today"
+          label={preset === "today" ? "Events Today" : "Events"}
           value={(analytics?.events_today ?? 0).toLocaleString()}
           icon={<Activity className="h-3.5 w-3.5 text-[#60a5fa]" />}
         />

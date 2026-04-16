@@ -11,6 +11,10 @@ export async function listEvents(params?: {
   page?: number;
   per_page?: number;
   status?: string;
+  priority?: string;
+  event_type?: string;
+  date_from?: string;
+  date_to?: string;
 }): Promise<PaginatedResponse<EventResponse>> {
   const { data } = await apiClient.get("/events", { params });
   return data;
