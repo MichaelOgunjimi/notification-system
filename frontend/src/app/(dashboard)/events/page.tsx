@@ -56,11 +56,12 @@ export default function EventsPage() {
     }),
   });
 
-  // All-time counts (no date filter) — per_page:1 is lightweight
-  const { data: totalAll } = useQuery({ queryKey: ["events-count", "all"], queryFn: () => listEvents({ per_page: 1 }) });
-  const { data: totalCompleted } = useQuery({ queryKey: ["events-count", "completed"], queryFn: () => listEvents({ per_page: 1, status: "completed" }) });
-  const { data: totalFailed } = useQuery({ queryKey: ["events-count", "failed"], queryFn: () => listEvents({ per_page: 1, status: "failed" }) });
-  const { data: totalProcessing } = useQuery({ queryKey: ["events-count", "processing"], queryFn: () => listEvents({ per_page: 1, status: "processing" }) });
+  // Stat counts scoped to the active date range
+  const dateParams = { date_from: dateRange.from, date_to: dateRange.to };
+  const { data: totalAll } = useQuery({ queryKey: ["events-count", "all", preset, customRange], queryFn: () => listEvents({ per_page: 1, ...dateParams }) });
+  const { data: totalCompleted } = useQuery({ queryKey: ["events-count", "completed", preset, customRange], queryFn: () => listEvents({ per_page: 1, status: "completed", ...dateParams }) });
+  const { data: totalFailed } = useQuery({ queryKey: ["events-count", "failed", preset, customRange], queryFn: () => listEvents({ per_page: 1, status: "failed", ...dateParams }) });
+  const { data: totalProcessing } = useQuery({ queryKey: ["events-count", "processing", preset, customRange], queryFn: () => listEvents({ per_page: 1, status: "processing", ...dateParams }) });
 
   function setFilter(key: "status" | "priority", value: string) {
     if (key === "status") setStatus(value);
@@ -79,6 +80,8 @@ export default function EventsPage() {
     setPage(1);
   }
 
+  const periodLabel = preset === "today" ? "Today" : preset === "7d" ? "(7d)" : preset === "30d" ? "(30d)" : "";
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -95,10 +98,10 @@ export default function EventsPage() {
     <div className="space-y-5">
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Total Events" value={(totalAll?.total ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
-        <StatCard label="Completed" value={(totalCompleted?.total ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
-        <StatCard label="Failed" value={(totalFailed?.total ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
-        <StatCard label="Processing" value={(totalProcessing?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        <StatCard label={`Events ${periodLabel}`} value={(totalAll?.total ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
+        <StatCard label={`Completed ${periodLabel}`} value={(totalCompleted?.total ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        <StatCard label={`Failed ${periodLabel}`} value={(totalFailed?.total ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard label={`Processing ${periodLabel}`} value={(totalProcessing?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
       </div>
 
       {/* Filters */}
