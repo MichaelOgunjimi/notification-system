@@ -34,18 +34,21 @@ export function presetToDateRange(preset: DatePreset, customRange: DateRange | n
   }
   if (preset === "7d") {
     const start = new Date(now);
-    start.setDate(start.getDate() - 7);
+    start.setDate(start.getDate() - 6);
     start.setHours(0, 0, 0, 0);
     return { from: toISO(start), to: toISO(now) };
   }
   if (preset === "30d") {
     const start = new Date(now);
-    start.setDate(start.getDate() - 30);
+    start.setDate(start.getDate() - 29);
     start.setHours(0, 0, 0, 0);
     return { from: toISO(start), to: toISO(now) };
   }
   // custom
-  return customRange ?? { from: toISO(new Date(now.setHours(0, 0, 0, 0))), to: toISO(new Date()) };
+  if (customRange) return customRange;
+  const fallbackStart = new Date(now);
+  fallbackStart.setHours(0, 0, 0, 0);
+  return { from: toISO(fallbackStart), to: toISO(now) };
 }
 
 export function DateRangeFilter({ preset, customRange, onPreset, onCustomRange }: Props) {
@@ -109,7 +112,7 @@ export function DateRangeFilter({ preset, customRange, onPreset, onCustomRange }
           {customRange && (
             <button
               type="button"
-              onClick={() => onCustomRange(null)}
+              onClick={() => { onCustomRange(null); onPreset("today"); }}
               className="rounded-md p-1 text-[var(--gray-5)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors"
             >
               <X className="h-3.5 w-3.5" />

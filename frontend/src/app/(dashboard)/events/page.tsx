@@ -151,7 +151,7 @@ export default function EventsPage() {
               placeholder="Search event type…"
               className="w-48 bg-transparent text-[13px] text-[var(--gray-9)] placeholder:text-[var(--gray-5)] outline-none"
             />
-            {searchInput && (
+            {(searchInput || search) && (
               <button type="button" onClick={clearSearch} className="text-[var(--gray-5)] hover:text-[var(--gray-9)]">
                 <X className="h-3 w-3" />
               </button>

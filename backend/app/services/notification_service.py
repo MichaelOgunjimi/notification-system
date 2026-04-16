@@ -10,6 +10,7 @@ from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.schemas.notifications import NotificationListParams
+from app.utils.datetime import to_naive_utc
 
 
 async def get_notification(
@@ -70,11 +71,13 @@ async def list_notifications(
         query = query.where(col(Notification.channel) == filters.channel)
         count_query = count_query.where(col(Notification.channel) == filters.channel)
     if filters.date_from is not None:
-        query = query.where(col(Notification.created_at) >= filters.date_from)
-        count_query = count_query.where(col(Notification.created_at) >= filters.date_from)
+        _from = to_naive_utc(filters.date_from)
+        query = query.where(col(Notification.created_at) >= _from)
+        count_query = count_query.where(col(Notification.created_at) >= _from)
     if filters.date_to is not None:
-        query = query.where(col(Notification.created_at) <= filters.date_to)
-        count_query = count_query.where(col(Notification.created_at) <= filters.date_to)
+        _to = to_naive_utc(filters.date_to)
+        query = query.where(col(Notification.created_at) <= _to)
+        count_query = count_query.where(col(Notification.created_at) <= _to)
     if filters.recipient is not None:
         query = query.where(col(Notification.recipient_address) == filters.recipient)
         count_query = count_query.where(col(Notification.recipient_address) == filters.recipient)
