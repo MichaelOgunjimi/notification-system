@@ -93,11 +93,67 @@ export default function DashboardPage() {
   // Recent failures
   const recentFailures = failedNotificationsQuery.data?.items ?? [];
 
+  // Mobile summary bar chart data (notification pipeline at a glance)
+  const mobileSummaryData = [
+    { name: "Queued",     value: analytics?.notifications_queued ?? 0,     color: "#60a5fa" },
+    { name: "Processing", value: analytics?.notifications_processing ?? 0, color: "#fbbf24" },
+    { name: "Delivered",  value: analytics?.notifications_delivered ?? 0,  color: "#4ade80" },
+    { name: "Failed",     value: analytics?.notifications_failed ?? 0,     color: "#f87171" },
+  ];
+
   return (
     <div className="space-y-5">
 
-      {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+      {/* ── Mobile stats chart (hidden sm+) ── */}
+      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[#161616] p-4 sm:hidden">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Notification Pipeline</p>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={mobileSummaryData} layout="vertical" margin={{ top: 0, right: 36, left: 70, bottom: 0 }}>
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#a3a3a3", fontSize: 12 }} width={70} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0];
+                  return (
+                    <div style={{ background: "#1c1c1c", border: "1px solid #2e2e2e", borderRadius: 8, padding: "6px 10px" }}>
+                      <p style={{ color: "#e5e5e5", fontSize: 13, fontWeight: 600 }}>
+                        <span style={{ color: (p.payload as { color: string }).color }}>● </span>
+                        {(p.value as number).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                {mobileSummaryData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#2e2e2e] pt-3">
+          <div className="text-center">
+            <p className="text-[10px] text-[#6b7280]">Events Today</p>
+            <p className="text-[15px] font-semibold text-[#e5e5e5]">{(analytics?.events_today ?? 0).toLocaleString()}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-[#6b7280]">Delivery Rate</p>
+            <p className="text-[15px] font-semibold text-[#e5e5e5]">
+              {(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-[#6b7280]">Dead Letters</p>
+            <p className="text-[15px] font-semibold text-[#f87171]">{analytics?.dlq_active ?? 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stat cards (hidden on mobile) ── */}
+      <div className="hidden sm:grid grid-cols-2 gap-3 xl:grid-cols-5">
         <StatCard
           label="Events Today"
           value={(analytics?.events_today ?? 0).toLocaleString()}

@@ -20,6 +20,29 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 
+// Custom tooltip — uses hardcoded hex so it works inside recharts portals
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string; payload?: { fill?: string; color?: string } }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const color = payload[0].payload?.fill ?? payload[0].payload?.color ?? "#f59e0b";
+  return (
+    <div style={{ background: "#1c1c1c", border: "1px solid #2e2e2e", borderRadius: 8, padding: "8px 12px", minWidth: 100 }}>
+      {label && <p style={{ color: "#9ca3af", fontSize: 11, marginBottom: 4 }}>{label}</p>}
+      <p style={{ color: "#f5f5f5", fontSize: 13, fontWeight: 600 }}>
+        <span style={{ color }}>● </span>
+        {(payload[0].value as number).toLocaleString()}
+      </p>
+    </div>
+  );
+}
+
 export default function AdminAnalyticsPage() {
   const { data, isLoading, error } = useQuery({ queryKey: ["admin", "analytics"], queryFn: getAdminAnalytics });
 
@@ -96,11 +119,11 @@ export default function AdminAnalyticsPage() {
                             <Cell key={entry.channel} fill={entry.fill} />
                           ))}
                         </Pie>
-                        <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 12, color: "var(--gray-9)" }} />
-                        <text x="50%" y="42%" textAnchor="middle" dominantBaseline="middle" fill="var(--gray-6)" fontSize={11}>
+                        <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 12, color: "#e5e5e5" }} />
+                        <text x="50%" y="42%" textAnchor="middle" dominantBaseline="middle" fill="#9ca3af" fontSize={11}>
                           Total
                         </text>
-                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fill="var(--gray-10)" fontSize={20}>
+                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fill="#f5f5f5" fontSize={20}>
                           {channelTotal}
                         </text>
                       </PieChart>
@@ -112,25 +135,17 @@ export default function AdminAnalyticsPage() {
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={channelData} layout="vertical" margin={{ top: 8, right: 16, left: 10, bottom: 8 }}>
-                        <CartesianGrid stroke="var(--gray-3)" horizontal={true} vertical={false} />
-                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "var(--gray-6)", fontSize: 11 }} />
+                        <CartesianGrid stroke="#2e2e2e" horizontal={true} vertical={false} />
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 11 }} />
                         <YAxis
                           type="category"
                           dataKey="channel"
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fill: "var(--gray-6)", fontSize: 11 }}
+                          tick={{ fill: "#a3a3a3", fontSize: 11 }}
                           width={70}
                         />
-                        <Tooltip
-                          contentStyle={{
-                            background: "var(--gray-2)",
-                            border: "1px solid var(--gray-3)",
-                            borderRadius: 10,
-                            color: "var(--gray-9)",
-                            fontSize: 12,
-                          }}
-                        />
+                        <Tooltip content={<ChartTooltip />} />
                         <Bar dataKey="total" radius={[0, 4, 4, 0]}>
                           {channelData.map((entry) => (
                             <Cell key={entry.channel} fill={entry.fill} />
@@ -173,26 +188,16 @@ export default function AdminAnalyticsPage() {
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topKeyChartData} margin={{ top: 8, right: 16, left: -10, bottom: 20 }}>
-                      <CartesianGrid stroke="var(--gray-3)" vertical={false} />
+                      <CartesianGrid stroke="#2e2e2e" vertical={false} />
                       <XAxis
                         dataKey="short_name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: "var(--gray-6)", fontSize: 11 }}
+                        tick={{ fill: "#9ca3af", fontSize: 11 }}
                         interval={0}
                       />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--gray-6)", fontSize: 11 }} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "var(--gray-2)",
-                          border: "1px solid var(--gray-3)",
-                          borderRadius: 10,
-                          color: "var(--gray-9)",
-                          fontSize: 12,
-                        }}
-                        labelFormatter={(label) => `Key: ${label}`}
-                        formatter={(value) => [`${value ?? 0}`, "Notifications"]}
-                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                      <Tooltip content={<ChartTooltip />} />
                       <Bar dataKey="total_notifications" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
