@@ -104,8 +104,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-5">
 
-      {/* ── Mobile stats chart (hidden sm+) ── */}
-      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[#161616] p-4 sm:hidden">
+      {/* ── Pipeline chart (hidden on mobile) ── */}
+      <div className="hidden overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[#161616] p-4 sm:block">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Notification Pipeline</p>
         <div className="h-40">
           <ResponsiveContainer width="100%" height="100%">
@@ -152,8 +152,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Stat cards (hidden on mobile) ── */}
-      <div className="hidden sm:grid grid-cols-2 gap-3 xl:grid-cols-5">
+      {/* ── Stat cards (always visible) ── */}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <StatCard
           label="Events Today"
           value={(analytics?.events_today ?? 0).toLocaleString()}
@@ -379,20 +379,27 @@ export default function DashboardPage() {
                 <BarChart data={channelPerfData} barSize={14} barGap={4}>
                   <XAxis
                     dataKey="channel"
-                    tick={{ fill: "var(--gray-7)", fontSize: 11 }}
+                    tick={{ fill: "#9ca3af", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis hide />
                   <Tooltip
-                    contentStyle={{
-                      background: "var(--gray-2)",
-                      border: "1px solid var(--gray-3)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      color: "var(--gray-10)",
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div style={{ background: "#1c1c1c", border: "1px solid #2e2e2e", borderRadius: 8, padding: "8px 12px" }}>
+                          <p style={{ color: "#9ca3af", fontSize: 11, marginBottom: 4 }}>{label}</p>
+                          {payload.map((p) => (
+                            <p key={p.name} style={{ color: "#e5e5e5", fontSize: 12, fontWeight: 600 }}>
+                              <span style={{ color: p.fill as string }}>● </span>
+                              {p.name}: {(p.value as number).toLocaleString()}
+                            </p>
+                          ))}
+                        </div>
+                      );
                     }}
-                    cursor={{ fill: "var(--gray-3)" }}
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
                   />
                   <Bar dataKey="delivered" name="Delivered" fill="#4ade80" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="failed" name="Failed" fill="#f87171" radius={[3, 3, 0, 0]} />
