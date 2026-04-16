@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime } from "@/lib/utils";
-import { getAnalytics, listEvents } from "@/lib/api";
+import { listEvents } from "@/lib/api";
 
 const priorityColor = {
   high: "text-[#f87171]",
@@ -30,10 +30,12 @@ export default function EventsPage() {
     queryKey: ["events", { page, status }],
     queryFn: () => listEvents({ page, per_page: 20, status: status || undefined }),
   });
-  const { data: analytics } = useQuery({
-    queryKey: ["analytics"],
-    queryFn: getAnalytics,
-  });
+
+  // All-time counts — per_page:1 is lightweight, we only need `total`
+  const { data: totalAll } = useQuery({ queryKey: ["events-count", "all"], queryFn: () => listEvents({ per_page: 1 }) });
+  const { data: totalCompleted } = useQuery({ queryKey: ["events-count", "completed"], queryFn: () => listEvents({ per_page: 1, status: "completed" }) });
+  const { data: totalFailed } = useQuery({ queryKey: ["events-count", "failed"], queryFn: () => listEvents({ per_page: 1, status: "failed" }) });
+  const { data: totalProcessing } = useQuery({ queryKey: ["events-count", "processing"], queryFn: () => listEvents({ per_page: 1, status: "processing" }) });
 
   if (isLoading) {
     return (
@@ -51,10 +53,10 @@ export default function EventsPage() {
     <div className="space-y-5">
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Total Today" value={(analytics?.events_today ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
-        <StatCard label="Completed" value={(analytics?.events_completed ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
-        <StatCard label="Failed" value={(analytics?.events_failed ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
-        <StatCard label="Processing" value={(analytics?.events_processing ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        <StatCard label="Total Events" value={(totalAll?.total ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
+        <StatCard label="Completed" value={(totalCompleted?.total ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        <StatCard label="Failed" value={(totalFailed?.total ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard label="Processing" value={(totalProcessing?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
       </div>
 
       {/* Filters + actions */}

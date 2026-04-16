@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime } from "@/lib/utils";
-import { getAnalytics, listNotifications } from "@/lib/api";
+import { listNotifications } from "@/lib/api";
 
 const channelFilters = ["All", "Email", "SMS", "Webhook", "Failed"];
 const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
@@ -35,10 +35,12 @@ export default function NotificationsPage() {
         status: statusParam,
       }),
   });
-  const { data: analytics } = useQuery({
-    queryKey: ["analytics"],
-    queryFn: getAnalytics,
-  });
+
+  // All-time counts from lightweight list queries
+  const { data: totalDelivered } = useQuery({ queryKey: ["notif-count", "delivered"], queryFn: () => listNotifications({ per_page: 1, status: "delivered" }) });
+  const { data: totalQueued } = useQuery({ queryKey: ["notif-count", "queued"], queryFn: () => listNotifications({ per_page: 1, status: "queued" }) });
+  const { data: totalProcessing } = useQuery({ queryKey: ["notif-count", "processing"], queryFn: () => listNotifications({ per_page: 1, status: "processing" }) });
+  const { data: totalFailed } = useQuery({ queryKey: ["notif-count", "failed"], queryFn: () => listNotifications({ per_page: 1, status: "failed" }) });
 
   if (isLoading) {
     return (
@@ -56,10 +58,18 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Delivered" value={(analytics?.notifications_delivered ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5 text-[#4ade80]" />} />
-        <StatCard label="Retry Queue" value={String((analytics?.notifications_queued ?? 0) + (analytics?.notifications_processing ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />} />
-        <StatCard label="Median Latency" value={analytics?.avg_delivery_latency_ms ? `${analytics.avg_delivery_latency_ms}ms` : "N/A"} icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-6)]" />} />
-        <StatCard label="Fail Rate" value={`${(100 - (analytics?.success_rate ?? 0)).toFixed(1)}%`} icon={<Activity className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard label="Delivered" value={(totalDelivered?.total ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        <StatCard label="In Queue" value={String((totalQueued?.total ?? 0) + (totalProcessing?.total ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        <StatCard label="Failed" value={(totalFailed?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#f87171]" />} />
+        <StatCard
+          label="Fail Rate"
+          value={(() => {
+            const d = totalDelivered?.total ?? 0;
+            const f = totalFailed?.total ?? 0;
+            return d + f > 0 ? `${((f / (d + f)) * 100).toFixed(1)}%` : "N/A";
+          })()}
+          icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-6)]" />}
+        />
       </div>
 
       {/* Filters */}
