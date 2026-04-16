@@ -1,21 +1,55 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle, RotateCcw, ShieldAlert, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { formatRelativeTime } from "@/lib/utils";
 import { discardDLQ, listDLQ, retryDLQ } from "@/lib/api";
 import { toast } from "sonner";
 
+const CHANNEL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  email:   { bg: "rgba(96,165,250,0.08)",  border: "rgba(96,165,250,0.25)",  text: "#93c5fd" },
+  sms:     { bg: "rgba(74,222,128,0.08)",  border: "rgba(74,222,128,0.25)",  text: "#86efac" },
+  webhook: { bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.25)", text: "#c4b5fd" },
+};
+
+function ChannelTag({ channel }: { channel: string }) {
+  const c = CHANNEL_COLORS[channel] ?? { bg: "rgba(156,163,175,0.08)", border: "rgba(156,163,175,0.2)", text: "#9ca3af" };
+  return (
+    <span
+      style={{ background: c.bg, borderColor: c.border, color: c.text }}
+      className="rounded border px-1.5 py-px text-[10px] uppercase tracking-[0.12em] font-medium"
+    >
+      {channel}
+    </span>
+  );
+}
+
+
+const STATUS_TABS = [
+  { label: "All", value: undefined },
+  { label: "Active", value: "active" as const },
+  { label: "Retried", value: "retried" as const },
+  { label: "Discarded", value: "discarded" as const },
+];
+
+const PER_PAGE = 20;
+
 export default function DLQPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"active" | "retried" | "discarded" | undefined>(undefined);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["dead-letter"],
-    queryFn: () => listDLQ({ per_page: 50 }),
+    queryKey: ["dead-letter", { page, status: statusFilter }],
+    queryFn: () => listDLQ({ page, per_page: PER_PAGE, status: statusFilter }),
   });
+
   const retryMutation = useMutation({
     mutationFn: retryDLQ,
     onSuccess: () => {
@@ -33,6 +67,11 @@ export default function DLQPage() {
     onError: () => toast.error("Failed to discard DLQ entry"),
   });
 
+  function handleTabChange(value: "active" | "retried" | "discarded" | undefined) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -44,15 +83,16 @@ export default function DLQPage() {
   }
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
-  const failed = data?.items ?? [];
+  const items = data?.items ?? [];
+  const activeItems = items.filter(i => i.status === "active");
 
   return (
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <StatCard label="Awaiting Review" value={data?.total ?? 0} icon={<ShieldAlert className="h-3.5 w-3.5" />} />
-        <StatCard label="Total Failed" value={failed.length} icon={<RotateCcw className="h-3.5 w-3.5" />} />
-        <StatCard label="Discarded Today" value="0" icon={<Trash2 className="h-3.5 w-3.5" />} />
+        <StatCard label="Total on Page" value={items.length} icon={<RotateCcw className="h-3.5 w-3.5" />} />
+        <StatCard label="Active (Actionable)" value={activeItems.length} icon={<Trash2 className="h-3.5 w-3.5" />} />
       </div>
 
       {/* Failed deliveries */}
@@ -64,30 +104,45 @@ export default function DLQPage() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              const active = failed.filter(i => i.status === "active");
-              active.forEach(i => retryMutation.mutate(i.id));
-            }}
-            disabled={!failed.some(i => i.status === "active") || retryMutation.isPending}
+            onClick={() => activeItems.forEach(i => retryMutation.mutate(i.id))}
+            disabled={activeItems.length === 0 || retryMutation.isPending}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5 text-[13px] text-[var(--gray-7)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Retry All
+            Retry All Active
           </button>
         </div>
 
+        {/* Status filter tabs */}
+        <div className="flex items-center gap-0.5 border-b border-[var(--gray-3)] px-4 sm:px-5">
+          {STATUS_TABS.map(tab => (
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => handleTabChange(tab.value)}
+              className={`-mb-px px-3 py-2.5 text-[12px] font-medium transition-colors border-b-2 ${
+                statusFilter === tab.value
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-transparent text-[var(--gray-6)] hover:text-[var(--gray-9)]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="divide-y divide-[var(--gray-3)]">
-          {failed.length === 0 ? (
+          {items.length === 0 ? (
             <EmptyState title="No dead letters" description="No notifications in the dead letter queue." />
           ) : null}
-          {failed.map((item) => (
+          {items.map((item) => (
             <div key={item.id} className="px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#fca5a5]" />
                     <p className="text-[13px] font-medium text-[var(--gray-9)]">{item.notification_id}</p>
-                    <span className="rounded border border-[var(--gray-3)] px-1.5 py-px text-[10px] uppercase tracking-[0.12em] text-[var(--gray-6)]">{item.channel}</span>
+                    <ChannelTag channel={item.channel} />
                     <StatusBadge status={item.status} />
                   </div>
                   <p className="mt-1.5 text-[12px] text-[var(--gray-6)]">
@@ -122,6 +177,16 @@ export default function DLQPage() {
             </div>
           ))}
         </div>
+
+        {(data?.total_pages ?? 1) > 1 && (
+          <TablePagination
+            page={page}
+            totalPages={data?.total_pages ?? 1}
+            total={data?.total ?? 0}
+            perPage={PER_PAGE}
+            onPageChange={setPage}
+          />
+        )}
       </div>
     </div>
   );

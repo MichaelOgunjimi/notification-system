@@ -72,7 +72,7 @@ function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarI
   const sections = [
     { label: "Monitor", items: monitorItems },
     { label: "Observe", items: observabilityItems },
-    { label: "Settings", items: settingsItems },
+    ...(isMaster ? [{ label: "Settings", items: settingsItems }] : []),
     ...(isMaster ? [{ label: "Admin", items: adminItems }] : []),
   ];
 

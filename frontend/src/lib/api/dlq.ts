@@ -10,6 +10,7 @@ export type { DeadLetterResponse, DeadLetterDetailResponse };
 export async function listDLQ(params?: {
   page?: number;
   per_page?: number;
+  status?: "active" | "retried" | "discarded";
 }): Promise<PaginatedResponse<DeadLetterResponse>> {
   const { data } = await apiClient.get("/dead-letter", { params });
   return data;

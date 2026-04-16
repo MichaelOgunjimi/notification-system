@@ -17,7 +17,7 @@ const channelFilters = ["All", "Email", "SMS", "Webhook", "Failed"];
 const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
 
 export default function NotificationsPage() {
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("All");
   const router = useRouter();
   const channelParam = ["Email", "SMS", "Webhook"].includes(activeFilter)
@@ -143,7 +143,7 @@ export default function NotificationsPage() {
         {data?.items.length === 0 ? (
           <EmptyState title="No notifications found" description="No notifications match the selected filter." />
         ) : null}
-        <TablePagination page={page} totalPages={data?.total_pages ?? 1} total={data?.total ?? 0} perPage={20} />
+        <TablePagination page={page} totalPages={data?.total_pages ?? 1} total={data?.total ?? 0} perPage={20} onPageChange={setPage} />
       </div>
     </div>
   );

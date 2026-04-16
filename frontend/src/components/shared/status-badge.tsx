@@ -55,6 +55,21 @@ const statusConfig: Record<
     className: "bg-red-900/20 border-red-800/30 text-red-400",
     dotClass: "bg-red-600",
   },
+  active: {
+    label: "Active",
+    className: "bg-[color:rgba(239,68,68,0.08)] border-[color:rgba(239,68,68,0.2)] text-[#fca5a5]",
+    dotClass: "bg-[#f87171] animate-pulse",
+  },
+  retried: {
+    label: "Retried",
+    className: "bg-blue-500/10 border-blue-500/20 text-blue-300",
+    dotClass: "bg-blue-400",
+  },
+  discarded: {
+    label: "Discarded",
+    className: "bg-[var(--status-pending-bg)] border-[var(--status-pending-border)] text-[var(--gray-6)]",
+    dotClass: "bg-[var(--gray-5)]",
+  },
   pending: {
     label: "Pending",
     className:

@@ -23,7 +23,7 @@ const priorityColor = {
 const filters = ["All Events", "Completed", "Failed", "Processing"];
 
 export default function EventsPage() {
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const router = useRouter();
   const { data, isLoading, error } = useQuery({
@@ -165,6 +165,7 @@ export default function EventsPage() {
           totalPages={data?.total_pages ?? 1}
           total={data?.total ?? 0}
           perPage={20}
+          onPageChange={setPage}
         />
       </div>
     </div>

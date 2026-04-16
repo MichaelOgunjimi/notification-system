@@ -22,7 +22,7 @@ export default function RootLayout({
       suppressHydrationWarning
       style={{ colorScheme: "dark" }}
     >
-      <body className={`${inter.variable} overflow-x-hidden font-sans antialiased`}>
+      <body suppressHydrationWarning className={`${inter.variable} overflow-x-hidden font-sans antialiased`}>
         <a
           href="#main-content"
           className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"

@@ -5,10 +5,11 @@ interface TablePaginationProps {
   totalPages: number;
   total: number;
   perPage: number;
+  onPageChange?: (page: number) => void;
 }
 
-export function TablePagination({ page, totalPages, total, perPage }: TablePaginationProps) {
-  const from = (page - 1) * perPage + 1;
+export function TablePagination({ page, totalPages, total, perPage, onPageChange }: TablePaginationProps) {
+  const from = total === 0 ? 0 : (page - 1) * perPage + 1;
   const to = Math.min(page * perPage, total);
 
   const pages = buildPageNumbers(page, totalPages);
@@ -24,6 +25,7 @@ export function TablePagination({ page, totalPages, total, perPage }: TablePagin
         <button
           type="button"
           disabled={page <= 1}
+          onClick={() => onPageChange?.(page - 1)}
           className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--gray-3)] text-[var(--gray-9)] transition-colors hover:bg-[var(--gray-3)] hover:text-[var(--gray-10)] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Previous page"
         >
@@ -39,6 +41,7 @@ export function TablePagination({ page, totalPages, total, perPage }: TablePagin
             <button
               key={p}
               type="button"
+              onClick={() => onPageChange?.(p as number)}
               className={`flex h-7 min-w-[28px] items-center justify-center rounded-md border px-2 text-[12px] font-medium transition-colors ${
                 p === page
                   ? "border-[color:rgba(245,158,11,0.3)] bg-[color:rgba(245,158,11,0.1)] text-[var(--primary)]"
@@ -53,6 +56,7 @@ export function TablePagination({ page, totalPages, total, perPage }: TablePagin
         <button
           type="button"
           disabled={page >= totalPages}
+          onClick={() => onPageChange?.(page + 1)}
           className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--gray-3)] text-[var(--gray-9)] transition-colors hover:bg-[var(--gray-3)] hover:text-[var(--gray-10)] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Next page"
         >
