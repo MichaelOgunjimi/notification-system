@@ -17,16 +17,12 @@ from app.models.enums import (
 from app.models.event import Event
 from app.models.notification import Notification
 from app.schemas.analytics import AnalyticsResponse, ChannelStat
+from app.utils.datetime import to_naive_utc
 
 
 def _today_start() -> datetime:
     # Return naive UTC midnight — DB columns are TIMESTAMP WITHOUT TIME ZONE
     return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-
-
-def _to_naive(dt: datetime) -> datetime:
-    """Strip timezone info — DB columns are TIMESTAMP WITHOUT TIME ZONE."""
-    return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
 
 
 async def get_analytics(
@@ -36,8 +32,8 @@ async def get_analytics(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
 ) -> AnalyticsResponse:
-    start = _to_naive(date_from) if date_from is not None else _today_start()
-    end = _to_naive(date_to) if date_to is not None else None
+    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    end = to_naive_utc(date_to) if date_to is not None else None
 
     event_status_rows = (
         await db.execute(
@@ -114,6 +110,8 @@ async def get_analytics(
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE)
+            .where(col(DeadLetterMessage.failed_at) >= start)
+            .where(*([col(DeadLetterMessage.failed_at) <= end] if end is not None else []))
         )
     ).scalar() or 0
 

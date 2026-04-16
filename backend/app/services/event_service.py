@@ -15,6 +15,7 @@ from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.schemas.events import EventCreate, RecipientCreate
 from app.services import idempotency as idempotency_service
+from app.utils.datetime import to_naive_utc
 from app.workers.queues import dispatcher_queue
 
 logger = logging.getLogger(__name__)
@@ -278,13 +279,13 @@ async def list_events(
     if priority is not None:
         query = query.where(col(Event.priority) == priority)
     if event_type is not None:
-        query = query.where(col(Event.event_type).ilike(f"%{event_type}%"))
+        # Escape LIKE wildcards in user input before substring search
+        escaped = event_type.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(col(Event.event_type).ilike(f"%{escaped}%", escape="\\"))
     if date_from is not None:
-        dt = date_from.replace(tzinfo=None) if date_from.tzinfo is not None else date_from
-        query = query.where(col(Event.created_at) >= dt)
+        query = query.where(col(Event.created_at) >= to_naive_utc(date_from))
     if date_to is not None:
-        dt = date_to.replace(tzinfo=None) if date_to.tzinfo is not None else date_to
-        query = query.where(col(Event.created_at) <= dt)
+        query = query.where(col(Event.created_at) <= to_naive_utc(date_to))
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = int(total_result.scalar() or 0)
     offset = (page - 1) * per_page
