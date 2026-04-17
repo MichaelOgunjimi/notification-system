@@ -107,6 +107,124 @@
   }
 }
 
+/* ─── Landing page animations ─── */
+
+/* Base hidden state */
+.aos-init {
+  will-change: opacity, transform;
+}
+
+.aos-fade-up {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aos-fade-in {
+  opacity: 0;
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aos-fade-left {
+  opacity: 0;
+  transform: translateX(32px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aos-fade-right {
+  opacity: 0;
+  transform: translateX(-32px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aos-scale-in {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Visible state */
+.aos-visible.aos-fade-up,
+.aos-visible.aos-fade-in,
+.aos-visible.aos-fade-left,
+.aos-visible.aos-fade-right,
+.aos-visible.aos-scale-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Pulse glow for hero beacon dot */
+@keyframes beacon-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px 6px rgba(245, 158, 11, 0.25);
+  }
+}
+.beacon-dot {
+  animation: beacon-pulse 3s ease-in-out infinite;
+}
+
+/* Gradient border glow on hover for feature cards */
+.feature-card {
+  position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+.feature-card:hover {
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Grid background pattern */
+.grid-bg {
+  background-image: linear-gradient(
+      rgba(245, 158, 11, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Floating animation for decorative elements */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+/* Shimmer text effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--gray-10) 0%,
+    var(--primary) 50%,
+    var(--gray-10) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
 /* Docs content grid: article + TOC at xl breakpoint */
 .docs-content-grid {
   display: grid;
