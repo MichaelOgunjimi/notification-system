@@ -8,6 +8,7 @@ import {
   Rocket,
   Send,
   Server,
+  Webhook,
   Zap,
 } from "lucide-react";
 import type { Metadata } from "next";
@@ -18,7 +19,7 @@ import type { DocSlug } from "@/lib/docs";
 export const metadata: Metadata = {
   title: "Documentation — Beacon",
   description:
-    "Learn how to integrate and operate the Beacon event-driven notification system.",
+    "Learn how to integrate and operate Beacon as a hosted notification platform.",
 };
 
 const ICONS: Record<DocSlug, ReactNode> = {
@@ -30,7 +31,7 @@ const ICONS: Record<DocSlug, ReactNode> = {
   delivery: <Send size={20} />,
   "api-reference": <Server size={20} />,
   architecture: <Layers size={20} />,
-  "self-hosting": <Server size={20} />,
+  webhooks: <Webhook size={20} />,
 };
 
 export default function DocsIndexPage() {
@@ -48,7 +49,7 @@ export default function DocsIndexPage() {
         </h1>
         <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-[var(--gray-9)]">
           Everything you need to understand, integrate, and operate the
-          event-driven notification platform. From first API call to production deployment.
+          event-driven notification platform. From first API call to production delivery.
         </p>
       </div>
 

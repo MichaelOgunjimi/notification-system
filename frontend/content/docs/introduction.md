@@ -1,10 +1,10 @@
 # Introduction
 
-Beacon is an event-driven Notification-as-a-Service platform for teams that need reliable, observable, and scalable delivery.
+Beacon is a notification infrastructure platform. Send events via our REST API and Beacon handles multi-channel delivery.
 
-Instead of wiring email, SMS, and webhook logic into every service, you publish events to Beacon and let Beacon handle fan-out, retries, and tracking.
+Instead of building email, SMS, and webhook orchestration inside every service, publish events to Beacon and let us manage fan-out, retries, and status tracking.
 
-Beacon is built for local-first development and production-like reliability patterns from day one.
+Beacon is delivered as a hosted SaaS service.
 
 ## What Is Beacon?
 
@@ -15,8 +15,8 @@ At a high level, Beacon gives you:
 - A single ingestion API for all notification use cases.
 - Multi-channel delivery (Email, SMS, Webhook).
 - Template-based content rendering.
-- Queue-backed async processing with Celery + Redis.
-- Durable storage and querying in PostgreSQL.
+- Queue-backed async processing.
+- Durable event and delivery history.
 - Delivery reliability features like retries and dead-letter handling.
 
 If your product needs transactional alerts, account lifecycle messages, or machine-to-machine callbacks, Beacon can be your notification control plane.
@@ -87,7 +87,11 @@ Use these records for troubleshooting, auditing, and delivery analytics.
 
 ### 1) You Send an Event
 
-Your service sends a `POST /events` request with:
+Your service sends a `POST /events` request to:
+
+`https://beacon.michaelogunjimi.com/api/v1`
+
+with:
 
 - `event_type`
 - recipient definitions
@@ -103,9 +107,9 @@ Each recipient-channel pair becomes one notification.
 
 ### 3) Notifications Are Queued
 
-Notifications are queued in Redis-backed Celery queues.
+Notifications are queued in Beacon’s delivery pipeline.
 
-Priority and channel routing determine delivery order and worker isolation.
+Priority and channel routing determine ordering and worker isolation.
 
 ### 4) Workers Deliver Asynchronously
 
@@ -176,7 +180,7 @@ Beacon emphasizes auditability and operator visibility:
 ## Minimal Event Example
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -201,7 +205,7 @@ Expected behavior:
 
 Continue with:
 
-- [Quickstart](/docs/quickstart) to run Beacon locally and send your first event.
+- [Quickstart](/docs/quickstart) to get an API key and send your first event.
 - [Events](/docs/events) to understand payload structure, lifecycle, and idempotency.
 - [Channels](/docs/channels) to configure Email, SMS, and Webhook behavior.
 - [Templates](/docs/templates) to build reusable content and preview rendered output.

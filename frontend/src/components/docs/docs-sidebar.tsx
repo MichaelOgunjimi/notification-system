@@ -11,6 +11,7 @@ import {
   Send,
   Server,
   Sparkles,
+  Webhook,
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -25,7 +26,7 @@ const DOC_ICONS: Record<DocSlug, ReactNode> = {
   delivery: <Send size={16} />,
   "api-reference": <Server size={16} />,
   architecture: <Layers size={16} />,
-  "self-hosting": <Server size={16} />,
+  webhooks: <Webhook size={16} />,
 };
 
 interface SidebarSection {
@@ -55,7 +56,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { slug: "api-reference", href: "/docs/api-reference", label: "API Reference" },
       { slug: "architecture", href: "/docs/architecture", label: "Architecture" },
-      { slug: "self-hosting", href: "/docs/self-hosting", label: "Self-Hosting" },
+      { slug: "webhooks", href: "/docs/webhooks", label: "Webhooks" },
     ],
   },
 ];

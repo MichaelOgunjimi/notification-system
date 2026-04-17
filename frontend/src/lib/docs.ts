@@ -10,7 +10,7 @@ export type DocSlug =
   | "delivery"
   | "api-reference"
   | "architecture"
-  | "self-hosting";
+  | "webhooks";
 
 export type DocGroup = "getting-started" | "guides" | "reference";
 
@@ -37,7 +37,7 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
   {
     slug: "quickstart",
     title: "Quickstart",
-    description: "Get Beacon running and send your first notification in minutes.",
+    description: "Get an API key and send your first event in minutes.",
     group: "getting-started",
   },
   {
@@ -77,9 +77,9 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
     group: "reference",
   },
   {
-    slug: "self-hosting",
-    title: "Self-Hosting",
-    description: "Deploy Beacon with Docker Compose — configuration and environment.",
+    slug: "webhooks",
+    title: "Webhooks",
+    description: "Receive real-time notifications via HTTP callbacks.",
     group: "reference",
   },
 ];

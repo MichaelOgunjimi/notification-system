@@ -162,14 +162,14 @@ POST /dead-letter/{id}/discard
 ### Example: Retry a Dead-Letter Message
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/retry \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/retry \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 
 ### Example: Discard a Dead-Letter Message
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/discard \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/discard \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 
@@ -194,7 +194,7 @@ POST /suppressions
 Example:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/suppressions \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/suppressions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_MASTER_KEY" \
   -d '{
@@ -233,7 +233,7 @@ Track delivery using:
 
 - `GET /events/{id}` for event-level state
 - `GET /notifications` for delivery-level status
-- dashboard at `http://localhost:3001`
+- Beacon dashboard at `https://beacon.michaelogunjimi.com`
 
 Operational checks:
 
@@ -255,7 +255,7 @@ Operational checks:
 
 ```bash
 # 1) Submit idempotent event
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -266,11 +266,11 @@ curl -X POST http://localhost:8000/api/v1/events \
   }'
 
 # 2) Inspect notification states
-curl -X GET http://localhost:8000/api/v1/notifications \
+curl -X GET https://beacon.michaelogunjimi.com/api/v1/notifications \
   -H "X-API-Key: YOUR_PROJECT_KEY"
 
 # 3) Retry dead-letter item if needed
-curl -X POST http://localhost:8000/api/v1/dead-letter/DLQ_ID/retry \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/DLQ_ID/retry \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 

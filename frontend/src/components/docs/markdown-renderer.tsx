@@ -7,7 +7,7 @@ import type { Components } from "react-markdown";
 const components: Partial<Components> = {
   h1: ({ children, ...props }) => (
     <h1
-      className="mb-2 text-[28px] font-semibold text-[var(--foreground)]"
+      className="mb-6 border-b border-[var(--gray-3)] pb-4 text-[34px] font-bold tracking-tight text-[var(--foreground)]"
       {...props}
     >
       {children}
@@ -15,7 +15,7 @@ const components: Partial<Components> = {
   ),
   h2: ({ children, ...props }) => (
     <h2
-      className="mt-12 mb-4 scroll-mt-28 text-[22px] font-semibold text-[var(--foreground)]"
+      className="mt-14 mb-5 scroll-mt-28 border-b border-[var(--gray-3)] pb-3 text-[22px] font-semibold tracking-tight text-[var(--foreground)]"
       {...props}
     >
       {children}
@@ -23,7 +23,7 @@ const components: Partial<Components> = {
   ),
   h3: ({ children, ...props }) => (
     <h3
-      className="mt-8 mb-3 scroll-mt-28 text-[18px] font-semibold text-[var(--foreground)]"
+      className="mt-8 mb-3 scroll-mt-28 text-[16px] font-medium text-[var(--gray-10)]"
       {...props}
     >
       {children}
@@ -31,7 +31,7 @@ const components: Partial<Components> = {
   ),
   p: ({ children, ...props }) => (
     <p
-      className="mb-4 text-[15px] leading-[1.8] text-[var(--gray-9)]"
+      className="mb-4 text-[15px] leading-[1.85] text-[var(--gray-9)]"
       {...props}
     >
       {children}
@@ -50,7 +50,7 @@ const components: Partial<Components> = {
   ),
   ul: ({ children, ...props }) => (
     <ul
-      className="mb-4 ml-6 list-disc space-y-2 text-[15px] leading-[1.8] text-[var(--gray-9)]"
+      className="mb-4 ml-6 list-disc space-y-2.5 text-[15px] leading-[1.8] text-[var(--gray-9)]"
       {...props}
     >
       {children}
@@ -58,7 +58,7 @@ const components: Partial<Components> = {
   ),
   ol: ({ children, ...props }) => (
     <ol
-      className="mb-4 ml-6 list-decimal space-y-2 text-[15px] leading-[1.8] text-[var(--gray-9)]"
+      className="mb-4 ml-6 list-decimal space-y-2.5 text-[15px] leading-[1.8] text-[var(--gray-9)]"
       {...props}
     >
       {children}
@@ -71,7 +71,7 @@ const components: Partial<Components> = {
   ),
   blockquote: ({ children, ...props }) => (
     <blockquote
-      className="my-4 border-l-2 border-[var(--primary)] pl-4 text-[var(--gray-8)] italic"
+      className="my-5 rounded-lg border-l-2 border-[var(--primary)] bg-[var(--gray-2)] px-5 py-4 text-[15px] leading-[1.8] text-[var(--gray-9)]"
       {...props}
     >
       {children}
@@ -93,7 +93,7 @@ const components: Partial<Components> = {
     }
     return (
       <code
-        className="rounded border border-[var(--gray-4)] bg-[var(--gray-3)] px-1.5 py-0.5 font-mono text-[13px]"
+        className="rounded border border-[var(--gray-4)] bg-[var(--gray-3)] px-1.5 py-0.5 font-mono text-[13px] text-[var(--primary)]"
         {...props}
       >
         {children}
@@ -102,7 +102,7 @@ const components: Partial<Components> = {
   },
   pre: ({ children, ...props }) => (
     <pre
-      className="my-4 overflow-x-auto rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)] p-4 font-mono text-[13px]"
+      className="my-5 overflow-x-auto rounded-xl border border-[var(--gray-3)] bg-[#0d0f12] p-4 font-mono text-[13px]"
       {...props}
     >
       {children}
@@ -119,13 +119,13 @@ const components: Partial<Components> = {
     </div>
   ),
   thead: ({ children, ...props }) => (
-    <thead className="bg-[var(--gray-2)]" {...props}>
+    <thead className="border-b-2 border-[var(--gray-3)] bg-[var(--gray-2)]" {...props}>
       {children}
     </thead>
   ),
   th: ({ children, ...props }) => (
     <th
-      className="border-b border-[var(--gray-3)] px-4 py-3 text-left text-[13px] font-semibold text-[var(--foreground)]"
+      className="border-b-2 border-[var(--gray-3)] px-4 py-3 text-left text-[13px] font-semibold text-[var(--foreground)]"
       {...props}
     >
       {children}

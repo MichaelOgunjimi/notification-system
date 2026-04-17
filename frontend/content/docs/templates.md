@@ -60,7 +60,7 @@ POST /templates
 Example request:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/templates \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_KEY" \
   -d '{
@@ -93,7 +93,7 @@ When creating an event:
 Example:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -123,7 +123,7 @@ POST /templates/{id}/preview
 Example:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/templates/tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk/preview \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates/tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk/preview \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_KEY" \
   -d '{
@@ -241,7 +241,7 @@ This avoids abrupt behavior changes for active event producers.
 ```python
 import requests
 
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = "https://beacon.michaelogunjimi.com/api/v1"
 API_KEY = "YOUR_PROJECT_KEY"
 
 payload = {

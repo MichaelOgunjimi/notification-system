@@ -62,7 +62,7 @@ Subject behavior:
 ### Example Event (Email)
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -109,7 +109,7 @@ SMS does not use a subject field.
 ### Example Event (SMS)
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -178,7 +178,7 @@ This reduces SSRF risk and prevents delivery to internal network targets.
 ### Example Event (Webhook)
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{

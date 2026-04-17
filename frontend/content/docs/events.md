@@ -26,7 +26,7 @@ POST /events
 Full URL:
 
 ```text
-http://localhost:8000/api/v1/events
+https://beacon.michaelogunjimi.com/api/v1/events
 ```
 
 Authentication:
@@ -49,7 +49,7 @@ X-API-Key: <project key or master key>
 ### Example: Single Event
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -169,7 +169,7 @@ Behavior:
 ### Example: Idempotent Replay
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -197,7 +197,7 @@ If batch validation fails, no partial batch is committed.
 ### Example: Batch Request
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/events/batch \
+curl -X POST https://beacon.michaelogunjimi.com/api/v1/events/batch \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -268,7 +268,7 @@ GET /events/{id}
 Example:
 
 ```bash
-curl -X GET http://localhost:8000/api/v1/events/evt_01j4z89n8x5t5b5w3j9m8k0h2z \
+curl -X GET https://beacon.michaelogunjimi.com/api/v1/events/evt_01j4z89n8x5t5b5w3j9m8k0h2z \
   -H "X-API-Key: YOUR_PROJECT_KEY"
 ```
 
