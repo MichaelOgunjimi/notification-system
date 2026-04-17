@@ -16,7 +16,7 @@ from app.models.enums import (
 )
 from app.models.event import Event
 from app.models.notification import Notification
-from app.schemas.analytics import AnalyticsResponse, ChannelStat
+from app.schemas.analytics import AnalyticsResponse, ChannelStat, TrendPoint, TrendResponse
 from app.utils.datetime import to_naive_utc
 
 
@@ -78,23 +78,21 @@ async def get_analytics(
     total_terminal = notifications_delivered + notifications_failed
     success_rate = notifications_delivered / total_terminal * 100 if total_terminal > 0 else 100.0
 
+    latency_expr = extract(  # type: ignore[call-overload]
+        "epoch",
+        func.age(Notification.delivered_at, Notification.queued_at),
+    )
     latency_result = (
         await db.execute(
-            select(
-                func.avg(
-                    extract(  # type: ignore[call-overload]
-                        "epoch",
-                        func.age(Notification.delivered_at, Notification.queued_at),
-                    )
-                    * 1000
-                ).label("avg_ms")
-            )
+            select(func.avg(latency_expr * 1000).label("avg_ms"))
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
             .where(col(Notification.created_at) >= start)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
+            # Exclude outliers — notifications delayed by system downtime / worker issues
+            .where(latency_expr < 300)  # cap at 5 minutes
         )
     ).scalar_one_or_none()
     avg_latency = float(latency_result) if latency_result is not None else None
@@ -168,3 +166,53 @@ async def get_analytics(
         avg_delivery_latency_ms=round(avg_latency, 1) if avg_latency is not None else None,
         channel_stats=channel_stats,
     )
+
+
+async def get_trends(
+    db: AsyncSession,
+    api_key_id: uuid.UUID | None,
+    *,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    granularity: str = "hour",
+) -> TrendResponse:
+    """Return notification status counts bucketed by hour or day."""
+    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    end = to_naive_utc(date_to) if date_to is not None else None
+
+    bucket = granularity if granularity in ("hour", "day") else "hour"
+    time_trunc = func.date_trunc(bucket, Notification.created_at)
+
+    rows = (
+        await db.execute(
+            select(
+                time_trunc.label("ts"),
+                col(Notification.status),
+                func.count().label("cnt"),
+            )
+            .join(Event, col(Notification.event_id) == col(Event.id))
+            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(col(Notification.created_at) >= start)
+            .where(*([col(Notification.created_at) <= end] if end is not None else []))
+            .group_by(time_trunc, col(Notification.status))
+            .order_by(time_trunc)
+        )
+    ).all()
+
+    bucket_map: dict[str, dict[str, int]] = {}
+    for row in rows:
+        key = row.ts.strftime("%Y-%m-%dT%H:%M:%S")
+        if key not in bucket_map:
+            bucket_map[key] = {"delivered": 0, "failed": 0, "queued": 0, "processing": 0}
+
+        if row.status == NotificationStatus.DELIVERED:
+            bucket_map[key]["delivered"] += row.cnt
+        elif row.status in (NotificationStatus.FAILED, NotificationStatus.DEAD_LETTER):
+            bucket_map[key]["failed"] += row.cnt
+        elif row.status == NotificationStatus.QUEUED:
+            bucket_map[key]["queued"] += row.cnt
+        else:
+            bucket_map[key]["processing"] += row.cnt
+
+    points = [TrendPoint(timestamp=ts, **counts) for ts, counts in bucket_map.items()]
+    return TrendResponse(points=points)

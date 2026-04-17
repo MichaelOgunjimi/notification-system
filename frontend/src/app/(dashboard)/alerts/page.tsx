@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createAlertRule, deleteAlertRule, listAlertRules, updateAlertRule } from "@/lib/api";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function AlertsPage() {
@@ -19,7 +19,7 @@ export default function AlertsPage() {
   const [metric, setMetric] = useState("");
   const [threshold, setThreshold] = useState("");
   const [windowMinutes, setWindowMinutes] = useState("60");
-  const { data: rules, isLoading, error } = useQuery({ queryKey: ["alerts"], queryFn: listAlertRules });
+  const { data: rules, isLoading, isFetching, error } = useQuery({ queryKey: ["alerts"], queryFn: listAlertRules, placeholderData: keepPreviousData });
   const queryClient = useQueryClient();
   const toggleMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateAlertRule(id, { is_active }),
@@ -43,7 +43,7 @@ export default function AlertsPage() {
     onError: () => toast.error("Failed to create alert rule"),
   });
 
-  if (isLoading) {
+  if (!rules && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -60,7 +60,7 @@ export default function AlertsPage() {
   const triggeredToday = rules?.filter((r) => r.last_triggered_at && new Date(r.last_triggered_at).toDateString() === today).length ?? 0;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <StatCard label="Active Rules" value={activeCount} />
         <StatCard label="Triggered Today" value={triggeredToday} />

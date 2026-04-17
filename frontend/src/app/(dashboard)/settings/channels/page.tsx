@@ -1,9 +1,10 @@
 "use client";
 
 import { Mail, MessageSquareText, Settings, Webhook } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listChannelConfigs } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const channelLabels: Record<string, string> = {
   email: "Email",
@@ -12,12 +13,13 @@ const channelLabels: Record<string, string> = {
 };
 
 export default function ChannelsPage() {
-  const { data: channels, isLoading, error } = useQuery({
+  const { data: channels, isLoading, isFetching, error } = useQuery({
     queryKey: ["settings", "channels"],
     queryFn: listChannelConfigs,
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) {
+  if (!channels && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -30,7 +32,13 @@ export default function ChannelsPage() {
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
   return (
-    <div className="space-y-5">
+    <div
+      className={cn(
+        "space-y-5",
+        "transition-opacity duration-150",
+        isFetching && !isLoading && "opacity-60 pointer-events-none",
+      )}
+    >
       <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
         <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
           <h2 className="text-sm font-semibold text-[var(--gray-10)]">

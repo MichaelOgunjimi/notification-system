@@ -117,10 +117,11 @@ async def test_revoke_api_key(master_client: AsyncClient) -> None:
     revoke_resp = await master_client.delete(f"/api/v1/settings/api-keys/{key_id}")
     assert revoke_resp.status_code == 204
 
-    # Revoked key no longer appears in list
+    # Revoked key is marked inactive in the list
     list_resp = await master_client.get("/api/v1/settings/api-keys")
-    ids = [item["id"] for item in list_resp.json()["items"]]
-    assert key_id not in ids
+    revoked = [item for item in list_resp.json()["items"] if item["id"] == key_id]
+    assert len(revoked) == 1
+    assert revoked[0]["is_active"] is False
 
 
 @pytest.mark.asyncio

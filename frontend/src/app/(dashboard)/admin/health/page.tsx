@@ -1,17 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getAdminHealth } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function AdminHealthPage() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["admin", "health"],
     queryFn: getAdminHealth,
     refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -23,7 +25,7 @@ export default function AdminHealthPage() {
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       <div className="rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)] px-4 py-4 sm:px-5">
         <h2 className="text-sm font-semibold text-[var(--gray-10)]">
           {data?.db_connected && data?.redis_connected ? "All Systems Operational" : "Degraded"}

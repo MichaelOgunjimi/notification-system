@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createSuppression, deleteSuppression, listSuppressions } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 const tabs = ["All", "Email", "SMS", "Webhook"];
@@ -26,9 +26,10 @@ export default function SuppressionsPage() {
     ? (activeTab.toLowerCase() as "email" | "sms" | "webhook")
     : undefined;
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["suppressions", { page, channel: channelParam }],
     queryFn: () => listSuppressions({ page, per_page: 25, channel: channelParam }),
+    placeholderData: keepPreviousData,
   });
   const deleteMutation = useMutation({
     mutationFn: deleteSuppression,
@@ -48,7 +49,7 @@ export default function SuppressionsPage() {
     onError: () => toast.error("Failed to add suppression"),
   });
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -65,7 +66,7 @@ export default function SuppressionsPage() {
   const complaints = rows.filter((r) => r.reason?.toLowerCase().includes("complaint")).length;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="Total Suppressed" value={data?.total ?? 0} />
         <StatCard label="Bounces" value={bounces} />

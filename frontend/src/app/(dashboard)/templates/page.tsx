@@ -1,9 +1,9 @@
 "use client";
 
-import { FileText, Mail, MessageSquareText, Plus, Trash2, Webhook } from "lucide-react";
+import { FileText, Globe, Mail, MessageSquareText, Plus, Trash2, Webhook } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -13,11 +13,12 @@ import {
   deleteTemplate,
   listTemplates,
 } from "@/lib/api";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { getAuthInfo } from "@/lib/auth";
 
 const channelIcon = { email: Mail, sms: MessageSquareText, webhook: Webhook };
 
@@ -30,9 +31,12 @@ export default function TemplatesPage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery({
+  const authInfo = getAuthInfo();
+  const isMaster = authInfo?.isMaster ?? false;
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["templates", { page, channel }],
     queryFn: () => listTemplates({ page, per_page: 20, channel: channel || undefined }),
+    placeholderData: keepPreviousData,
   });
   const deleteMutation = useMutation({
     mutationFn: deleteTemplate,
@@ -56,7 +60,7 @@ export default function TemplatesPage() {
     onError: () => toast.error("Failed to create template"),
   });
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -74,7 +78,7 @@ export default function TemplatesPage() {
   const webhookCount = templates.filter((t) => t.channel === "webhook").length;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <StatCard label="Email Templates" value={emailCount} icon={<Mail className="h-3.5 w-3.5" />} />
@@ -101,6 +105,8 @@ export default function TemplatesPage() {
           ) : null}
           {templates.map((t) => {
             const Icon = channelIcon[t.channel as keyof typeof channelIcon] ?? FileText;
+            const isSystem = t.api_key_id === null;
+            const canDelete = !isSystem || isMaster;
             return (
               <Link
                 key={t.id}
@@ -113,22 +119,32 @@ export default function TemplatesPage() {
                         <Icon className="h-4 w-4" />
                       </span>
                     <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-[var(--gray-10)]">{t.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[13px] font-semibold text-[var(--gray-10)]">{t.name}</p>
+                        {isSystem && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--gray-3)] bg-[var(--gray-1)] px-1.5 py-px text-[9px] uppercase tracking-[0.12em] text-[var(--gray-6)]">
+                            <Globe className="h-2.5 w-2.5" />
+                            System
+                          </span>
+                        )}
+                      </div>
                       <span className="rounded border border-[var(--gray-3)] px-1.5 py-px text-[10px] uppercase tracking-[0.12em] text-[var(--gray-6)]">
                         {t.channel}
                       </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      deleteMutation.mutate(t.id);
-                    }}
-                    className="rounded-lg border border-[var(--gray-3)] px-2 py-1 text-[11px] text-[var(--gray-6)]"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        deleteMutation.mutate(t.id);
+                      }}
+                      className="rounded-lg border border-[var(--gray-3)] px-2 py-1 text-[11px] text-[var(--gray-6)]"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
                 <p className="truncate font-mono text-[12px] text-[var(--gray-8)]">{t.subject}</p>
                 <div className="flex flex-wrap gap-1">
@@ -191,7 +207,20 @@ export default function TemplatesPage() {
                   toast.error("Name and body are required");
                   return;
                 }
-                createMutation.mutate({ name, channel: newChannel, subject: subject || undefined, body });
+                // Auto-extract {{variable}} placeholders from body and subject
+                const varPattern = /\{\{\s*(\w+)\s*\}\}/g;
+                const extracted = new Set<string>();
+                for (const match of body.matchAll(varPattern)) extracted.add(match[1]);
+                if (subject) {
+                  for (const match of subject.matchAll(varPattern)) extracted.add(match[1]);
+                }
+                createMutation.mutate({
+                  name,
+                  channel: newChannel,
+                  subject: subject || undefined,
+                  body,
+                  variables: Array.from(extracted),
+                });
               }}
             >
               Save

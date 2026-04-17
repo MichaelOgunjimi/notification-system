@@ -158,6 +158,18 @@ export interface ChannelStat {
   dead_letter: number;
 }
 
+export interface TrendPoint {
+  timestamp: string;
+  delivered: number;
+  failed: number;
+  queued: number;
+  processing: number;
+}
+
+export interface TrendResponse {
+  points: TrendPoint[];
+}
+
 export interface ApiKeyResponse {
   id: string;
   name: string;
@@ -181,6 +193,7 @@ export interface ApiKeyCreateResponse {
 
 export interface TemplateResponse {
   id: string;
+  api_key_id: string | null;
   name: string;
   slug: string;
   channel: NotificationChannel;
@@ -220,15 +233,15 @@ export interface AuditLogResponse {
   resource_type: string;
   resource_id: string | null;
   metadata: Record<string, unknown> | null;
-  actor_ip: string | null;
+  ip_address: string | null;
   created_at: string;
 }
 
 export interface UsageResponse {
   api_key_id: string;
+  endpoint: string;
   hour_bucket: string;
   request_count: number;
-  event_count: number;
 }
 
 export interface AdminHealthResponse {
@@ -245,7 +258,6 @@ export interface AdminKeyStats {
   key_prefix: string;
   is_active: boolean;
   rate_limit_per_min: number | null;
-  event_count: number;
   notification_count: number;
   last_used_at: string | null;
   created_at: string;

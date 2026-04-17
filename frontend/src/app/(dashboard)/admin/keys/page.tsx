@@ -1,16 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listAdminKeys } from "@/lib/api";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 export default function AdminKeysPage() {
-  const { data: keys, isLoading, error } = useQuery({ queryKey: ["admin", "keys"], queryFn: listAdminKeys });
+  const { data: keys, isLoading, isFetching, error } = useQuery({ queryKey: ["admin", "keys"], queryFn: listAdminKeys, placeholderData: keepPreviousData });
 
-  if (isLoading) {
+  if (!keys && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -26,7 +26,7 @@ export default function AdminKeysPage() {
   const revoked = keys?.filter((k) => !k.is_active).length ?? 0;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <StatCard label="Total Keys" value={total} />
         <StatCard label="Active Keys" value={active} />
@@ -40,7 +40,7 @@ export default function AdminKeysPage() {
             <div key={key.id} className="flex items-center justify-between px-4 py-3.5 sm:px-5">
               <div>
                 <p className="text-[13px] font-medium text-[var(--gray-9)]">{key.name}</p>
-                <p className="text-[12px] text-[var(--gray-6)]">{key.key_prefix} · {key.event_count} calls</p>
+                <p className="text-[12px] text-[var(--gray-6)]">{key.key_prefix} · {key.notification_count} calls</p>
               </div>
               <div className="text-right">
                 <p className="text-[12px] text-[var(--gray-6)]">{key.is_active ? "active" : "revoked"}</p>

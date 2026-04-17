@@ -1,7 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { NavItem } from "./nav-item";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -63,6 +74,7 @@ interface SidebarInnerProps {
 function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarInnerProps) {
   const router = useRouter();
   const { keyPrefix, keyName, isMaster, logout } = useAuth();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   function handleLogout() {
     logout();
@@ -192,7 +204,7 @@ function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarI
             {/* Logout */}
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutDialog(true)}
               aria-label="Sign out"
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--gray-5)] transition hover:bg-[var(--gray-3)] hover:text-[var(--gray-9)]"
             >
@@ -201,6 +213,22 @@ function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarI
           </div>
         )}
       </div>
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign out</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to sign out? You&apos;ll need your API key to sign back in.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
+            <Button variant="destructive" size="sm" onClick={handleLogout}>
+              Sign out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

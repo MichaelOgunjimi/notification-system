@@ -30,7 +30,7 @@ export function formatRelativeTime(date: string | Date): string {
  *  (e.g. "2026-04-16T06:53:04.448408"). Without the suffix, browsers
  *  treat them as local time. Appending 'Z' forces correct UTC parsing.
  */
-function parseUTC(date: string | Date): Date {
+export function parseUTC(date: string | Date): Date {
   if (date instanceof Date) return date;
   return new Date(date.endsWith("Z") || date.includes("+") ? date : date + "Z");
 }

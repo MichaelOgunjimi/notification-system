@@ -12,26 +12,27 @@ import {
   Webhook,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, AreaChart, Area, CartesianGrid, Legend } from "recharts";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import { DateRangeFilter, type DatePreset, type DateRange, presetToDateRange } from "@/components/shared/date-range-filter";
-import { getAnalytics, listNotifications } from "@/lib/api";
-import { formatRelativeTime } from "@/lib/utils";
+import { FadeIn, StaggerItem, StaggerList } from "@/components/shared/motion";
+import { DateRangeFilter, presetToDateRange } from "@/components/shared/date-range-filter";
+import { useDateFilter } from "@/hooks/use-date-filter";
+import { getAnalytics, getTrends, listNotifications } from "@/lib/api";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [preset, setPreset] = useState<DatePreset>("today");
-  const [customRange, setCustomRange] = useState<DateRange | null>(null);
+  const { preset, setPreset, customRange, setCustomRange } = useDateFilter("today");
 
   const dateRange = presetToDateRange(preset, customRange);
 
   const analyticsQuery = useQuery({
     queryKey: ["analytics", preset, customRange],
     queryFn: () => getAnalytics({ date_from: dateRange.from, date_to: dateRange.to }),
+    placeholderData: keepPreviousData,
   });
   const notificationsQuery = useQuery({
     queryKey: ["notifications", { per_page: 5 }],
@@ -41,8 +42,14 @@ export default function DashboardPage() {
     queryKey: ["notifications", { status: "failed", per_page: 5 }],
     queryFn: () => listNotifications({ status: "failed", per_page: 5 }),
   });
+  const granularity = preset === "today" ? "hour" as const : "day" as const;
+  const trendsQuery = useQuery({
+    queryKey: ["analytics-trends", preset, customRange],
+    queryFn: () => getTrends({ date_from: dateRange.from, date_to: dateRange.to, granularity }),
+    placeholderData: keepPreviousData,
+  });
 
-  if (analyticsQuery.isLoading || notificationsQuery.isLoading || failedNotificationsQuery.isLoading) {
+  if (!analyticsQuery.data && analyticsQuery.isLoading || !notificationsQuery.data && notificationsQuery.isLoading || !failedNotificationsQuery.data && failedNotificationsQuery.isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -96,6 +103,17 @@ export default function DashboardPage() {
     delivered: ch.delivered,
     failed: ch.failed,
   }));
+  const trendData = (trendsQuery.data?.points ?? []).map((point) => {
+    const tsValue = point.timestamp.endsWith("Z") ? point.timestamp : `${point.timestamp}Z`;
+    const d = new Date(tsValue);
+    const label = granularity === "day"
+      ? d.toLocaleDateString([], { month: "short", day: "numeric" })
+      : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    const fullLabel = granularity === "day"
+      ? d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+      : d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    return { ...point, label, fullLabel };
+  });
 
   // Recent failures
   const recentFailures = failedNotificationsQuery.data?.items ?? [];
@@ -107,9 +125,12 @@ export default function DashboardPage() {
     { name: "Delivered",  value: analytics?.notifications_delivered ?? 0,  color: "#4ade80" },
     { name: "Failed",     value: analytics?.notifications_failed ?? 0,     color: "#f87171" },
   ];
+  const isFetching = analyticsQuery.isFetching || notificationsQuery.isFetching || failedNotificationsQuery.isFetching || trendsQuery.isFetching;
+  const isLoading = analyticsQuery.isLoading || notificationsQuery.isLoading || failedNotificationsQuery.isLoading || trendsQuery.isLoading;
 
   return (
-    <div className="space-y-5">
+    <FadeIn>
+      <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
 
       {/* ── Date range filter ── */}
       <div className="flex items-center justify-between gap-3">
@@ -128,7 +149,7 @@ export default function DashboardPage() {
       <div className="hidden overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[#161616] p-4 sm:block">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Notification Pipeline</p>
         <div className="h-40">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={mobileSummaryData} layout="vertical" margin={{ top: 0, right: 36, left: 70, bottom: 0 }}>
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} />
               <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#a3a3a3", fontSize: 12 }} width={70} />
@@ -173,35 +194,45 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat cards (always visible) ── */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <StatCard
-          label={preset === "today" ? "Events Today" : "Events"}
-          value={(analytics?.events_today ?? 0).toLocaleString()}
-          icon={<Activity className="h-3.5 w-3.5 text-[#60a5fa]" />}
-        />
-        <StatCard
-          label="Delivery Rate"
-          value={(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
-          icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />}
-        />
-        <StatCard
-          label="Retry Queue"
-          value={String(notificationsQueued + notificationsProcessing)}
-          icon={<Send className="h-3.5 w-3.5 text-[#fbbf24]" />}
-        />
-        <StatCard
-          label="Dead Letters"
-          value={String(analytics?.dlq_active ?? 0)}
-          icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />}
-        />
-        <StatCard
-          label="Avg Latency"
-          value={analytics?.avg_delivery_latency_ms != null && analytics.avg_delivery_latency_ms > 0
-            ? `${analytics.avg_delivery_latency_ms.toFixed(0)}ms`
-            : "N/A"}
-          icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-7)]" />}
-        />
-      </div>
+        <StaggerList className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <StaggerItem>
+            <StatCard
+              label={preset === "today" ? "Events Today" : "Events"}
+              value={(analytics?.events_today ?? 0).toLocaleString()}
+              icon={<Activity className="h-3.5 w-3.5 text-[#60a5fa]" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard
+              label="Delivery Rate"
+              value={(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
+              icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard
+              label="Retry Queue"
+              value={String(notificationsQueued + notificationsProcessing)}
+              icon={<Send className="h-3.5 w-3.5 text-[#fbbf24]" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard
+              label="Dead Letters"
+              value={String(analytics?.dlq_active ?? 0)}
+              icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard
+              label="Avg Latency"
+              value={analytics?.avg_delivery_latency_ms != null && analytics.avg_delivery_latency_ms > 0
+                ? `${analytics.avg_delivery_latency_ms.toFixed(0)}ms`
+                : "N/A"}
+              icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-7)]" />}
+            />
+          </StaggerItem>
+        </StaggerList>
 
       {/* ── Main content row ── */}
       <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
@@ -340,7 +371,80 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Second row: charts + recent failures ── */}
+      {/* ── Second row: trend + charts + recent failures ── */}
+      <div className="space-y-5">
+
+        <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+          <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
+            <h2 className="text-sm font-semibold text-[var(--gray-10)]">Delivery Trend</h2>
+            <p className="mt-0.5 text-xs text-[var(--gray-6)]">{granularity === "day" ? "Daily" : "Hourly"} notification volume by status.</p>
+          </div>
+          <div className="h-[220px] px-2 py-3 sm:px-4 lg:h-[280px]">
+            {trendsQuery.isLoading && !trendsQuery.data ? (
+              <Skeleton className="h-full w-full" />
+            ) : trendData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-[var(--gray-6)]">No trend data</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <AreaChart data={trendData} margin={{ top: 8, right: 12, left: -18, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id="dashboardTrendDelivered" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4ade80" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="dashboardTrendFailed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f87171" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="dashboardTrendQueued" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="dashboardTrendProcessing" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--gray-3)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--gray-6)", fontSize: 11 }}
+                    interval={granularity === "day" ? 0 : undefined}
+                    tickFormatter={granularity === "hour" ? (label: string) => (Number(label.slice(0, 2)) % 6 === 0 ? label : "") : undefined}
+                  />
+                  <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "var(--gray-6)", fontSize: 11 }} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0]?.payload as { fullLabel?: string; delivered: number; failed: number; queued: number; processing: number };
+                      const total = (row.delivered ?? 0) + (row.failed ?? 0) + (row.queued ?? 0) + (row.processing ?? 0);
+                      return (
+                        <div style={{ background: "#1c1c1c", border: "1px solid #2e2e2e", borderRadius: 8, padding: "8px 12px" }}>
+                          <p style={{ color: "#9ca3af", fontSize: 11, marginBottom: 4 }}>{row.fullLabel}</p>
+                          {payload.map((entry) => (
+                            <p key={entry.name} style={{ color: "#e5e5e5", fontSize: 12, fontWeight: 600 }}>
+                              <span style={{ color: entry.stroke as string }}>● </span>
+                              {entry.name}: {(entry.value as number).toLocaleString()}
+                            </p>
+                          ))}
+                          <p style={{ color: "#6b7280", fontSize: 11, marginTop: 4, borderTop: "1px solid #2e2e2e", paddingTop: 4 }}>Total: {total.toLocaleString()}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "var(--gray-6)" }} />
+                  <Area type="monotone" dataKey="delivered" name="Delivered" stroke="#4ade80" strokeWidth={2} fillOpacity={1} fill="url(#dashboardTrendDelivered)" />
+                  <Area type="monotone" dataKey="failed" name="Failed" stroke="#f87171" strokeWidth={2} fillOpacity={1} fill="url(#dashboardTrendFailed)" />
+                  <Area type="monotone" dataKey="queued" name="Queued" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill="url(#dashboardTrendQueued)" />
+                  <Area type="monotone" dataKey="processing" name="Processing" stroke="#fbbf24" strokeWidth={2} fillOpacity={1} fill="url(#dashboardTrendProcessing)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr_320px]">
 
         {/* Notification Status donut */}
@@ -356,7 +460,7 @@ export default function DashboardPage() {
                 <span className="absolute text-[10px] text-[var(--gray-6)]">No data</span>
               </div>
             ) : (
-              <ResponsiveContainer width={120} height={120}>
+              <ResponsiveContainer width={120} height={120} minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={notifStatusData}
@@ -395,7 +499,7 @@ export default function DashboardPage() {
             {channelPerfData.length === 0 ? (
               <p className="py-8 text-center text-xs text-[var(--gray-6)]">No channel data yet.</p>
             ) : (
-              <ResponsiveContainer width="100%" height={140}>
+              <ResponsiveContainer width="100%" height={140} minWidth={0} minHeight={0}>
                 <BarChart data={channelPerfData} barSize={14} barGap={4}>
                   <XAxis
                     dataKey="channel"
@@ -458,6 +562,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      </div>
+    </FadeIn>
   );
 }

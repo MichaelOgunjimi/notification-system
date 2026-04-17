@@ -2,11 +2,11 @@
 
 import { Copy, KeyRound, Plus, ShieldCheck, ShieldOff } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,10 @@ export default function ApiKeysPage() {
   const [name, setName] = useState("");
   const [rateLimit, setRateLimit] = useState("");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["settings", "api-keys"],
     queryFn: () => listApiKeys(),
+    placeholderData: keepPreviousData,
   });
   const queryClient = useQueryClient();
   const revokeMutation = useMutation({
@@ -47,7 +48,7 @@ export default function ApiKeysPage() {
     onError: () => toast.error("Failed to create key"),
   });
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -64,7 +65,7 @@ export default function ApiKeysPage() {
   const revokedCount = keys.filter((k) => !k.is_active).length;
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         <StatCard label="Active Keys" value={activeCount} icon={<KeyRound className="h-3.5 w-3.5" />} />

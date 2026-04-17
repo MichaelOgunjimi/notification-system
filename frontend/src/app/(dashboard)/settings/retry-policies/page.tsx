@@ -1,9 +1,10 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listRetryPolicies } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 function BoolPill({ value }: { value: boolean }) {
   return value ? (
@@ -18,12 +19,13 @@ function BoolPill({ value }: { value: boolean }) {
 }
 
 export default function RetryPoliciesPage() {
-  const { data: policies, isLoading, error } = useQuery({
+  const { data: policies, isLoading, isFetching, error } = useQuery({
     queryKey: ["settings", "retry-policies"],
     queryFn: listRetryPolicies,
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) {
+  if (!policies && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -36,7 +38,13 @@ export default function RetryPoliciesPage() {
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
   return (
-    <div className="space-y-5">
+    <div
+      className={cn(
+        "space-y-5",
+        "transition-opacity duration-150",
+        isFetching && !isLoading && "opacity-60 pointer-events-none",
+      )}
+    >
       <div className="flex items-start gap-3 rounded-xl border border-blue-500/15 bg-blue-500/5 px-4 py-3.5">
         <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
         <p className="text-[13px] text-[var(--gray-7)]">

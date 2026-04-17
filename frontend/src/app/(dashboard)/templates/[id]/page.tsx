@@ -1,19 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getTemplate, updateTemplate } from "@/lib/api";
+import { createTemplate, getTemplate, updateTemplate } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { getAuthInfo } from "@/lib/auth";
+import { Globe } from "lucide-react";
 
 export default function TemplateDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const queryClient = useQueryClient();
+  const authInfo = getAuthInfo();
+  const isMaster = authInfo?.isMaster ?? false;
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
@@ -42,6 +47,22 @@ export default function TemplateDetailPage() {
     onError: () => toast.error("Failed to update template"),
   });
 
+  const forkMutation = useMutation({
+    mutationFn: (payload: {
+      name: string;
+      channel: "email" | "sms" | "webhook";
+      subject?: string;
+      body: string;
+      variables: string[];
+    }) => createTemplate(payload),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Custom copy created");
+      router.push(`/templates/${created.id}`);
+    },
+    onError: () => toast.error("Failed to create custom copy"),
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -54,6 +75,10 @@ export default function TemplateDetailPage() {
 
   if (error || !template) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
+  const isSystem = template.api_key_id === null;
+  // Regular key editing a system template → fork on save
+  const willFork = isSystem && !isMaster;
+
   const handleEditToggle = () => {
     if (!isEditing) {
       setName(template.name);
@@ -64,7 +89,19 @@ export default function TemplateDetailPage() {
       setIsEditing(true);
       return;
     }
-    updateMutation.mutate({ name, subject: subject || undefined, body, variables: editVariables });
+
+    if (willFork) {
+      // Fork: create a project-owned copy with the edited content
+      forkMutation.mutate({
+        name,
+        channel: template.channel as "email" | "sms" | "webhook",
+        subject: subject || undefined,
+        body,
+        variables: editVariables,
+      });
+    } else {
+      updateMutation.mutate({ name, subject: subject || undefined, body, variables: editVariables });
+    }
   };
 
   const sectionLabel = template.channel === "email" ? "Subject" : "Message";
@@ -90,13 +127,29 @@ export default function TemplateDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[18px] font-semibold tracking-tight text-[var(--gray-10)]">{template.name}</h1>
             <span className="rounded-lg border border-[var(--gray-3)] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-[var(--gray-6)]">{template.channel}</span>
+            {isSystem && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--gray-3)] bg-[var(--gray-1)] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[var(--gray-6)]">
+                <Globe className="h-2.5 w-2.5" />
+                System Default
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-[12px] text-[var(--gray-6)]">Modified {formatDate(template.updated_at)}</p>
         </div>
         <button type="button" onClick={handleEditToggle} className="shrink-0 rounded-lg bg-[var(--primary)] px-3.5 py-2 text-[13px] font-medium text-black hover:bg-[#fbbf24] transition-colors">
-          {isEditing ? "Save Template" : "Edit Template"}
+          {isEditing ? (willFork ? "Save as Custom" : "Save Template") : "Edit Template"}
         </button>
       </div>
+
+      {/* System template info banner */}
+      {isSystem && !isMaster && (
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--gray-3)] bg-[var(--gray-1)] px-4 py-3">
+          <Globe className="h-4 w-4 shrink-0 text-[var(--gray-6)]" />
+          <p className="text-[12px] text-[var(--gray-7)]">
+            This is a system default template. Editing will save a custom copy owned by your project.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
         <div className="space-y-5">
@@ -185,7 +238,7 @@ export default function TemplateDetailPage() {
           {isEditing ? (
             <div className="px-4 pb-4 sm:px-5">
               <Button onClick={handleEditToggle} className="w-full">
-                Save
+                {willFork ? "Save as Custom" : "Save"}
               </Button>
             </div>
           ) : null}

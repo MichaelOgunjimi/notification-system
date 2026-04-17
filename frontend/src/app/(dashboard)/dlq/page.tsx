@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, RotateCcw, ShieldAlert, Inbox } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FadeIn } from "@/components/shared/motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TablePagination } from "@/components/shared/table-pagination";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { discardDLQ, listDLQ, retryDLQ } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -46,9 +47,10 @@ export default function DLQPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"active" | "retried" | "discarded" | undefined>(undefined);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["dead-letter", { page, status: statusFilter }],
     queryFn: () => listDLQ({ page, per_page: PER_PAGE, status: statusFilter }),
+    placeholderData: keepPreviousData,
   });
 
   const retryMutation = useMutation({
@@ -73,7 +75,7 @@ export default function DLQPage() {
     setPage(1);
   }
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -88,16 +90,17 @@ export default function DLQPage() {
   const activeItems = items.filter(i => i.status === "active");
 
   return (
-    <div className="space-y-5">
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-        <StatCard label="Awaiting Review" value={data?.total ?? 0} icon={<ShieldAlert className="h-3.5 w-3.5 text-[#f87171]" />} />
-        <StatCard label="Total on Page" value={items.length} icon={<Inbox className="h-3.5 w-3.5 text-[#fbbf24]" />} />
-        <StatCard label="Active (Actionable)" value={activeItems.length} icon={<RotateCcw className="h-3.5 w-3.5 text-[#4ade80]" />} />
-      </div>
+    <FadeIn>
+      <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+          <StatCard label="Awaiting Review" value={data?.total ?? 0} icon={<ShieldAlert className="h-3.5 w-3.5 text-[#f87171]" />} />
+          <StatCard label="Total on Page" value={items.length} icon={<Inbox className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+          <StatCard label="Active (Actionable)" value={activeItems.length} icon={<RotateCcw className="h-3.5 w-3.5 text-[#4ade80]" />} />
+        </div>
 
-      {/* Failed deliveries */}
-      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+        {/* Failed deliveries */}
+        <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
         <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Failed Deliveries</h2>
@@ -130,6 +133,13 @@ export default function DLQPage() {
               {tab.label}
             </button>
           ))}
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 bg-[var(--gray-1)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)] sm:px-5">
+          <span>Notification</span>
+          <span>Channel</span>
+          <span>Status</span>
+          <span>Actions</span>
         </div>
 
         <div className="divide-y divide-[var(--gray-3)]">
@@ -189,7 +199,8 @@ export default function DLQPage() {
             perPage={PER_PAGE}
             onPageChange={setPage}
           />
+        </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

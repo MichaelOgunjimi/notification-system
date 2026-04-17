@@ -5,14 +5,16 @@ import { Activity, ArrowUpRight, Bell, Clock, RotateCcw } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TablePagination } from "@/components/shared/table-pagination";
-import { DateRangeFilter, type DatePreset, type DateRange, presetToDateRange } from "@/components/shared/date-range-filter";
+import { DateRangeFilter, presetToDateRange } from "@/components/shared/date-range-filter";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FadeIn } from "@/components/shared/motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, cn } from "@/lib/utils";
 import { listNotifications } from "@/lib/api";
+import { useDateFilter } from "@/hooks/use-date-filter";
 
 const channelFilters = ["All", "Email", "SMS", "Webhook", "Failed"];
 const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
@@ -20,8 +22,7 @@ const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: 
 export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("All");
-  const [preset, setPreset] = useState<DatePreset>("today");
-  const [customRange, setCustomRange] = useState<DateRange | null>(null);
+  const { preset, setPreset, customRange, setCustomRange } = useDateFilter("today");
   const router = useRouter();
 
   const dateRange = presetToDateRange(preset, customRange);
@@ -30,7 +31,7 @@ export default function NotificationsPage() {
     : undefined;
   const statusParam = activeFilter === "Failed" ? "failed" : undefined;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["notifications", { page, channel: channelParam, status: statusParam, preset, customRange }],
     queryFn: () =>
       listNotifications({
@@ -41,6 +42,7 @@ export default function NotificationsPage() {
         date_from: dateRange.from,
         date_to: dateRange.to,
       }),
+    placeholderData: keepPreviousData,
   });
 
   // All-time counts from lightweight list queries
@@ -54,7 +56,7 @@ export default function NotificationsPage() {
     setPage(1);
   }
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -67,25 +69,26 @@ export default function NotificationsPage() {
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
   return (
-    <div className="space-y-5">
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Delivered" value={(totalDelivered?.total ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5 text-[#4ade80]" />} />
-        <StatCard label="In Queue" value={String((totalQueued?.total ?? 0) + (totalProcessing?.total ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />} />
-        <StatCard label="Failed" value={(totalFailed?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#f87171]" />} />
-        <StatCard
-          label="Fail Rate"
-          value={(() => {
-            const d = totalDelivered?.total ?? 0;
-            const f = totalFailed?.total ?? 0;
-            return d + f > 0 ? `${((f / (d + f)) * 100).toFixed(1)}%` : "N/A";
-          })()}
-          icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-6)]" />}
-        />
-      </div>
+    <FadeIn>
+      <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <StatCard label="Delivered" value={(totalDelivered?.total ?? 0).toLocaleString()} icon={<Bell className="h-3.5 w-3.5 text-[#4ade80]" />} />
+          <StatCard label="In Queue" value={String((totalQueued?.total ?? 0) + (totalProcessing?.total ?? 0))} icon={<RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+          <StatCard label="Failed" value={(totalFailed?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#f87171]" />} />
+          <StatCard
+            label="Fail Rate"
+            value={(() => {
+              const d = totalDelivered?.total ?? 0;
+              const f = totalFailed?.total ?? 0;
+              return d + f > 0 ? `${((f / (d + f)) * 100).toFixed(1)}%` : "N/A";
+            })()}
+            icon={<Clock className="h-3.5 w-3.5 text-[var(--gray-6)]" />}
+          />
+        </div>
 
-      {/* Filters */}
-      <div className="space-y-3">
+        {/* Filters */}
+        <div className="space-y-3">
         {/* Channel + status tabs */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
@@ -115,8 +118,8 @@ export default function NotificationsPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+        {/* Table */}
+        <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
         <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Notification Stream</h2>
@@ -171,7 +174,8 @@ export default function NotificationsPage() {
           <EmptyState title="No notifications found" description="No notifications match the selected filter." />
         ) : null}
         <TablePagination page={page} totalPages={data?.total_pages ?? 1} total={data?.total ?? 0} perPage={20} onPageChange={setPage} />
+        </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

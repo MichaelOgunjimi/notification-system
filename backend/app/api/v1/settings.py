@@ -107,16 +107,13 @@ async def list_api_keys(
     db: SessionDep,
     _: MasterKeyDep,
 ) -> PaginatedResponse[ApiKeyResponse]:
-    count_result = await db.execute(
-        select(func.count()).select_from(ApiKey).where(col(ApiKey.is_active))
-    )
+    count_result = await db.execute(select(func.count()).select_from(ApiKey))
     total = count_result.scalar() or 0
 
     offset = (page - 1) * per_page
     result = await db.execute(
         select(ApiKey)
-        .where(col(ApiKey.is_active))
-        .order_by(col(ApiKey.created_at).desc())
+        .order_by(col(ApiKey.is_active).desc(), col(ApiKey.created_at).desc())
         .offset(offset)
         .limit(per_page)
     )

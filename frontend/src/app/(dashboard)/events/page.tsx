@@ -5,15 +5,17 @@ import { ArrowUpRight, Search, X } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TablePagination } from "@/components/shared/table-pagination";
-import { DateRangeFilter, type DatePreset, type DateRange, presetToDateRange } from "@/components/shared/date-range-filter";
+import { DateRangeFilter, presetToDateRange } from "@/components/shared/date-range-filter";
 import { Activity, Zap, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/shared/empty-state";
+import { FadeIn } from "@/components/shared/motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { listEvents } from "@/lib/api";
+import { useDateFilter } from "@/hooks/use-date-filter";
 
 const priorityColor = {
   high: "text-[#f87171]",
@@ -36,24 +38,33 @@ export default function EventsPage() {
   const [status, setStatus] = useState("All");
   const [priority, setPriority] = useState("Any Priority");
   const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [preset, setPreset] = useState<DatePreset>("today");
-  const [customRange, setCustomRange] = useState<DateRange | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { preset, setPreset, customRange, setCustomRange } = useDateFilter("today");
   const router = useRouter();
+
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
 
   const dateRange = presetToDateRange(preset, customRange);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["events", { page, status, priority, search, preset, customRange }],
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ["events", { page, status, priority, search: debouncedSearch, preset, customRange }],
     queryFn: () => listEvents({
       page,
       per_page: 20,
       status: STATUS_MAP[status],
       priority: PRIORITY_MAP[priority],
-      event_type: search || undefined,
+      event_type: debouncedSearch || undefined,
       date_from: dateRange.from,
       date_to: dateRange.to,
     }),
+    placeholderData: keepPreviousData,
   });
 
   // Stat counts scoped to the active date range
@@ -69,20 +80,15 @@ export default function EventsPage() {
     setPage(1);
   }
 
-  function handleSearch() {
-    setSearch(searchInput.trim());
-    setPage(1);
-  }
-
   function clearSearch() {
     setSearch("");
-    setSearchInput("");
+    setDebouncedSearch("");
     setPage(1);
   }
 
   const periodLabel = preset === "today" ? "Today" : preset === "7d" ? "(7d)" : preset === "30d" ? "(30d)" : "";
 
-  if (isLoading) {
+  if (!data && isLoading) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -95,17 +101,18 @@ export default function EventsPage() {
   if (error) return <p className="text-sm text-[var(--status-failed)]">Failed to load data</p>;
 
   return (
-    <div className="space-y-5">
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label={`Events ${periodLabel}`} value={(totalAll?.total ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
-        <StatCard label={`Completed ${periodLabel}`} value={(totalCompleted?.total ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
-        <StatCard label={`Failed ${periodLabel}`} value={(totalFailed?.total ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
-        <StatCard label={`Processing ${periodLabel}`} value={(totalProcessing?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
-      </div>
+    <FadeIn>
+      <div className={cn("space-y-5", "transition-opacity duration-150", isFetching && !isLoading && "opacity-60 pointer-events-none")}>
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <StatCard label={`Events ${periodLabel}`} value={(totalAll?.total ?? 0).toLocaleString()} icon={<Zap className="h-3.5 w-3.5 text-[#60a5fa]" />} />
+          <StatCard label={`Completed ${periodLabel}`} value={(totalCompleted?.total ?? 0).toLocaleString()} icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />} />
+          <StatCard label={`Failed ${periodLabel}`} value={(totalFailed?.total ?? 0).toLocaleString()} icon={<AlertTriangle className="h-3.5 w-3.5 text-[#f87171]" />} />
+          <StatCard label={`Processing ${periodLabel}`} value={(totalProcessing?.total ?? 0).toLocaleString()} icon={<Activity className="h-3.5 w-3.5 text-[#fbbf24]" />} />
+        </div>
 
-      {/* Filters */}
-      <div className="space-y-3">
+        {/* Filters */}
+        <div className="space-y-3">
         {/* Row 1: status + priority tabs */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1">
@@ -148,13 +155,12 @@ export default function EventsPage() {
           <div className="flex items-center gap-1 rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-[var(--gray-5)]" />
             <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search event type…"
               className="w-48 bg-transparent text-[13px] text-[var(--gray-9)] placeholder:text-[var(--gray-5)] outline-none"
             />
-            {(searchInput || search) && (
+            {search && (
               <button type="button" onClick={clearSearch} className="text-[var(--gray-5)] hover:text-[var(--gray-9)]">
                 <X className="h-3 w-3" />
               </button>
@@ -169,8 +175,8 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+        {/* Table */}
+        <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
         <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--gray-10)]">Events</h2>
@@ -236,7 +242,8 @@ export default function EventsPage() {
           perPage={20}
           onPageChange={setPage}
         />
+        </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useCountUp } from "@/hooks/use-count-up";
 
 interface StatCardProps {
   label: string;
@@ -9,6 +12,18 @@ interface StatCardProps {
 }
 
 export function StatCard({ label, value, delta, icon, className }: StatCardProps) {
+  const stringMatch = typeof value === "string" ? value.match(/^([\d,]+)/) : null;
+  const numericTarget =
+    typeof value === "number"
+      ? value
+      : stringMatch
+        ? parseInt(String(stringMatch[1] ?? stringMatch[0]).replace(/,/g, ""), 10)
+        : null;
+  const suffix =
+    typeof value === "string" && stringMatch ? value.slice(String(stringMatch[0]).length) : "";
+  const animatedValue = useCountUp(numericTarget ?? 0);
+  const displayValue = numericTarget != null ? `${animatedValue.toLocaleString()}${suffix}` : value;
+
   return (
     <div
       className={cn(
@@ -28,7 +43,7 @@ export function StatCard({ label, value, delta, icon, className }: StatCardProps
       </div>
       <div className="mt-5">
         <p className="tabular-nums text-[26px] font-semibold leading-none tracking-tight text-[var(--gray-10)]">
-          {value}
+          {displayValue}
         </p>
         {delta && (
           <p

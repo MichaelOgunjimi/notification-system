@@ -6,6 +6,7 @@ export async function listAuditLog(params?: {
   page?: number;
   per_page?: number;
   action?: string;
+  from?: string;
 }): Promise<PaginatedResponse<AuditLogResponse>> {
   const { data } = await apiClient.get("/audit-log", { params });
   return data;
