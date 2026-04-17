@@ -24,6 +24,7 @@ import AnimateOnScroll, {
   StaggerItem,
 } from "@/components/landing/animate-on-scroll"
 import AnimatedCounter from "@/components/landing/animated-counter"
+import HeroBackground from "@/components/landing/hero-background"
 import MobileNav from "@/components/landing/mobile-nav"
 import { CopyCommandButton, CURL_COMMAND } from "@/components/landing/terminal-preview"
 import TerminalPreview from "@/components/landing/terminal-preview"
@@ -135,8 +136,6 @@ const techStack = [
 export default function Home() {
   return (
     <main className="relative scroll-smooth bg-[var(--background)] text-[var(--foreground)]">
-      {/* Subtle grid background */}
-      <div className="grid-bg pointer-events-none fixed inset-0 -z-20" />
 
       {/* ── Navbar ── */}
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
@@ -184,79 +183,86 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden">
-        {/* Dual glow orbs */}
-        <div className="pointer-events-none absolute top-0 left-1/2 -z-10 h-[600px] w-[900px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.18)_0%,transparent_65%)]" />
-        <div className="pointer-events-none absolute top-40 right-0 -z-10 h-[400px] w-[400px] bg-[radial-gradient(circle,rgba(245,158,11,0.08),transparent_70%)]" />
+      <section className="relative isolate overflow-hidden">
+        {/* Animated canvas background with grid + floating nodes */}
+        <HeroBackground />
 
-        <div className="mx-auto w-full max-w-6xl px-4 pt-24 pb-16 sm:px-6 sm:pt-32 sm:pb-20">
-          <AnimateOnScroll variant="fade-up">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-4 py-1.5">
-              <span className="size-1.5 rounded-full bg-[var(--primary)]" />
-              <span className="text-xs font-medium tracking-wide text-[var(--primary)]">
-                Notification Infrastructure for Developers
-              </span>
-            </div>
-          </AnimateOnScroll>
+        {/* Radial glow overlay */}
+        <div className="pointer-events-none absolute top-0 left-1/2 -z-[5] h-[700px] w-[1100px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.14)_0%,transparent_60%)]" />
 
-          <AnimateOnScroll variant="fade-up" delay={100}>
-            <h1 className="mt-8 max-w-4xl text-5xl leading-[1.1] font-bold tracking-tight text-white sm:text-7xl sm:leading-[1.08]">
-              <span className="inline-block rounded-2xl bg-[var(--primary)] px-4 py-1 text-black">
-                Event-driven
-              </span>{" "}
-              notifications
-              <br />
-              <span className="text-shimmer">as a service</span>
-            </h1>
-          </AnimateOnScroll>
+        <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-16 sm:px-6 sm:pt-36 sm:pb-24">
+          <div className="flex flex-col items-center text-center">
+            <AnimateOnScroll variant="fade-up">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-4 py-1.5">
+                <span className="size-1.5 rounded-full bg-[var(--primary)]" />
+                <span className="text-xs font-medium tracking-wide text-[var(--primary)]">
+                  Notification Infrastructure for Developers
+                </span>
+              </div>
+            </AnimateOnScroll>
 
-          <AnimateOnScroll variant="fade-up" delay={200}>
-            <p className="mt-7 max-w-2xl text-lg leading-relaxed text-[var(--gray-9)]">
-              Send notifications via email, SMS, and webhooks with a single API call.
-              Built-in queues, retries, templates, and real-time observability.
-            </p>
-          </AnimateOnScroll>
+            <AnimateOnScroll variant="fade-up" delay={100}>
+              <h1 className="mt-8 max-w-5xl text-5xl leading-[1.1] font-bold tracking-tight text-white sm:text-7xl sm:leading-[1.08]">
+                <span className="inline-block rounded-2xl bg-[var(--primary)] px-4 py-1 text-black">
+                  Event-driven
+                </span>{" "}
+                notifications
+                <br />
+                <span className="text-shimmer">as a service</span>
+              </h1>
+            </AnimateOnScroll>
 
-          <AnimateOnScroll variant="fade-up" delay={300}>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
-                href="/docs/quickstart"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "group h-11 bg-[var(--primary)] px-6 text-sm font-medium text-black hover:bg-[color:color-mix(in_oklab,var(--primary),black_12%)]"
-                )}
-              >
-                Get Started
-                <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <Link
-                href="/docs"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "h-11 border-white/10 bg-white/[0.03] px-6 text-sm text-[var(--gray-10)] hover:border-white/20 hover:bg-white/[0.06]"
-                )}
-              >
-                Read the Docs
-              </Link>
-            </div>
-          </AnimateOnScroll>
+            <AnimateOnScroll variant="fade-up" delay={200}>
+              <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-[var(--gray-9)]">
+                Send notifications via email, SMS, and webhooks with a single API call.
+                Built-in queues, retries, templates, and real-time observability.
+              </p>
+            </AnimateOnScroll>
 
-          <AnimateOnScroll variant="fade-up" delay={400}>
-            <div className="mt-6 inline-flex max-w-full items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
-              <code className="truncate font-mono text-xs text-[var(--gray-9)] sm:text-sm">
-                {CURL_COMMAND}
-              </code>
-              <CopyCommandButton text={CURL_COMMAND} iconOnly />
-            </div>
-          </AnimateOnScroll>
+            <AnimateOnScroll variant="fade-up" delay={300}>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  href="/docs/quickstart"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "group h-11 bg-[var(--primary)] px-6 text-sm font-medium text-black hover:bg-[color:color-mix(in_oklab,var(--primary),black_12%)]"
+                  )}
+                >
+                  Get Started
+                  <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+                <Link
+                  href="/docs"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    "h-11 border-white/10 bg-white/[0.03] px-6 text-sm text-[var(--gray-10)] hover:border-white/20 hover:bg-white/[0.06]"
+                  )}
+                >
+                  Read the Docs
+                </Link>
+              </div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll variant="fade-up" delay={400}>
+              <div className="mt-6 inline-flex max-w-full items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+                <code className="truncate font-mono text-xs text-[var(--gray-9)] sm:text-sm">
+                  {CURL_COMMAND}
+                </code>
+                <CopyCommandButton text={CURL_COMMAND} iconOnly />
+              </div>
+            </AnimateOnScroll>
+          </div>
 
           <AnimateOnScroll variant="scale-in" delay={500}>
-            <div className="mt-12">
+            <div className="mt-14">
               <TerminalPreview />
             </div>
           </AnimateOnScroll>
         </div>
       </section>
+
+      {/* Subtle static grid for remaining sections */}
+      <div className="grid-bg pointer-events-none fixed inset-0 -z-20 opacity-50" />
 
       {/* ── Dashboard Preview ── */}
       <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
