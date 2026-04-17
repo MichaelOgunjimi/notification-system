@@ -64,7 +64,7 @@ yarn-error.log*
 *.pen
 .progress/
 error.msg
-docs/
+/docs/
 
 # Copilot skills
 .agents/

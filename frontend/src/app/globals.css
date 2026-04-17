@@ -106,3 +106,23 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Docs content grid: article + TOC at xl breakpoint */
+.docs-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1280px) {
+  .docs-content-grid {
+    grid-template-columns: minmax(0, 900px) 240px;
+    gap: 2.5rem;
+  }
+}
+.docs-toc-aside {
+  display: none;
+}
+@media (min-width: 1280px) {
+  .docs-toc-aside {
+    display: block;
+  }
+}
