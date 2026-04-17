@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeRaw from "rehype-raw";
 import type { Components } from "react-markdown";
+import { CodeBlock } from "./code-block";
 
 const components: Partial<Components> = {
   h1: ({ children, ...props }) => (
@@ -83,13 +84,10 @@ const components: Partial<Components> = {
     </strong>
   ),
   code: ({ children, className, ...props }) => {
-    const isBlock = className?.includes("language-");
-    if (isBlock) {
-      return (
-        <code className={`${className ?? ""} text-[13px]`} {...props}>
-          {children}
-        </code>
-      );
+    const match = className?.match(/language-(\w+)/);
+    if (match) {
+      const code = String(children).replace(/\n$/, "");
+      return <CodeBlock language={match[1]}>{code}</CodeBlock>;
     }
     return (
       <code
@@ -100,14 +98,7 @@ const components: Partial<Components> = {
       </code>
     );
   },
-  pre: ({ children, ...props }) => (
-    <pre
-      className="my-5 overflow-x-auto rounded-xl border border-[var(--gray-3)] bg-[#0d0f12] p-4 font-mono text-[13px]"
-      {...props}
-    >
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <>{children}</>,
   table: ({ children, ...props }) => (
     <div className="my-6 overflow-x-auto rounded-xl border border-[var(--gray-3)]">
       <table
