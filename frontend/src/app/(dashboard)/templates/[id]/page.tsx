@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getAuthInfo } from "@/lib/auth";
 import { Globe } from "lucide-react";
+import { CodeBlock } from "@/components/docs/code-block";
 
 export default function TemplateDetailPage() {
   const params = useParams();
@@ -180,19 +181,21 @@ export default function TemplateDetailPage() {
               <h2 className="text-sm font-semibold text-[var(--gray-10)]">Body Preview</h2>
               <p className="mt-0.5 text-xs text-[var(--gray-6)]">Template source with variable placeholders.</p>
             </div>
-            <div className="p-4 sm:p-5">
-              {isEditing ? (
+            {isEditing ? (
+              <div className="p-4 sm:p-5">
                 <textarea
                   className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap w-full min-h-48"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                 />
-              ) : (
-                <pre className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap">
+              </div>
+            ) : (
+              <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0">
+                <CodeBlock language={template.channel === "email" ? "html" : template.channel === "webhook" ? "json" : "text"}>
                   {template.body}
-                </pre>
-              )}
-            </div>
+                </CodeBlock>
+              </div>
+            )}
           </div>
         </div>
 
