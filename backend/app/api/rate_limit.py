@@ -36,7 +36,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if settings.MASTER_API_KEY and secrets.compare_digest(raw_key, settings.MASTER_API_KEY):
-            return await call_next(request)
+            limit = settings.RATE_LIMIT_DEFAULT * 10
+            minute_bucket = int(time.time() // 60)
+            window_end = (minute_bucket + 1) * 60
+            key = f"rl:master:{minute_bucket}"
+            try:
+                redis = get_redis()
+                count = int(await redis.eval(_INCR_WITH_EXPIRE, 1, key, "60"))  # type: ignore[misc]
+            except Exception:
+                return await call_next(request)
+            if count > limit:
+                retry_after = max(0, window_end - int(time.time()))
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "detail": f"Rate limit exceeded. Try again in {retry_after} seconds.",
+                    },
+                    headers={"Retry-After": str(retry_after)},
+                )
+            response = await call_next(request)
+            response.headers["X-RateLimit-Limit"] = str(limit)
+            response.headers["X-RateLimit-Remaining"] = str(max(0, limit - count))
+            response.headers["X-RateLimit-Reset"] = str(window_end)
+            return response
 
         endpoint_category = (
             "events"

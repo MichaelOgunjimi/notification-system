@@ -45,17 +45,17 @@ class TestRecipientValidation:
         with pytest.raises(ValidationError, match="hostname"):
             RecipientCreate(channels=["webhook"], webhook_url="http:///path")
 
-    def test_private_ip_webhook_url_rejected(self):
-        with pytest.raises(ValidationError, match="private"):
-            RecipientCreate(channels=["webhook"], webhook_url="http://127.0.0.1/hook")
+    def test_private_ip_webhook_url_allowed_at_schema_level(self):
+        r = RecipientCreate(channels=["webhook"], webhook_url="http://127.0.0.1/hook")
+        assert r.webhook_url == "http://127.0.0.1/hook"
 
-    def test_private_ip_10_rejected(self):
-        with pytest.raises(ValidationError, match="private"):
-            RecipientCreate(channels=["webhook"], webhook_url="http://10.0.0.1/hook")
+    def test_private_ip_10_allowed_at_schema_level(self):
+        r = RecipientCreate(channels=["webhook"], webhook_url="http://10.0.0.1/hook")
+        assert r.webhook_url == "http://10.0.0.1/hook"
 
-    def test_link_local_ip_rejected(self):
-        with pytest.raises(ValidationError, match="private"):
-            RecipientCreate(channels=["webhook"], webhook_url="http://169.254.169.254/metadata")
+    def test_link_local_ip_allowed_at_schema_level(self):
+        r = RecipientCreate(channels=["webhook"], webhook_url="http://169.254.169.254/metadata")
+        assert r.webhook_url == "http://169.254.169.254/metadata"
 
     def test_none_fields_allowed(self):
         """None values should pass — only validated when provided."""

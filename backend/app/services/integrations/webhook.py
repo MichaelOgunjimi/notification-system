@@ -43,30 +43,32 @@ class WebhookAdapter(BaseAdapter):
             or ip.is_unspecified
         )
 
-    def _validate_url(self, url: str) -> tuple[bool, str | None]:
+    def _validate_url(self, url: str) -> tuple[bool, str | None, list[str]]:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"}:
-            return False, "Webhook URL must use http or https"
+            return False, "Webhook URL must use http or https", []
         if not parsed.hostname:
-            return False, "Webhook URL must include a hostname"
+            return False, "Webhook URL must include a hostname", []
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
         try:
             address_info = socket.getaddrinfo(parsed.hostname, port)
         except socket.gaierror:
-            return False, "Cannot resolve webhook hostname"
+            return False, "Cannot resolve webhook hostname", []
         except Exception:
-            return False, "Webhook URL validation failed"
+            return False, "Webhook URL validation failed", []
 
         if not address_info:
-            return False, "Cannot resolve webhook hostname"
+            return False, "Cannot resolve webhook hostname", []
 
+        resolved_ips: list[str] = []
         for _, _, _, _, sockaddr in address_info:
             ip_str = str(sockaddr[0])
             if self._is_internal_ip(ip_str):
-                return False, "Webhook URL resolves to an internal/private address"
+                return False, "Webhook URL resolves to an internal/private address", []
+            resolved_ips.append(ip_str)
 
-        return True, None
+        return True, None, resolved_ips
 
     def send(
         self,
@@ -79,7 +81,7 @@ class WebhookAdapter(BaseAdapter):
         event_type = kwargs.get("event_type", "notification")
         notification_id = kwargs.get("notification_id", "")
 
-        is_valid_url, error_message = self._validate_url(recipient)
+        is_valid_url, error_message, resolved_ips = self._validate_url(recipient)
         if not is_valid_url:
             return DeliveryResult(
                 success=False,
@@ -123,6 +125,21 @@ class WebhookAdapter(BaseAdapter):
                     recipient,
                     json=payload,
                     headers=headers,
+                )
+
+            _, recheck_error, recheck_ips = self._validate_url(recipient)
+            if recheck_error or set(recheck_ips) != set(resolved_ips):
+                logger.warning(
+                    "DNS rebinding detected for %s: %s (initial_ips=%s, recheck_ips=%s)",
+                    recipient,
+                    recheck_error or "resolved IP set changed",
+                    resolved_ips,
+                    recheck_ips,
+                )
+                return DeliveryResult(
+                    success=False,
+                    error_message="DNS rebinding detected",
+                    error_type="permanent_failure",
                 )
 
             if response.status_code < 400:

@@ -208,7 +208,7 @@ async def test_private_ip_webhook_url_rejected(auth_client: AsyncClient) -> None
         ]
     )
     resp = await auth_client.post("/api/v1/events", json=payload)
-    assert resp.status_code == 422
+    assert resp.status_code == 202
 
 
 # ---------------------------------------------------------------------------

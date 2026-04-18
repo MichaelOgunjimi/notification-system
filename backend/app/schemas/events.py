@@ -1,9 +1,7 @@
 """Event request/response schemas — EventCreateRequest, EventDetailResponse, etc."""
 
-import ipaddress
 import json
 import re
-import socket
 import uuid
 from datetime import datetime
 from typing import Any
@@ -18,16 +16,6 @@ from app.schemas.notifications import NotificationResponse
 _PHONE_RE = re.compile(r"^\+[1-9]\d{6,14}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _HTTP_URL_ADAPTER = TypeAdapter(HttpUrl)
-
-
-def _is_blocked_ip(host: str) -> bool:
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return True
-    return (
-        ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified
-    )
 
 
 class RecipientCreate(BaseModel):
@@ -67,25 +55,6 @@ class RecipientCreate(BaseModel):
             validated_url = _HTTP_URL_ADAPTER.validate_python(v)
         except Exception as exc:
             raise ValueError("Webhook URL must be a valid URL") from exc
-
-        parsed = urlparse(str(validated_url))
-        host = parsed.hostname
-        if host is None:
-            raise ValueError("Webhook URL must have a valid hostname")
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
-
-        try:
-            addrinfo = socket.getaddrinfo(host, port)
-        except socket.gaierror as exc:
-            raise ValueError("Webhook URL host could not be resolved") from exc
-
-        if not addrinfo:
-            raise ValueError("Webhook URL host could not be resolved")
-
-        for _, _, _, _, sockaddr in addrinfo:
-            ip_value = str(sockaddr[0])
-            if _is_blocked_ip(ip_value):
-                raise ValueError("Webhook URL host resolves to a private/internal address")
         return str(validated_url)
 
 

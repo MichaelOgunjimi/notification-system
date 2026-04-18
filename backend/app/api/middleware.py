@@ -68,24 +68,23 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
 
-        raw_key = request.headers.get("X-API-Key")
-        if not raw_key:
-            return response
-
-        key_hash = hash_api_key(raw_key)
+        api_key_id = getattr(request.state, "api_key_id", None)
         async with async_session() as db:
-            # NOTE: Usage tracking does a second key lookup in addition to ApiKeyDep auth.
-            # Keep as-is for now; this is a known future optimization target.
-            key_result = await db.execute(
-                select(col(ApiKey.id)).where(
-                    col(ApiKey.key_hash) == key_hash,
-                    col(ApiKey.is_active),
-                    col(ApiKey.revoked_at).is_(None),
-                )
-            )
-            api_key_id = key_result.scalar_one_or_none()
             if api_key_id is None:
-                return response
+                raw_key = request.headers.get("X-API-Key")
+                if not raw_key:
+                    return response
+                key_hash = hash_api_key(raw_key)
+                key_result = await db.execute(
+                    select(col(ApiKey.id)).where(
+                        col(ApiKey.key_hash) == key_hash,
+                        col(ApiKey.is_active),
+                        col(ApiKey.revoked_at).is_(None),
+                    )
+                )
+                api_key_id = key_result.scalar_one_or_none()
+                if api_key_id is None:
+                    return response
 
             hour_bucket = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
             normalized_path = _UUID_RE.sub("{id}", request.url.path)

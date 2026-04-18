@@ -16,10 +16,29 @@ from app.api.middleware import LoggingMiddleware, RequestIDMiddleware, UsageTrac
 from app.api.rate_limit import RateLimitMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
-from app.core.redis import get_redis
+from app.core.redis import close_redis
 from app.utils.logging import setup_logging
 
 _MAX_BODY_BYTES = settings.MAX_REQUEST_BODY_BYTES
+
+
+class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add OWASP-recommended security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):  # noqa: ANN001, ANN201
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["X-XSS-Protection"] = "0"
+        if settings.is_production:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+            )
+        return response
 
 
 class _BodySizeLimitMiddleware(BaseHTTPMiddleware):
@@ -59,7 +78,7 @@ class _BodySizeLimitMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     yield
-    await get_redis().aclose()
+    await close_redis()
 
 
 def create_app() -> FastAPI:
@@ -69,6 +88,7 @@ def create_app() -> FastAPI:
         description="Event-driven notification system",
         lifespan=lifespan,
     )
+    app.add_middleware(_SecurityHeadersMiddleware)
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(UsageTrackingMiddleware)
