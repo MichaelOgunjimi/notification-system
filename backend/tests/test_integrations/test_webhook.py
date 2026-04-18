@@ -38,7 +38,7 @@ class TestHmacSignature:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(200, "OK")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
@@ -60,7 +60,7 @@ class TestHmacSignature:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(200, "OK")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
@@ -76,7 +76,7 @@ class TestHmacSignature:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(200, "OK")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
@@ -114,19 +114,19 @@ class TestSsrfProtection:
             "app.services.integrations.webhook.socket.getaddrinfo",
             return_value=[(2, 1, 0, "", (ip, 80))],
         ):
-            ok, err = adapter._validate_url(f"http://evil-{label}.com/hook")
+            ok, err, _ = adapter._validate_url(f"http://evil-{label}.com/hook")
             assert not ok
             assert "internal/private" in (err or "").lower()
 
     def test_rejects_non_http_scheme(self):
         adapter = WebhookAdapter()
-        ok, err = adapter._validate_url("ftp://example.com/file")
+        ok, err, _ = adapter._validate_url("ftp://example.com/file")
         assert not ok
         assert "http" in (err or "").lower()
 
     def test_rejects_no_hostname(self):
         adapter = WebhookAdapter()
-        ok, err = adapter._validate_url("http:///path")
+        ok, err, _ = adapter._validate_url("http:///path")
         assert not ok
         assert "hostname" in (err or "").lower()
 
@@ -136,9 +136,10 @@ class TestSsrfProtection:
             "app.services.integrations.webhook.socket.getaddrinfo",
             return_value=[(2, 1, 0, "", ("93.184.216.34", 443))],
         ):
-            ok, err = adapter._validate_url("https://example.com/hook")
+            ok, err, ips = adapter._validate_url("https://example.com/hook")
             assert ok
             assert err is None
+            assert ips == ["93.184.216.34"]
 
     def test_adapter_returns_failure_on_ssrf(self):
         """The adapter returns a failed DeliveryResult, not an exception."""
@@ -168,7 +169,7 @@ class TestJsonParsing:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(200, "OK")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 adapter.send(
                     recipient="https://example.com/hook",
@@ -213,7 +214,7 @@ class TestWebhookDelivery:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(200, "OK")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
@@ -227,7 +228,7 @@ class TestWebhookDelivery:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(500, "Internal Server Error")
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
@@ -241,7 +242,7 @@ class TestWebhookDelivery:
         adapter = WebhookAdapter()
         mock_client = _mock_http_client(side_effect=httpx.TimeoutException("timed out"))
 
-        with patch.object(adapter, "_validate_url", return_value=(True, None)):
+        with patch.object(adapter, "_validate_url", return_value=(True, None, ["93.184.216.34"])):
             with patch("app.services.integrations.webhook._http_client", mock_client):
                 result = adapter.send(
                     recipient="https://example.com/hook",
