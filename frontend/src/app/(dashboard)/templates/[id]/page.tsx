@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getAuthInfo } from "@/lib/auth";
-import { Globe } from "lucide-react";
+import { Globe, Code, Eye } from "lucide-react";
 import { CodeBlock } from "@/components/docs/code-block";
 
 export default function TemplateDetailPage() {
@@ -21,6 +21,7 @@ export default function TemplateDetailPage() {
   const authInfo = getAuthInfo();
   const isMaster = authInfo?.isMaster ?? false;
   const [isEditing, setIsEditing] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"source" | "preview">("source");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -175,12 +176,37 @@ export default function TemplateDetailPage() {
             </div>
           </div>
 
-          {/* Body preview */}
+          {/* Body — Source / Preview tabs */}
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
-            <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
-              <h2 className="text-sm font-semibold text-[var(--gray-10)]">Body Preview</h2>
-              <p className="mt-0.5 text-xs text-[var(--gray-6)]">Template source with variable placeholders.</p>
+            <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3 sm:px-5">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--gray-10)]">Body</h2>
+                <p className="mt-0.5 text-xs text-[var(--gray-6)]">
+                  {isEditing ? "Edit template body." : previewMode === "source" ? "Source with variable placeholders." : "Rendered preview."}
+                </p>
+              </div>
+              {!isEditing && (
+                <div className="flex rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode("source")}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "source" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+                  >
+                    <Code className="size-3" />
+                    Source
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode("preview")}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "preview" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+                  >
+                    <Eye className="size-3" />
+                    Preview
+                  </button>
+                </div>
+              )}
             </div>
+
             {isEditing ? (
               <div className="p-4 sm:p-5">
                 <textarea
@@ -189,11 +215,28 @@ export default function TemplateDetailPage() {
                   onChange={(e) => setBody(e.target.value)}
                 />
               </div>
-            ) : (
+            ) : previewMode === "source" ? (
               <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0 [&_pre]:max-h-[500px]">
                 <CodeBlock language={template.channel === "email" ? "html" : template.channel === "webhook" ? "json" : "text"}>
                   {template.body}
                 </CodeBlock>
+              </div>
+            ) : (
+              <div className="bg-white">
+                {template.channel === "email" ? (
+                  <iframe
+                    srcDoc={template.body}
+                    title="Template preview"
+                    className="h-[500px] w-full border-0"
+                    sandbox="allow-same-origin"
+                  />
+                ) : (
+                  <div className="p-5">
+                    <pre className="whitespace-pre-wrap rounded-lg bg-[var(--gray-1)] p-4 font-mono text-[13px] leading-relaxed text-[var(--gray-8)]">
+                      {template.body}
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
           </div>

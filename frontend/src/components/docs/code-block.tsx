@@ -70,7 +70,6 @@ export function CodeBlock({
       <SyntaxHighlighter
         language={language}
         style={oneDark}
-        wrapLongLines
         customStyle={{
           margin: 0,
           padding: "1rem 1.25rem",
