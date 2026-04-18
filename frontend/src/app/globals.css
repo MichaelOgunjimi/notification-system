@@ -294,3 +294,14 @@
     grid-template-columns: minmax(0, 1fr) 300px;
   }
 }
+
+/* Notification detail grid: timeline/body + details sidebar */
+.notification-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .notification-detail-grid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}

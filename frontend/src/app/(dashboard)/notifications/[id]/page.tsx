@@ -1,7 +1,9 @@
 "use client";
 
-import { ArrowUpRight, CheckCircle2, Circle, Clock, Mail, RotateCcw, XCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Circle, Clock, Code, Eye, Mail, RotateCcw, XCircle } from "lucide-react";
+import { useState } from "react";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { CodeBlock } from "@/components/docs/code-block";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +14,7 @@ import { formatDate } from "@/lib/utils";
 export default function NotificationDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const [previewMode, setPreviewMode] = useState<"source" | "preview">("source");
   const { data: notification, isLoading, error } = useQuery({
     queryKey: ["notifications", id],
     queryFn: () => getNotification(id),
@@ -65,8 +68,8 @@ export default function NotificationDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
-        <div className="space-y-5">
+      <div className="notification-detail-grid gap-5">
+        <div className="min-w-0 space-y-5">
           {/* Delivery Timeline */}
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
             <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
@@ -95,17 +98,59 @@ export default function NotificationDetailPage() {
             </div>
           </div>
 
-          {/* Rendered Body */}
+          {/* Rendered Body — Source / Preview tabs */}
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
-            <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
-              <h2 className="text-sm font-semibold text-[var(--gray-10)]">Rendered Body</h2>
-              <p className="mt-0.5 text-xs text-[var(--gray-6)]">Message body rendered for this notification.</p>
+            <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3 sm:px-5">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--gray-10)]">Rendered Body</h2>
+                <p className="mt-0.5 text-xs text-[var(--gray-6)]">
+                  {previewMode === "source" ? "Message source as delivered." : "Rendered preview."}
+                </p>
+              </div>
+              <div className="flex rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("source")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "source" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+                >
+                  <Code className="size-3" />
+                  Source
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("preview")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "preview" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+                >
+                  <Eye className="size-3" />
+                  Preview
+                </button>
+              </div>
             </div>
-            <div className="p-4 sm:p-5">
-              <pre className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)]">
-                <code>{notification.rendered_body ?? "No rendered body"}</code>
-              </pre>
-            </div>
+
+            {previewMode === "source" ? (
+              <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0 [&_pre]:max-h-[500px]">
+                <CodeBlock language={notification.channel === "email" ? "html" : notification.channel === "webhook" ? "json" : "text"}>
+                  {notification.rendered_body ?? "No rendered body"}
+                </CodeBlock>
+              </div>
+            ) : (
+              <div className="bg-white">
+                {notification.channel === "email" ? (
+                  <iframe
+                    srcDoc={notification.rendered_body ?? ""}
+                    title="Notification body preview"
+                    className="h-[500px] w-full border-0"
+                    sandbox="allow-same-origin"
+                  />
+                ) : (
+                  <div className="p-5">
+                    <pre className="whitespace-pre-wrap rounded-lg bg-[var(--gray-1)] p-4 font-mono text-[13px] leading-relaxed text-[var(--gray-8)]">
+                      {notification.rendered_body ?? "No rendered body"}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
