@@ -163,7 +163,7 @@
 }
 .aos-init:not(.aos-visible) {
   animation: aos-safety-reveal 0.6s ease forwards;
-  animation-delay: 2s;
+  animation-delay: 1s;
 }
 /* Cancel fallback animation once JS triggers the real transition */
 .aos-visible {
@@ -240,6 +240,28 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shimmer 4s linear infinite;
+}
+
+/* Hero highlight — gradient text with subtle animated underline */
+.hero-highlight {
+  position: relative;
+  background: linear-gradient(135deg, var(--primary) 0%, #fbbf24 60%, var(--primary) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 5s ease-in-out infinite;
+}
+.hero-highlight::after {
+  content: "";
+  position: absolute;
+  bottom: 0.04em;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--primary) 30%, #fbbf24 70%, transparent 100%);
+  opacity: 0.5;
 }
 
 /* Docs content grid: article + TOC at xl breakpoint */

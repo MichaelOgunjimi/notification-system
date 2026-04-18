@@ -188,37 +188,57 @@ export default function Home() {
         <HeroBackground />
 
         {/* Radial glow overlay */}
-        <div className="pointer-events-none absolute top-0 left-1/2 -z-[5] h-[700px] w-[1100px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.14)_0%,transparent_60%)]" />
+        <div className="pointer-events-none absolute top-0 left-1/2 -z-[5] h-[700px] w-[1100px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.10)_0%,transparent_55%)]" />
 
-        <div className="mx-auto w-full max-w-6xl px-4 pt-28 pb-16 sm:px-6 sm:pt-36 sm:pb-24">
+        <div className="mx-auto w-full max-w-6xl px-4 pt-24 pb-14 sm:px-6 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-24">
           <div className="flex flex-col items-center text-center">
+
+            {/* Pill badge */}
             <AnimateOnScroll variant="fade-up">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-4 py-1.5">
-                <span className="size-1.5 rounded-full bg-[var(--primary)]" />
-                <span className="text-xs font-medium tracking-wide text-[var(--primary)]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3.5 py-1.5 backdrop-blur-sm">
+                <span className="beacon-dot size-1.5 rounded-full bg-[var(--primary)]" />
+                <span className="text-[11px] font-medium tracking-wide text-[var(--primary)] sm:text-xs">
                   Notification Infrastructure for Developers
                 </span>
               </div>
             </AnimateOnScroll>
 
+            {/* Heading */}
             <AnimateOnScroll variant="fade-up" delay={100}>
-              <h1 className="mt-8 max-w-5xl text-5xl leading-[1.1] font-bold tracking-tight text-white sm:text-7xl sm:leading-[1.08]">
-                <span className="inline-block rounded-2xl bg-[var(--primary)] px-4 py-1 text-black">
-                  Event-driven
-                </span>{" "}
-                notifications
-                <br />
-                <span className="text-shimmer">as a service</span>
+              <h1 className="mt-7 max-w-4xl text-[clamp(2.25rem,6vw,4.5rem)] leading-[1.08] font-bold tracking-tight text-white sm:mt-8">
+                Event-driven notifications{" "}
+                <span className="hero-highlight">as&nbsp;a&nbsp;service</span>
               </h1>
             </AnimateOnScroll>
 
+            {/* Subheading */}
             <AnimateOnScroll variant="fade-up" delay={200}>
-              <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-[var(--gray-9)]">
+              <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-[var(--gray-8)] sm:mt-6 sm:text-base lg:text-lg">
                 Send notifications via email, SMS, and webhooks with a single API call.
                 Built-in queues, retries, templates, and real-time observability.
               </p>
             </AnimateOnScroll>
 
+            {/* Channel badges */}
+            <AnimateOnScroll variant="fade-up" delay={250}>
+              <div className="mt-5 flex items-center gap-2">
+                {[
+                  { icon: Mail, label: "Email" },
+                  { icon: MessageSquare, label: "SMS" },
+                  { icon: Webhook, label: "Webhook" },
+                ].map(({ icon: Icon, label }) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-[var(--gray-9)] backdrop-blur-sm"
+                  >
+                    <Icon className="size-3 text-[var(--primary)]" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </AnimateOnScroll>
+
+            {/* CTAs */}
             <AnimateOnScroll variant="fade-up" delay={300}>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Link
@@ -243,9 +263,10 @@ export default function Home() {
               </div>
             </AnimateOnScroll>
 
-            <AnimateOnScroll variant="fade-up" delay={400}>
-              <div className="mt-6 inline-flex max-w-full items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
-                <code className="truncate font-mono text-xs text-[var(--gray-9)] sm:text-sm">
+            {/* Inline curl — hidden on small mobile, scrollable otherwise */}
+            <AnimateOnScroll variant="fade-up" delay={350}>
+              <div className="mt-6 hidden max-w-full items-center gap-2 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 backdrop-blur-sm sm:inline-flex">
+                <code className="overflow-x-auto whitespace-nowrap font-mono text-xs text-[var(--gray-8)] sm:text-[13px]">
                   {CURL_COMMAND}
                 </code>
                 <CopyCommandButton text={CURL_COMMAND} iconOnly />
@@ -253,8 +274,9 @@ export default function Home() {
             </AnimateOnScroll>
           </div>
 
-          <AnimateOnScroll variant="scale-in" delay={500}>
-            <div className="mt-14">
+          {/* Terminal preview */}
+          <AnimateOnScroll variant="scale-in" delay={450}>
+            <div className="mx-auto mt-12 max-w-3xl sm:mt-16">
               <TerminalPreview />
             </div>
           </AnimateOnScroll>
