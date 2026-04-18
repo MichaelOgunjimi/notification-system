@@ -68,93 +68,37 @@ export default function NotificationDetailPage() {
         </div>
       </div>
 
+      {/* Top row: Timeline + Details side-by-side */}
       <div className="notification-detail-grid gap-5">
-        <div className="min-w-0 space-y-5">
-          {/* Delivery Timeline */}
-          <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
-            <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
-              <h2 className="text-sm font-semibold text-[var(--gray-10)]">Delivery Timeline</h2>
-              <p className="mt-0.5 text-xs text-[var(--gray-7)]">Step-by-step delivery trace.</p>
-            </div>
-            <div className="p-4 sm:p-5">
-              <div className="space-y-0">
-                {(notification.notification_logs ?? []).map((step, i) => (
-                  <div key={step.id} className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gray-3)]">
-                        {stepIcon(step.status)}
-                      </span>
-                      {i < (notification.notification_logs ?? []).length - 1 && (
-                        <div className="my-1 h-5 w-px bg-[var(--gray-4)]" />
-                      )}
-                    </div>
-                    <div className="pb-4">
-                      <p className={`text-[13px] font-medium leading-6 ${step.status === "delivered" ? "text-[var(--gray-9)]" : "text-[var(--gray-5)]"}`}>{step.message ?? step.status}</p>
-                      <p className="font-mono text-[11px] text-[var(--gray-5)]">{formatDate(step.created_at)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* Delivery Timeline */}
+        <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+          <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
+            <h2 className="text-sm font-semibold text-[var(--gray-10)]">Delivery Timeline</h2>
+            <p className="mt-0.5 text-xs text-[var(--gray-7)]">Step-by-step delivery trace.</p>
           </div>
-
-          {/* Rendered Body — Source / Preview tabs */}
-          <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
-            <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3 sm:px-5">
-              <div>
-                <h2 className="text-sm font-semibold text-[var(--gray-10)]">Rendered Body</h2>
-                <p className="mt-0.5 text-xs text-[var(--gray-6)]">
-                  {previewMode === "source" ? "Message source as delivered." : "Rendered preview."}
-                </p>
-              </div>
-              <div className="flex rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode("source")}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "source" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
-                >
-                  <Code className="size-3" />
-                  Source
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode("preview")}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "preview" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
-                >
-                  <Eye className="size-3" />
-                  Preview
-                </button>
-              </div>
-            </div>
-
-            {previewMode === "source" ? (
-              <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0 [&_pre]:max-h-[500px]">
-                <CodeBlock language={notification.channel === "email" ? "html" : notification.channel === "webhook" ? "json" : "text"}>
-                  {notification.rendered_body ?? "No rendered body"}
-                </CodeBlock>
-              </div>
-            ) : (
-              <div className="bg-white">
-                {notification.channel === "email" ? (
-                  <iframe
-                    srcDoc={notification.rendered_body ?? ""}
-                    title="Notification body preview"
-                    className="h-[500px] w-full border-0"
-                    sandbox="allow-same-origin"
-                  />
-                ) : (
-                  <div className="p-5">
-                    <pre className="whitespace-pre-wrap rounded-lg bg-[var(--gray-1)] p-4 font-mono text-[13px] leading-relaxed text-[var(--gray-8)]">
-                      {notification.rendered_body ?? "No rendered body"}
-                    </pre>
+          <div className="p-4 sm:p-5">
+            <div className="space-y-0">
+              {(notification.notification_logs ?? []).map((step, i) => (
+                <div key={step.id} className="flex items-start gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gray-3)]">
+                      {stepIcon(step.status)}
+                    </span>
+                    {i < (notification.notification_logs ?? []).length - 1 && (
+                      <div className="my-1 h-5 w-px bg-[var(--gray-4)]" />
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                  <div className="pb-4">
+                    <p className={`text-[13px] font-medium leading-6 ${step.status === "delivered" ? "text-[var(--gray-9)]" : "text-[var(--gray-5)]"}`}>{step.message ?? step.status}</p>
+                    <p className="font-mono text-[11px] text-[var(--gray-5)]">{formatDate(step.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right: Details */}
+        {/* Right: Details + Source Event */}
         <div className="space-y-5">
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
             <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
@@ -170,7 +114,7 @@ export default function NotificationDetailPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--gray-7)]">{item.label}</p>
-                      <p className={`truncate text-[13px] text-[var(--gray-9)] ${(item as any).mono ? "font-mono" : ""}`}>{item.value}</p>
+                      <p className="truncate text-[13px] text-[var(--gray-9)]">{item.value}</p>
                     </div>
                   </div>
                 );
@@ -184,13 +128,67 @@ export default function NotificationDetailPage() {
             </div>
             <div className="p-4 sm:p-5">
               <p className="truncate font-mono text-[12px] text-[var(--gray-7)]">{notification.event_id}</p>
-              <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--gray-7)]">{notification.event_id.slice(0, 26)}…</p>
               <Link href={`/events/${notification.event_id}`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-[var(--primary)] hover:text-[#fbbf24] transition-colors">
                 View event <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Full-width: Rendered Body — Source / Preview tabs */}
+      <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
+        <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-3 sm:px-5">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--gray-10)]">Rendered Body</h2>
+            <p className="mt-0.5 text-xs text-[var(--gray-6)]">
+              {previewMode === "source" ? "Message source as delivered." : "Rendered preview."}
+            </p>
+          </div>
+          <div className="flex rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-0.5">
+            <button
+              type="button"
+              onClick={() => setPreviewMode("source")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "source" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+            >
+              <Code className="size-3" />
+              Source
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("preview")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${previewMode === "preview" ? "bg-[var(--gray-3)] text-[var(--gray-10)]" : "text-[var(--gray-6)] hover:text-[var(--gray-8)]"}`}
+            >
+              <Eye className="size-3" />
+              Preview
+            </button>
+          </div>
+        </div>
+
+        {previewMode === "source" ? (
+          <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0 [&_pre]:max-h-[600px]">
+            <CodeBlock language={notification.channel === "email" ? "html" : notification.channel === "webhook" ? "json" : "text"}>
+              {notification.rendered_body ?? "No rendered body"}
+            </CodeBlock>
+          </div>
+        ) : (
+          <div className="bg-white">
+            {notification.channel === "email" ? (
+              <iframe
+                srcDoc={notification.rendered_body ?? ""}
+                title="Notification body preview"
+                className="h-[600px] w-full border-0"
+                sandbox="allow-same-origin"
+              />
+            ) : (
+              <div className="p-5">
+                <pre className="whitespace-pre-wrap rounded-lg bg-[var(--gray-1)] p-4 font-mono text-[13px] leading-relaxed text-[var(--gray-8)]">
+                  {notification.rendered_body ?? "No rendered body"}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
