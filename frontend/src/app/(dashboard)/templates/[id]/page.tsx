@@ -152,8 +152,8 @@ export default function TemplateDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
-        <div className="space-y-5">
+      <div className="template-detail-grid gap-5">
+        <div className="min-w-0 space-y-5">
           {/* Subject */}
           <div className="overflow-hidden rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)]">
             <div className="border-b border-[var(--gray-3)] px-4 py-3.5 sm:px-5">
@@ -168,7 +168,7 @@ export default function TemplateDetailPage() {
                   ) : null}
                 </div>
               ) : (
-                <p className="font-mono text-[13px] text-[var(--gray-8)]">
+                <p className="break-words font-mono text-[13px] text-[var(--gray-8)]">
                   {template.channel === "email" ? template.subject : template.body}
                 </p>
               )}
@@ -184,13 +184,13 @@ export default function TemplateDetailPage() {
             {isEditing ? (
               <div className="p-4 sm:p-5">
                 <textarea
-                  className="overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap w-full min-h-48"
+                  className="w-full min-h-48 overflow-x-auto rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] p-4 font-mono text-[12px] leading-relaxed text-[var(--gray-8)] whitespace-pre-wrap"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                 />
               </div>
             ) : (
-              <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0">
+              <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0 [&_pre]:max-h-[500px]">
                 <CodeBlock language={template.channel === "email" ? "html" : template.channel === "webhook" ? "json" : "text"}>
                   {template.body}
                 </CodeBlock>

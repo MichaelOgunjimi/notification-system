@@ -70,6 +70,7 @@ export function CodeBlock({
       <SyntaxHighlighter
         language={language}
         style={oneDark}
+        wrapLongLines
         customStyle={{
           margin: 0,
           padding: "1rem 1.25rem",
@@ -77,6 +78,7 @@ export function CodeBlock({
           fontSize: "13px",
           lineHeight: "1.7",
           borderRadius: 0,
+          overflowX: "auto",
         }}
         codeTagProps={{
           style: { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" },

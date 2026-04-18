@@ -245,3 +245,14 @@
     display: block;
   }
 }
+
+/* Template detail grid: body + variables sidebar */
+.template-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .template-detail-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
