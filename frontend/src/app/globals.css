@@ -154,6 +154,22 @@
   transform: none;
 }
 
+/* Safety net: reveal content if JS hasn't added .aos-visible within 2s */
+@keyframes aos-safety-reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.aos-init:not(.aos-visible) {
+  animation: aos-safety-reveal 0.6s ease forwards;
+  animation-delay: 2s;
+}
+/* Cancel fallback animation once JS triggers the real transition */
+.aos-visible {
+  animation: none;
+}
+
 /* Pulse glow for hero beacon dot */
 @keyframes beacon-pulse {
   0%,

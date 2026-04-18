@@ -6,7 +6,7 @@ import axios from "axios";
 import { Eye, EyeOff, Loader2, Crown } from "lucide-react";
 import { isAuthenticated, setAuthInfo } from "@/lib/auth";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 interface ValidateResponse {
   valid: boolean;
