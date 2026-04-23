@@ -1,23 +1,22 @@
 import axios from "axios";
-import { clearToken, getToken } from "@/lib/auth";
+import { clearAuthInfo } from "@/lib/auth";
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "/api/v1",
+  baseURL: "/api/proxy",
   headers: { "Content-Type": "application/json" },
-});
-
-apiClient.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) config.headers["X-API-Key"] = token;
-  return config;
 });
 
 apiClient.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
-      if (typeof window !== "undefined" && getToken()) {
-        clearToken();
+      if (typeof window !== "undefined") {
+        clearAuthInfo();
+        try {
+          await fetch("/api/auth/logout", { method: "POST" });
+        } catch {
+          // Best-effort logout cleanup.
+        }
         window.location.replace("/login");
       }
     }

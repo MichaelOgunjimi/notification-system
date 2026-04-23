@@ -150,7 +150,7 @@ export default function AuditLogPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-[16px_1fr_1fr_auto_1fr_1fr] gap-3 bg-[var(--gray-1)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)] sm:px-5">
+          <div className="grid grid-cols-[16px_1fr_1fr_160px_100px_1fr] gap-3 bg-[var(--gray-1)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)] sm:px-5">
             <span />
             <span>Time</span>
             <span>IP Address</span>
@@ -168,7 +168,7 @@ export default function AuditLogPage() {
                 <button
                   type="button"
                   onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                  className="grid w-full cursor-pointer grid-cols-[16px_1fr_1fr_auto_1fr_1fr] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--gray-1)] sm:px-5"
+                  className="grid w-full cursor-pointer grid-cols-[16px_1fr_1fr_160px_100px_1fr] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--gray-1)] sm:px-5"
                 >
                   <ChevronDown
                     className={cn(

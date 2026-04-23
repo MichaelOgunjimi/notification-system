@@ -2,6 +2,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+Create a `.env.local` file with:
+
+```bash
+API_URL=http://localhost:8000
+```
+
+`API_URL` is a server-side variable used by Next.js route handlers (do not prefix with `NEXT_PUBLIC_`).
+
 First, run the development server:
 
 ```bash

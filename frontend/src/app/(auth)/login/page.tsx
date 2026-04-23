@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { Eye, EyeOff, Loader2, Crown } from "lucide-react";
 import { isAuthenticated, setAuthInfo } from "@/lib/auth";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 interface ValidateResponse {
   valid: boolean;
@@ -37,11 +34,21 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { data } = await axios.post<ValidateResponse>(
-        `${BASE_URL}/auth/validate`,
-        {},
-        { headers: { "X-API-Key": trimmed } },
-      );
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: trimmed }),
+      });
+
+      const data = (await response.json()) as ValidateResponse;
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setError("Invalid API key. Please check and try again.");
+          return;
+        }
+        throw new Error("Login failed");
+      }
 
       if (!data.valid) {
         setError("Invalid API key. Please check and try again.");
@@ -49,19 +56,14 @@ export default function LoginPage() {
       }
 
       setAuthInfo({
-        token: trimmed,
         isMaster: data.is_master,
         name: data.name ?? (data.is_master ? "Master" : "Project key"),
         keyPrefix: data.key_prefix ?? trimmed.slice(0, 10),
       });
 
       router.replace("/dashboard");
-    } catch (err) {
-      if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
-        setError("Invalid API key. Please check and try again.");
-      } else {
-        setError("Unable to reach the server. Please try again.");
-      }
+    } catch {
+      setError("Unable to reach the server. Please try again.");
     } finally {
       setLoading(false);
     }

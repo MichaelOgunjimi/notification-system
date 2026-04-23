@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getAuthInfo, setAuthInfo, clearToken, type AuthInfo } from "@/lib/auth";
+import { getAuthInfo, setAuthInfo, clearAuthInfo, type AuthInfo } from "@/lib/auth";
 
 export function useAuth() {
   const [auth, setAuth] = useState<AuthInfo | null>(null);
@@ -15,13 +15,13 @@ export function useAuth() {
     setAuth(info);
   }, []);
 
-  const logout = useCallback(() => {
-    clearToken();
+  const logout = useCallback(async () => {
+    clearAuthInfo();
     setAuth(null);
+    await fetch("/api/auth/logout", { method: "POST" });
   }, []);
 
   return {
-    apiKey: auth?.token ?? null,
     keyPrefix: auth?.keyPrefix ?? null,
     keyName: auth?.name ?? null,
     isMaster: auth?.isMaster ?? false,

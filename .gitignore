@@ -72,3 +72,6 @@ error.msg
 skills-lock.json
 
 *.playwright-cli
+
+DESIGN_REFERENCE.md
+CODE_REVIEW.md
