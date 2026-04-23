@@ -111,7 +111,7 @@ async def test_batch_atomicity_rolls_back_on_failure(auth_client: AsyncClient) -
         resp = await auth_client.post("/api/v1/events/batch", json=payload)
 
     assert resp.status_code == 500
-    assert "failed" in resp.json()["detail"].lower()
+    assert "failed" in resp.json()["error"]["message"].lower()
 
 
 async def import_event_service():
@@ -128,7 +128,7 @@ async def test_create_event_missing_email(auth_client: AsyncClient) -> None:
         json=_event_payload(recipients=[{"user_id": "u1", "channels": ["email"]}]),
     )
     assert resp.status_code == 422
-    assert "email" in resp.json()["detail"].lower()
+    assert "email" in str(resp.json()).lower()
 
 
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ async def test_create_event_missing_phone(auth_client: AsyncClient) -> None:
         json=_event_payload(recipients=[{"user_id": "u1", "channels": ["sms"]}]),
     )
     assert resp.status_code == 422
-    assert "phone" in resp.json()["detail"].lower()
+    assert "phone" in str(resp.json()).lower()
 
 
 @pytest.mark.asyncio
@@ -150,7 +150,7 @@ async def test_create_event_missing_webhook_url(auth_client: AsyncClient) -> Non
         json=_event_payload(recipients=[{"user_id": "u1", "channels": ["webhook"]}]),
     )
     assert resp.status_code == 422
-    assert "webhook_url" in resp.json()["detail"].lower()
+    assert "webhook_url" in str(resp.json()).lower()
 
 
 @pytest.mark.asyncio

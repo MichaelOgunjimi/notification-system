@@ -35,4 +35,7 @@ async def validate_api_key(db: AsyncSession, raw_key: str) -> ApiKey | None:
 
 def verify_master_key_value(provided_key: str, master_key: str) -> bool:
     """Constant-time comparison of master key."""
-    return secrets.compare_digest(provided_key, master_key)
+    try:
+        return secrets.compare_digest(provided_key, master_key)
+    except TypeError:
+        return False
