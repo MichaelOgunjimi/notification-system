@@ -182,14 +182,22 @@ async def create_batch(
     for key, event_id in new_idempotency:
         await idempotency_service.store(api_key_id, key, event_id)
 
+    enqueue_failures = 0
     for event, priority in new_events:
         try:
             _enqueue_dispatch(str(event.id), priority)
         except Exception:
+            enqueue_failures += 1
             logger.error(
                 "Failed to enqueue event %s — stuck in ACCEPTED, needs reprocessing",
                 event.id,
             )
+    if enqueue_failures:
+        logger.critical(
+            "%d/%d events failed to enqueue — reconciliation worker will retry",
+            enqueue_failures,
+            len(new_events),
+        )
 
     return results
 

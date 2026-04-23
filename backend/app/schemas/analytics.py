@@ -13,6 +13,14 @@ class ChannelStat(BaseModel):
     dead_letter: int
 
 
+class TrendPoint(BaseModel):
+    timestamp: str  # ISO 8601 bucket start (hour or day)
+    delivered: int
+    failed: int
+    queued: int
+    processing: int
+
+
 class AnalyticsResponse(BaseModel):
     # Event counts (today)
     events_today: int
@@ -35,3 +43,7 @@ class AnalyticsResponse(BaseModel):
 
     # Per-channel breakdown
     channel_stats: list[ChannelStat]
+
+
+class TrendResponse(BaseModel):
+    points: list[TrendPoint]

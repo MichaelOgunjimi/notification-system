@@ -26,9 +26,10 @@ async def list_audit_log(
 ) -> PaginatedResponse[AuditLogResponse]:
     filters = [col(AuditLog.api_key_id) == api_key.id]
     if action:
-        filters.append(col(AuditLog.action) == action)
+        filters.append(col(AuditLog.action).ilike(f"%{action}%"))
     if from_:
-        filters.append(col(AuditLog.created_at) >= from_)
+        naive_from = from_.replace(tzinfo=None) if from_.tzinfo else from_
+        filters.append(col(AuditLog.created_at) >= naive_from)
 
     total_result = await db.execute(select(func.count()).select_from(AuditLog).where(*filters))
     total = int(total_result.scalar() or 0)
@@ -41,17 +42,5 @@ async def list_audit_log(
         .offset(offset)
         .limit(per_page)
     )
-    items = [
-        AuditLogResponse(
-            id=item.id,
-            api_key_id=item.api_key_id,
-            action=item.action,
-            resource_type=item.resource_type,
-            resource_id=item.resource_id,
-            metadata=item.metadata_,
-            ip_address=item.ip_address,
-            created_at=item.created_at,
-        )
-        for item in result.scalars().all()
-    ]
+    items = [AuditLogResponse.model_validate(item) for item in result.scalars().all()]
     return PaginatedResponse.create(items, total, page, per_page)

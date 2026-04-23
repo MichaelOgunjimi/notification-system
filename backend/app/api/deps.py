@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -16,27 +16,31 @@ MASTER_KEY_ID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
 async def get_current_api_key(
+    request: Request,
     x_api_key: str = Header(..., alias="X-API-Key"),
     *,
     db: SessionDep,
 ) -> ApiKey:
     """Validate the X-API-Key header and return the corresponding ApiKey model."""
     if settings.MASTER_API_KEY and verify_master_key_value(x_api_key, settings.MASTER_API_KEY):
-        return ApiKey(
+        api_key = ApiKey(
             id=MASTER_KEY_ID,
             name="Master",
             key_prefix=x_api_key[:10],
             key_hash="",
             is_active=True,
         )
+        request.state.api_key_id = api_key.id
+        return api_key
 
-    api_key = await validate_api_key(db, x_api_key)
-    if api_key is None:
+    validated_api_key = await validate_api_key(db, x_api_key)
+    if validated_api_key is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or inactive API key",
         )
-    return api_key
+    request.state.api_key_id = validated_api_key.id
+    return validated_api_key
 
 
 async def verify_master_key(

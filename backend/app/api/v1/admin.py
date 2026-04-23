@@ -14,7 +14,7 @@ from app.api.deps import MASTER_KEY_ID, MasterKeyDep, SessionDep
 from app.core.redis import get_redis
 from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
-from app.models.enums import NotificationStatus
+from app.models.enums import NotificationChannel, NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
 from app.models.template import Template
@@ -24,6 +24,7 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.templates import TemplateCreate, TemplateResponse, TemplateUpdate
 from app.schemas.usage import UsageResponse
 from app.services import template_service
+from app.workers.queues import channel_queue, dispatcher_queue
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -114,20 +115,12 @@ async def get_admin_health(*, db: SessionDep, _: MasterKeyDep) -> AdminHealthRes
 
     redis_ok = True
     queue_lengths: list[AdminQueueLength] = []
-    queue_names = [
-        "notifications.high",
-        "notifications.medium",
-        "notifications.low",
-        "notifications.email.high",
-        "notifications.email.medium",
-        "notifications.email.low",
-        "notifications.sms.high",
-        "notifications.sms.medium",
-        "notifications.sms.low",
-        "notifications.webhook.high",
-        "notifications.webhook.medium",
-        "notifications.webhook.low",
-    ]
+    priorities = ["high", "medium", "low"]
+    channels = [channel.value for channel in NotificationChannel]
+    queue_names = [dispatcher_queue(priority) for priority in priorities]
+    queue_names.extend(
+        channel_queue(channel, priority) for channel in channels for priority in priorities
+    )
     try:
         redis_client = get_redis()
         await redis_client.ping()

@@ -90,6 +90,11 @@ async def get_owned_template(
     *,
     api_key_id: uuid.UUID | None,
 ) -> Template | None:
+    """Return template only if the caller owns it.
+
+    Master key (api_key_id=None) → owns system defaults (api_key_id IS NULL).
+    Regular key (api_key_id=UUID) → owns only its own templates.
+    """
     result = await db.execute(
         select(Template).where(
             col(Template.id) == template_id,
