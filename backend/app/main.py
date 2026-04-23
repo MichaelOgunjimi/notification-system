@@ -7,7 +7,8 @@ structured logging, and database lifecycle hooks.
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,6 +17,7 @@ from app.api.middleware import LoggingMiddleware, RequestIDMiddleware, UsageTrac
 from app.api.rate_limit import RateLimitMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
+from app.core.exceptions import ErrorCode
 from app.core.redis import close_redis
 from app.utils.logging import setup_logging
 
@@ -74,6 +76,83 @@ class _BodySizeLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+def _status_to_error_code(status_code: int) -> ErrorCode:
+    explicit_map: dict[int, ErrorCode] = {
+        401: ErrorCode.UNAUTHORIZED,
+        403: ErrorCode.FORBIDDEN,
+        404: ErrorCode.NOT_FOUND,
+        409: ErrorCode.CONFLICT,
+        413: ErrorCode.PAYLOAD_TOO_LARGE,
+        422: ErrorCode.VALIDATION_ERROR,
+        429: ErrorCode.RATE_LIMITED,
+        502: ErrorCode.SERVICE_UNAVAILABLE,
+        503: ErrorCode.SERVICE_UNAVAILABLE,
+    }
+    if status_code in explicit_map:
+        return explicit_map[status_code]
+    if 500 <= status_code <= 599:
+        return ErrorCode.INTERNAL_ERROR
+    if 400 <= status_code <= 499:
+        return ErrorCode.BAD_REQUEST
+    return ErrorCode.INTERNAL_ERROR
+
+
+async def _request_validation_exception_handler(
+    _request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    if not isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "Internal server error",
+                }
+            },
+        )
+    details = [
+        {
+            "field": ".".join(str(loc) for loc in error["loc"][1:]),
+            "message": error["msg"],
+        }
+        for error in exc.errors()
+    ]
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": ErrorCode.VALIDATION_ERROR,
+                "message": "Request validation failed",
+                "details": details,
+            }
+        },
+    )
+
+
+async def _http_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "Internal server error",
+                }
+            },
+        )
+    code = _status_to_error_code(exc.status_code)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": str(exc.detail),
+            }
+        },
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
@@ -104,6 +183,8 @@ def create_app() -> FastAPI:
     # Added last → runs first on every request (Starlette executes middleware in reverse order).
     # This ensures 429 responses short-circuit before UsageTrackingMiddleware records usage.
     app.add_middleware(RateLimitMiddleware)
+    app.add_exception_handler(HTTPException, _http_exception_handler)
+    app.add_exception_handler(RequestValidationError, _request_validation_exception_handler)
     app.include_router(api_v1_router, prefix="/api/v1")
     return app
 

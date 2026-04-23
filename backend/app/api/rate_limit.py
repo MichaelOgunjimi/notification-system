@@ -1,7 +1,6 @@
 """Redis-backed fixed-window rate limiting middleware."""
 
 import logging
-import secrets
 import time
 
 from fastapi.responses import JSONResponse
@@ -11,6 +10,7 @@ from starlette.responses import Response
 
 from app.core.config import settings
 from app.core.redis import get_redis
+from app.core.security import verify_master_key_value
 from app.utils.crypto import hash_api_key
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not raw_key:
             return await call_next(request)
 
-        if settings.MASTER_API_KEY and secrets.compare_digest(raw_key, settings.MASTER_API_KEY):
+        if settings.MASTER_API_KEY and verify_master_key_value(raw_key, settings.MASTER_API_KEY):
             limit = settings.RATE_LIMIT_DEFAULT * 10
             minute_bucket = int(time.time() // 60)
             window_end = (minute_bucket + 1) * 60
