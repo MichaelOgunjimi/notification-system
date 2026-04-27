@@ -48,6 +48,22 @@ export default function NotificationDetailPage() {
     return <Circle className="h-4 w-4 text-[var(--gray-5)]" />;
   };
 
+  const stepBgColor = (status: string) => {
+    if (status === "delivered") return "bg-[color:rgba(74,222,128,0.12)]";
+    if (status === "failed") return "bg-[color:rgba(248,113,113,0.12)]";
+    if (status === "processing") return "bg-[color:rgba(251,191,36,0.12)]";
+    if (status === "queued") return "bg-[color:rgba(96,165,250,0.12)]";
+    return "bg-[var(--gray-3)]";
+  };
+
+  const stepLineColor = (status: string) => {
+    if (status === "delivered") return "bg-[#4ade80]";
+    if (status === "failed") return "bg-[#f87171]";
+    if (status === "processing") return "bg-[#fbbf24]";
+    if (status === "queued") return "bg-[#60a5fa]";
+    return "bg-[var(--gray-4)]";
+  };
+
   return (
     <div className="space-y-5">
       {/* Heading */}
@@ -81,16 +97,16 @@ export default function NotificationDetailPage() {
               {(notification.notification_logs ?? []).map((step, i) => (
                 <div key={step.id} className="flex items-start gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gray-3)]">
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${stepBgColor(step.status)}`}>
                       {stepIcon(step.status)}
                     </span>
                     {i < (notification.notification_logs ?? []).length - 1 && (
-                      <div className="my-1 h-5 w-px bg-[var(--gray-4)]" />
+                      <div className={`my-1 h-5 w-px ${stepLineColor(step.status)}`} />
                     )}
                   </div>
                   <div className="pb-4">
-                    <p className={`text-[13px] font-medium leading-6 ${step.status === "delivered" ? "text-[var(--gray-9)]" : "text-[var(--gray-5)]"}`}>{step.message ?? step.status}</p>
-                    <p className="font-mono text-[11px] text-[var(--gray-5)]">{formatDate(step.created_at)}</p>
+                    <p className={`text-[13px] font-medium leading-6 ${step.status === "delivered" ? "text-[var(--gray-9)]" : "text-[var(--gray-6)]"}`}>{step.message ?? step.status}</p>
+                    <p className="font-mono text-[11px] text-[var(--gray-6)]">{formatDate(step.created_at)}</p>
                   </div>
                 </div>
               ))}

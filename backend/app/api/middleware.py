@@ -86,6 +86,10 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
                 if api_key_id is None:
                     return response
 
+            # Validate api_key_id is not the nil UUID
+            if api_key_id == "00000000-0000-0000-0000-000000000000":
+                return response
+
             hour_bucket = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
             normalized_path = _UUID_RE.sub("{id}", request.url.path)
             stmt = insert(ApiKeyUsage).values(

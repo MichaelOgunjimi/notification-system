@@ -92,6 +92,11 @@ export default function TemplateDetailPage() {
       return;
     }
 
+    if (!name.trim() || !body.trim()) {
+      toast.error("Name and body are required");
+      return;
+    }
+
     if (willFork) {
       // Fork: create a project-owned copy with the edited content
       forkMutation.mutate({

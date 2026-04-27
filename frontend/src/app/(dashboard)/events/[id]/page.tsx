@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CheckCircle2, Circle, Clock, Hash, Mail, Shield, Zap } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, CheckCircle2, Circle, Clock, Hash, Mail, Shield, Zap } from "lucide-react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -57,7 +57,7 @@ export default function EventDetailPage() {
             <StatusBadge status={event.status} />
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-mono text-[12px] text-[var(--gray-5)]">{event.id}</span>
+            <span className="font-mono text-[12px] text-[var(--gray-6)]">{event.id}</span>
             <span className="text-[var(--gray-4)]">·</span>
             <span className="text-[12px] text-[var(--gray-6)]">{formatDate(event.created_at)}</span>
           </div>
@@ -90,7 +90,7 @@ export default function EventDetailPage() {
                   <Icon className="h-3 w-3" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)]">{item.label}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-6)]">{item.label}</p>
                   <p className={`mt-0.5 truncate text-[13px] text-[var(--gray-9)] ${item.mono ? "font-mono" : ""}`}>{item.value}</p>
                 </div>
               </div>
@@ -115,7 +115,7 @@ export default function EventDetailPage() {
             <thead>
               <tr className="border-b border-[var(--gray-3)]">
                 {["Notification ID", "Channel", "Recipient", "Status", "Created", ""].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-5)] sm:px-5">{h}</th>
+                  <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gray-6)] sm:px-5">{h}</th>
                 ))}
               </tr>
             </thead>

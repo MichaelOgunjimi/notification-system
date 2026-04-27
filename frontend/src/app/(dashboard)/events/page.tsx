@@ -20,7 +20,7 @@ import { useDateFilter } from "@/hooks/use-date-filter";
 const priorityColor = {
   high: "text-[#f87171]",
   medium: "text-[#fbbf24]",
-  low: "text-[#60a5fa]",
+  low: "text-[#64748b]",
 };
 
 const STATUS_FILTERS = ["All", "Completed", "Failed", "Processing"];

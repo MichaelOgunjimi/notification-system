@@ -36,7 +36,7 @@ export function StatCard({ label, value, delta, icon, className }: StatCardProps
           {label}
         </p>
         {icon && (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)] text-[var(--gray-6)]">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--gray-3)]">
             {icon}
           </span>
         )}

@@ -17,7 +17,11 @@ import { listNotifications } from "@/lib/api";
 import { useDateFilter } from "@/hooks/use-date-filter";
 
 const channelFilters = ["All", "Email", "SMS", "Webhook", "Failed"];
-const channelColor = { email: "text-[#60a5fa]", sms: "text-[#4ade80]", webhook: "text-[#a78bfa]" };
+const channelColor = {
+  email: "bg-[color:rgba(96,165,250,0.12)] text-[#60a5fa]",
+  sms: "bg-[color:rgba(74,222,128,0.12)] text-[#4ade80]",
+  webhook: "bg-[color:rgba(167,139,250,0.12)] text-[#a78bfa]"
+};
 
 export default function NotificationsPage() {
   const [page, setPage] = useState(1);
@@ -148,7 +152,7 @@ export default function NotificationsPage() {
                     <p className="mt-0.5 font-mono text-[11px] text-[var(--gray-8)]">{row.id.slice(0, 24)}…</p>
                   </td>
                   <td className="px-4 py-3.5 sm:px-5">
-                    <span className={`text-xs font-medium ${channelColor[row.channel as keyof typeof channelColor] ?? ""}`}>{row.channel}</span>
+                    <span className={`text-xs font-medium rounded-lg px-2.5 py-1.5 ${channelColor[row.channel as keyof typeof channelColor] ?? ""}`}>{row.channel}</span>
                   </td>
                   <td className="px-4 py-3.5 text-[13px] text-[var(--gray-9)] sm:px-5">{row.recipient_address}</td>
                   <td className="px-4 py-3.5 sm:px-5"><StatusBadge status={row.status} /></td>

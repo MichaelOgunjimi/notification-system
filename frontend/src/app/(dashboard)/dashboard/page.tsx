@@ -183,7 +183,7 @@ export default function DashboardPage() {
           <div className="text-center">
             <p className="text-[10px] text-[#6b7280]">Delivery Rate</p>
             <p className="text-[15px] font-semibold text-[#e5e5e5]">
-              {(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
+              {(analytics?.events_today ?? 0) === 0 || (analytics?.notifications_delivered ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
             </p>
           </div>
           <div className="text-center">
@@ -205,7 +205,7 @@ export default function DashboardPage() {
           <StaggerItem>
             <StatCard
               label="Delivery Rate"
-              value={(analytics?.events_today ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
+              value={(analytics?.events_today ?? 0) === 0 || (analytics?.notifications_delivered ?? 0) === 0 ? "N/A" : `${(analytics?.success_rate ?? 100).toFixed(1)}%`}
               icon={<CheckCircle2 className="h-3.5 w-3.5 text-[#4ade80]" />}
             />
           </StaggerItem>
@@ -292,7 +292,7 @@ export default function DashboardPage() {
 
             <div className="mt-4 space-y-4">
               {channelHealth.length === 0 && (
-                <p className="py-4 text-center text-xs text-[var(--gray-5)]">No channel activity yet.</p>
+                <p className="py-4 text-center text-xs text-[var(--gray-6)]">No channel activity yet.</p>
               )}
               {channelHealth.map((item) => {
                 const Icon = item.icon;
