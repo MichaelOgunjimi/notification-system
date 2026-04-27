@@ -63,6 +63,7 @@ class EventCreate(BaseModel):
     recipients: list[RecipientCreate]
     priority: EventPriority = EventPriority.MEDIUM
     template_id: uuid.UUID | None = None
+    template_name: str | None = Field(default=None, min_length=1, max_length=255)
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)

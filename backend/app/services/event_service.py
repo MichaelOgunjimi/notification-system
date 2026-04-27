@@ -13,6 +13,7 @@ from app.models.enums import EventPriority, EventStatus, NotificationStatus
 from app.models.event import Event
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
+from app.models.template import Template
 from app.schemas.events import EventCreate, RecipientCreate
 from app.services import idempotency as idempotency_service
 from app.utils.datetime import to_naive_utc
@@ -69,6 +70,17 @@ async def create_event(
     (or rolling back) the transaction — used by the batch endpoint so that
     all events in a batch are atomic.
     """
+    # --- Resolve template_name → template_id (template_id takes priority if both given) ---
+    resolved_template_id = event_data.template_id
+    if resolved_template_id is None and event_data.template_name:
+        result = await db.execute(
+            select(Template).where(col(Template.name) == event_data.template_name)
+        )
+        tpl = result.scalars().first()
+        resolved_template_id = tpl.id if tpl is not None else None
+        if resolved_template_id is None:
+            raise ValueError(f"Template with name '{event_data.template_name}' not found")
+
     # --- Idempotency check ---
     if event_data.idempotency_key:
         existing = await idempotency_service.check(db, api_key_id, event_data.idempotency_key)
@@ -79,7 +91,7 @@ async def create_event(
         event_type=event_data.event_type,
         priority=event_data.priority,
         status=EventStatus.ACCEPTED,
-        template_id=event_data.template_id,
+        template_id=resolved_template_id,
         payload=event_data.payload,
         metadata_=event_data.metadata,
         api_key_id=api_key_id,
