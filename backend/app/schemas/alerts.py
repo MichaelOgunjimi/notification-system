@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class AlertRuleCreate(BaseModel):
@@ -11,7 +11,7 @@ class AlertRuleCreate(BaseModel):
     metric: str
     threshold: float
     window_minutes: int = 60
-    notify_email: str | None = None
+    notify_email: EmailStr | None = None
     is_active: bool = True
 
 
@@ -20,7 +20,7 @@ class AlertRuleUpdate(BaseModel):
     metric: str | None = None
     threshold: float | None = None
     window_minutes: int | None = None
-    notify_email: str | None = None
+    notify_email: EmailStr | None = None
     is_active: bool | None = None
 
 
