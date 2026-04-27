@@ -236,7 +236,7 @@ async def seed_sample_events(db: AsyncSession, api_key: ApiKey) -> None:
         NotificationChannel.SMS: ["+15559876543", "+15551234567", "+447700900123"],
         NotificationChannel.WEBHOOK: [
             "https://hooks.company.io/notify",
-            "https://api.startup.dev/webhooks/beacon",
+            "https://api.startup.dev/webhooks/beaco",
             "https://internal.enterprise.co/events",
         ],
     }

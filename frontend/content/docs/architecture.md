@@ -1,16 +1,16 @@
 # Architecture
 
-Beacon is a hosted, event-driven notification platform built for reliable multi-channel delivery.
+Beaco is a hosted, event-driven notification platform built for reliable multi-channel delivery.
 
 For endpoint-level details, see [API Reference](/docs/api-reference).
 
 ## System Overview
 
-Beacon’s public API endpoint is:
+Beaco’s public API endpoint is:
 
-`https://beacon.michaelogunjimi.com/api/v1`
+`https://beaco.michaelogunjimi.com/api/v1`
 
-From there, Beacon handles validation, queuing, delivery, retries, and audit history.
+From there, Beaco handles validation, queuing, delivery, retries, and audit history.
 
 Primary design goals:
 
@@ -22,7 +22,7 @@ Primary design goals:
 ## High-Level Flow
 
 ```text
-Your App -> Beacon API -> Queue -> Delivery Workers -> Providers (Resend, Twilio, Webhook endpoints)
+Your App -> Beaco API -> Queue -> Delivery Workers -> Providers (Resend, Twilio, Webhook endpoints)
                                    \-> Event + Notification state store
 ```
 
@@ -34,11 +34,11 @@ You call `POST /events` with `X-API-Key`, recipients, payload, and optional `tem
 
 ### 2) Validate and persist
 
-Beacon validates schema and key scope, enforces idempotency when provided, then stores the event.
+Beaco validates schema and key scope, enforces idempotency when provided, then stores the event.
 
 ### 3) Fan-out notifications
 
-Beacon creates one notification per recipient-channel pair.
+Beaco creates one notification per recipient-channel pair.
 
 ### 4) Queue delivery work
 
@@ -54,7 +54,7 @@ Workers send through:
 
 ### 6) Update lifecycle state
 
-Beacon stores each status transition (queued, processing, delivered, failed, dead_letter) so clients can query complete history.
+Beaco stores each status transition (queued, processing, delivered, failed, dead_letter) so clients can query complete history.
 
 ## Reliability Model
 
@@ -72,7 +72,7 @@ Client-provided idempotency keys prevent duplicate event creation during request
 
 ## Multi-Tenancy Model
 
-Beacon is multi-tenant by API key.
+Beaco is multi-tenant by API key.
 
 ### Project key isolation
 
@@ -103,7 +103,7 @@ Key security controls:
 
 ## Scalability Characteristics
 
-Beacon scales by component:
+Beaco scales by component:
 
 - API servers scale horizontally (stateless).
 - Workers scale by queue/channel throughput.
@@ -114,7 +114,7 @@ This separation keeps read/write APIs responsive during provider disruptions or 
 
 ## Summary
 
-Beacon’s architecture is intentionally simple in composition but strong in operational behavior:
+Beaco’s architecture is intentionally simple in composition but strong in operational behavior:
 
 - Async ingestion for low latency.
 - Queue-based execution for resilience.

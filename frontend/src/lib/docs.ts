@@ -31,7 +31,7 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
   {
     slug: "introduction",
     title: "Introduction",
-    description: "What Beacon is, why it exists, and what makes it different.",
+    description: "What Beaco is, why it exists, and what makes it different.",
     group: "getting-started",
   },
   {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { DatePreset, DateRange } from "@/components/shared/date-range-filter";
 
-const STORAGE_KEY = "beacon_date_preset";
+const STORAGE_KEY = "beaco_date_preset";
 
 export function useDateFilter(defaultPreset: DatePreset = "30d") {
   const [preset, setPreset] = useState<DatePreset>(defaultPreset);

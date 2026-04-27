@@ -65,7 +65,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Beacon documentation" className="p-4">
+    <nav aria-label="Beaco documentation" className="p-4">
       <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)] px-3 py-3">
         <Link
           href="/"
@@ -73,7 +73,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
           className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]"
         >
           <Sparkles size={16} className="text-[var(--primary)]" />
-          Beacon
+          Beaco
         </Link>
         <span className="rounded-full border border-[var(--gray-4)] bg-[var(--gray-3)] px-2 py-0.5 text-[11px] font-medium text-[var(--gray-9)]">
           Docs

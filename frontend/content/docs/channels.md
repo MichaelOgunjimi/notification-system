@@ -1,6 +1,6 @@
 # Channels
 
-Beacon supports three delivery channels:
+Beaco supports three delivery channels:
 
 - Email
 - SMS
@@ -26,7 +26,7 @@ Example:
 }
 ```
 
-Beacon creates one notification per recipient-channel pair and routes each to the corresponding worker queue.
+Beaco creates one notification per recipient-channel pair and routes each to the corresponding worker queue.
 
 ## Email Channel
 
@@ -62,7 +62,7 @@ Subject behavior:
 ### Example Event (Email)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -109,7 +109,7 @@ SMS does not use a subject field.
 ### Example Event (SMS)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -139,11 +139,11 @@ Example:
 ```json
 {
   "channels": ["webhook"],
-  "webhook_url": "https://example.com/beacon/hooks"
+  "webhook_url": "https://example.com/beaco/hooks"
 }
 ```
 
-### Request Body Sent by Beacon
+### Request Body Sent by Beaco
 
 Webhook payload includes:
 
@@ -167,7 +167,7 @@ Example webhook body:
 
 ### URL Validation and SSRF Protection
 
-Beacon validates webhook URLs before delivery:
+Beaco validates webhook URLs before delivery:
 
 - must use `http` or `https`
 - hostname must resolve
@@ -178,7 +178,7 @@ This reduces SSRF risk and prevents delivery to internal network targets.
 ### Example Event (Webhook)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -204,7 +204,7 @@ Common channel config fields:
 | `enabled` | boolean | Enables or disables the channel |
 | `rate_limit_per_minute` | integer | Max outbound sends per minute for channel |
 
-When a channel is disabled, Beacon skips new deliveries for that channel until re-enabled.
+When a channel is disabled, Beaco skips new deliveries for that channel until re-enabled.
 
 Rate limits help protect provider quotas and downstream systems.
 

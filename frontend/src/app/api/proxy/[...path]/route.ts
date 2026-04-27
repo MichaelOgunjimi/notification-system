@@ -12,7 +12,7 @@ type RouteContext = {
 async function proxyRequest(request: Request, context: RouteContext): Promise<Response> {
   const { path } = await context.params;
   const cookieStore = await cookies();
-  const token = cookieStore.get("beacon_token")?.value;
+  const token = cookieStore.get("beaco_token")?.value;
 
   const safeHeaders = new Headers();
   for (const name of SAFE_HEADERS) {

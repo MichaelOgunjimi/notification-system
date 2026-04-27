@@ -77,7 +77,7 @@ export default function LoginPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]">
             <span className="text-lg font-bold text-black">B</span>
           </div>
-          <h1 className="text-xl font-semibold text-[var(--gray-10)]">Beacon</h1>
+          <h1 className="text-xl font-semibold text-[var(--gray-10)]">Beaco</h1>
           <p className="text-sm text-[var(--gray-9)]">Sign in to your dashboard</p>
         </div>
 

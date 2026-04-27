@@ -6,7 +6,7 @@ import { QueryProvider } from "@/providers/query-provider";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Beacon — Notification Ops",
+  title: "Beaco — Notification Ops",
   description: "Event-driven notification system dashboard",
 };
 

@@ -1,8 +1,8 @@
 # API Reference
 
-Beacon exposes a JSON REST API for event ingestion, delivery operations, templates, analytics, and admin controls.
+Beaco exposes a JSON REST API for event ingestion, delivery operations, templates, analytics, and admin controls.
 
-- **Base URL:** `https://beacon.michaelogunjimi.com/api/v1`
+- **Base URL:** `https://beaco.michaelogunjimi.com/api/v1`
 - **Authentication:** `X-API-Key` header on all endpoints except `GET /health`
 
 For conceptual guides, see [Events](/docs/events), [Templates](/docs/templates), and [Delivery Pipeline](/docs/delivery).
@@ -15,7 +15,7 @@ All authenticated requests must include:
 curl -H "X-API-Key: YOUR_API_KEY" ...
 ```
 
-Beacon supports two API key types:
+Beaco supports two API key types:
 
 | Key type | Scope | Can access |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ Validate whether the provided key is active and authorized.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/auth/validate \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/auth/validate \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
@@ -78,7 +78,7 @@ Create an event and enqueue notification fan-out.
 | `user_id` | string | No | Your internal user id |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{
@@ -122,7 +122,7 @@ Create multiple events atomically.
 | `events` | array | Yes | List of event objects (same shape as `POST /events`) |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events/batch \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{
@@ -161,7 +161,7 @@ List events.
 | `date_to` | datetime | Upper bound |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/events?page=1&per_page=2&priority=high" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/events?page=1&per_page=2&priority=high" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -185,7 +185,7 @@ Get event details with related notifications.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/events/3d434cf3-2f63-4a82-aae4-fbead6877445 \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/3d434cf3-2f63-4a82-aae4-fbead6877445 \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -224,7 +224,7 @@ List notifications.
 | `recipient` | string | Recipient filter |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/notifications?channel=email&status=delivered" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/notifications?channel=email&status=delivered" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -247,7 +247,7 @@ Get notification detail with attempt logs.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/notifications/f8ce0a5f-9d95-4483-95d7-bda38ab718e8 \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications/f8ce0a5f-9d95-4483-95d7-bda38ab718e8 \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -284,7 +284,7 @@ List templates.
 | `channel` | string | Filter by channel |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/templates?channel=email" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/templates?channel=email" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -317,7 +317,7 @@ Create template.
 | `variables` | array | No | Variable definitions/list |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"name":"order_shipped_email","channel":"email","subject":"Order {{ order_id }} is on the way","body":"Hi {{ customer_name }}, track: {{ tracking_number }}","variables":["order_id","customer_name","tracking_number"]}'
@@ -339,7 +339,7 @@ Get template by id.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -370,7 +370,7 @@ Update template (partial payload allowed).
 | `variables` | array | Updated variable list |
 
 ```bash
-curl -X PUT https://beacon.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
+curl -X PUT https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"subject":"Your order {{ order_id }} has shipped","body":"Hi {{ customer_name }}, your package is now in transit."}'
@@ -394,7 +394,7 @@ Delete template.
 - **Response:** `204 No Content`
 
 ```bash
-curl -X DELETE https://beacon.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
+curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -411,7 +411,7 @@ Render template using variables.
 | `variables` | object | Yes | Runtime variable values |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af/preview \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af/preview \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"variables":{"order_id":"ord_991","customer_name":"Alex","tracking_number":"1Z123"}}'
@@ -444,7 +444,7 @@ Schedule future event delivery.
 | `template_id` | UUID | No | Optional template |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/scheduled-events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"event_type":"renewal.reminder","recipients":[{"channels":["email"],"email":"alex@example.com"}],"payload":{"renewal_date":"2026-04-20"},"scheduled_for":"2026-04-19T09:00:00Z"}'
@@ -473,7 +473,7 @@ List scheduled events.
 | `status` | string | `scheduled`, `dispatched`, `cancelled` |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/scheduled-events?status=scheduled" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=scheduled" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -495,7 +495,7 @@ Cancel scheduled event.
 - **Response:** `204 No Content`
 
 ```bash
-curl -X DELETE https://beacon.michaelogunjimi.com/api/v1/scheduled-events/39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d \
+curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/scheduled-events/39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -516,7 +516,7 @@ List suppressions.
 | `channel` | string | Channel filter |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/suppressions?channel=email" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/suppressions?channel=email" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -546,7 +546,7 @@ Create suppression.
 | `source` | enum | No | `system`, `client` |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/suppressions \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/suppressions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"channel":"email","recipient":"alex@example.com","reason":"manual","source":"client"}'
@@ -570,7 +570,7 @@ Delete suppression.
 - **Response:** `204 No Content`
 
 ```bash
-curl -X DELETE https://beacon.michaelogunjimi.com/api/v1/suppressions/90763e0e-e417-44a5-b0d4-ec9793fdf52f \
+curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/suppressions/90763e0e-e417-44a5-b0d4-ec9793fdf52f \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -592,7 +592,7 @@ List dead-letter messages.
 | `channel` | string | Channel filter |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/dead-letter?status=active&channel=sms" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/dead-letter?status=active&channel=sms" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -613,7 +613,7 @@ Get dead-letter detail.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -636,7 +636,7 @@ Re-enqueue dead-letter message.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/retry \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/retry \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -651,7 +651,7 @@ Acknowledge/discard dead-letter message.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/discard \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/discard \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -668,7 +668,7 @@ List alert rules.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/alerts \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/alerts \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -696,7 +696,7 @@ Create alert rule.
 | `is_active` | boolean | No | Defaults `true` |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/alerts \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/alerts \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"name":"Webhook queue too deep","metric":"queue_depth","threshold":1000,"window_minutes":5,"notify_email":"oncall@example.com"}'
@@ -713,7 +713,7 @@ Update alert rule.
 - **Auth required:** Yes (master or project)
 
 ```bash
-curl -X PUT https://beacon.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-aee1-50b70b538795 \
+curl -X PUT https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-aee1-50b70b538795 \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{"threshold":1500,"is_active":false}'
@@ -731,7 +731,7 @@ Delete alert rule.
 - **Response:** `204 No Content`
 
 ```bash
-curl -X DELETE https://beacon.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-aee1-50b70b538795 \
+curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-aee1-50b70b538795 \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -751,7 +751,7 @@ Get aggregate delivery metrics.
 | `date_to` | datetime | Range end |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -783,7 +783,7 @@ Get time-bucketed notification counts.
 | `granularity` | enum | `hour` or `day` |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/analytics/trends?date_from=2026-04-15T00:00:00Z&date_to=2026-04-17T23:59:59Z&granularity=day" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics/trends?date_from=2026-04-15T00:00:00Z&date_to=2026-04-17T23:59:59Z&granularity=day" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -816,7 +816,7 @@ List audit entries.
 | `from` | datetime | Inclusive start datetime |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/audit-log?action=api_key.created&page=1" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/audit-log?action=api_key.created&page=1" \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -849,7 +849,7 @@ Get API usage per endpoint per hour.
 | `endpoint` | string | Endpoint filter |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -879,7 +879,7 @@ Create API key.
 | `rate_limit_per_min` | integer | No | Per-key limit override |
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/settings/api-keys \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/settings/api-keys \
   -H "Content-Type: application/json" \
   -H "X-API-Key: MASTER_KEY" \
   -d '{"name":"checkout-service","rate_limit_per_min":1200}'
@@ -905,7 +905,7 @@ List API keys.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/settings/api-keys?page=1&per_page=25" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/settings/api-keys?page=1&per_page=25" \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -927,7 +927,7 @@ Revoke API key.
 - **Response:** `204 No Content`
 
 ```bash
-curl -X DELETE https://beacon.michaelogunjimi.com/api/v1/settings/api-keys/2f44dad2-41a2-4f4c-8d7a-a6ca73f08953 \
+curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/settings/api-keys/2f44dad2-41a2-4f4c-8d7a-a6ca73f08953 \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -938,7 +938,7 @@ List channel configs.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/settings/channels \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/settings/channels \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -957,7 +957,7 @@ List retry policy per channel.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/settings/retry-policies \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/settings/retry-policies \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -978,7 +978,7 @@ List all API keys with event counts.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/admin/keys \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/admin/keys \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -993,7 +993,7 @@ Get system health snapshot.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/admin/health \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/admin/health \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -1014,7 +1014,7 @@ Cross-key aggregated analytics.
 - **Auth required:** Yes (master only)
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/admin/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/admin/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -1038,7 +1038,7 @@ List all usage data.
 | `endpoint` | string | Endpoint filter |
 
 ```bash
-curl -X GET "https://beacon.michaelogunjimi.com/api/v1/admin/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/admin/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
   -H "X-API-Key: MASTER_KEY"
 ```
 
@@ -1061,7 +1061,7 @@ Public health endpoint.
 - **Auth required:** No
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/health \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/health \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 

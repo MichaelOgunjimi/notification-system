@@ -1,16 +1,16 @@
 # Introduction
 
-Beacon is a notification infrastructure platform. Send events via our REST API and Beacon handles multi-channel delivery.
+Beaco is a notification infrastructure platform. Send events via our REST API and Beaco handles multi-channel delivery.
 
-Instead of building email, SMS, and webhook orchestration inside every service, publish events to Beacon and let us manage fan-out, retries, and status tracking.
+Instead of building email, SMS, and webhook orchestration inside every service, publish events to Beaco and let us manage fan-out, retries, and status tracking.
 
-Beacon is delivered as a hosted SaaS service.
+Beaco is delivered as a hosted SaaS service.
 
-## What Is Beacon?
+## What Is Beaco?
 
-Beacon accepts notification events through a REST API and asynchronously delivers notifications across supported channels.
+Beaco accepts notification events through a REST API and asynchronously delivers notifications across supported channels.
 
-At a high level, Beacon gives you:
+At a high level, Beaco gives you:
 
 - A single ingestion API for all notification use cases.
 - Multi-channel delivery (Email, SMS, Webhook).
@@ -19,9 +19,9 @@ At a high level, Beacon gives you:
 - Durable event and delivery history.
 - Delivery reliability features like retries and dead-letter handling.
 
-If your product needs transactional alerts, account lifecycle messages, or machine-to-machine callbacks, Beacon can be your notification control plane.
+If your product needs transactional alerts, account lifecycle messages, or machine-to-machine callbacks, Beaco can be your notification control plane.
 
-## Why Teams Use Beacon
+## Why Teams Use Beaco
 
 Most applications eventually need all of the following:
 
@@ -31,13 +31,13 @@ Most applications eventually need all of the following:
 - A way to isolate projects or environments by API key.
 - A way to avoid duplicate sends during retries.
 
-Beacon packages those concerns behind one API contract so your product teams can move faster.
+Beaco packages those concerns behind one API contract so your product teams can move faster.
 
 ## Key Capabilities
 
 ### Multi-Channel Delivery
 
-Beacon currently supports:
+Beaco currently supports:
 
 - Email delivery via Resend.
 - SMS delivery via Twilio.
@@ -47,7 +47,7 @@ You can send to one channel or many channels from a single event payload.
 
 ### Template Engine
 
-Beacon supports reusable templates with Jinja-style variables.
+Beaco supports reusable templates with Jinja-style variables.
 
 This lets you keep message content and business events separate.
 
@@ -57,7 +57,7 @@ Create a template once, then reuse it across many event submissions.
 
 Delivery failures are expected in distributed systems.
 
-Beacon retries failed notifications with configurable backoff.
+Beaco retries failed notifications with configurable backoff.
 
 Retry behavior can be configured per channel.
 
@@ -71,25 +71,25 @@ This keeps failure handling explicit and auditable.
 
 ### Idempotency
 
-Beacon supports idempotency keys to prevent duplicate event processing.
+Beaco supports idempotency keys to prevent duplicate event processing.
 
-If the same request is submitted twice with the same key, Beacon returns the original result rather than creating duplicate notifications.
+If the same request is submitted twice with the same key, Beaco returns the original result rather than creating duplicate notifications.
 
 ### Real-Time Monitoring
 
-Beacon is designed to be observable, not opaque.
+Beaco is designed to be observable, not opaque.
 
 Track events and notifications through lifecycle statuses using API endpoints and the dashboard.
 
 Use these records for troubleshooting, auditing, and delivery analytics.
 
-## How Beacon Works
+## How Beaco Works
 
 ### 1) You Send an Event
 
 Your service sends a `POST /events` request to:
 
-`https://beacon.michaelogunjimi.com/api/v1`
+`https://beaco.michaelogunjimi.com/api/v1`
 
 with:
 
@@ -99,15 +99,15 @@ with:
 - optional `template_id`
 - optional `idempotency_key`
 
-### 2) Beacon Resolves Content and Fan-Out
+### 2) Beaco Resolves Content and Fan-Out
 
-Beacon validates the request, resolves template content (if provided), and creates notification records.
+Beaco validates the request, resolves template content (if provided), and creates notification records.
 
 Each recipient-channel pair becomes one notification.
 
 ### 3) Notifications Are Queued
 
-Notifications are queued in Beacon’s delivery pipeline.
+Notifications are queued in Beaco’s delivery pipeline.
 
 Priority and channel routing determine ordering and worker isolation.
 
@@ -130,22 +130,22 @@ Use the dashboard or API to:
 - manage dead-letter operations
 - analyze delivery outcomes
 
-## Who Beacon Is For
+## Who Beaco Is For
 
-Beacon is for any application that needs dependable notifications:
+Beaco is for any application that needs dependable notifications:
 
 - SaaS applications sending user lifecycle and billing messages.
 - Internal tools triggering operational alerts.
 - Marketplaces coordinating multi-party updates.
 - Platforms posting signed webhooks to downstream systems.
 
-If your system emits business events, Beacon provides a consistent way to deliver related notifications.
+If your system emits business events, Beaco provides a consistent way to deliver related notifications.
 
 ## Key Differentiators
 
 ### Reliability by Default
 
-Beacon treats failure handling as a core feature.
+Beaco treats failure handling as a core feature.
 
 Retries and dead-letter workflows are first-class parts of the product, not bolt-ons.
 
@@ -157,17 +157,17 @@ Master and project key scopes make it possible to separate admin operations from
 
 ### Strong Observability
 
-Beacon emphasizes auditability and operator visibility:
+Beaco emphasizes auditability and operator visibility:
 
 - event and notification lifecycles
 - usage tracking
 - analytics-friendly status history
 
-> Beacon is designed for teams that care about successful delivery **and** fast incident debugging when delivery fails.
+> Beaco is designed for teams that care about successful delivery **and** fast incident debugging when delivery fails.
 
 ## Core Concepts at a Glance
 
-| Concept | What it means in Beacon |
+| Concept | What it means in Beaco |
 | --- | --- |
 | Event | A trigger payload that describes what happened |
 | Recipient | A destination definition with one or more channels |
@@ -180,7 +180,7 @@ Beacon emphasizes auditability and operator visibility:
 ## Minimal Event Example
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -213,14 +213,14 @@ Continue with:
 
 ## Design Principles
 
-Beacon documentation and APIs follow a few principles:
+Beaco documentation and APIs follow a few principles:
 
 - Explicit over implicit.
 - Async-first workflows with clear status transitions.
 - Operational visibility for every message.
 - Safe defaults with configurable policies.
 
-These principles make Beacon easier to integrate, operate, and trust in production.
+These principles make Beaco easier to integrate, operate, and trust in production.
 
 ## Next Step
 

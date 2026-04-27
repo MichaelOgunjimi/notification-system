@@ -10,7 +10,7 @@ A template defines message content for one channel.
 
 You can reference a template by `template_id` when creating events.
 
-Beacon renders the template using values from event `payload`.
+Beaco renders the template using values from event `payload`.
 
 Benefits:
 
@@ -32,7 +32,7 @@ Each template has a core schema:
 
 ## Jinja2 Variable Syntax
 
-Beacon templates use Jinja2-style placeholders:
+Beaco templates use Jinja2-style placeholders:
 
 ```text
 {{ variable_name }}
@@ -60,7 +60,7 @@ POST /templates
 Example request:
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_KEY" \
   -d '{
@@ -93,7 +93,7 @@ When creating an event:
 Example:
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -105,7 +105,7 @@ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
     }],
     "payload": {
       "user_name": "Alice",
-      "app_name": "Beacon Cloud"
+      "app_name": "Beaco Cloud"
     }
   }'
 ```
@@ -123,13 +123,13 @@ POST /templates/{id}/preview
 Example:
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/templates/tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk/preview \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk/preview \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_KEY" \
   -d '{
     "variables": {
       "user_name": "Alice",
-      "app_name": "Beacon Cloud"
+      "app_name": "Beaco Cloud"
     }
   }'
 ```
@@ -139,7 +139,7 @@ Example preview response:
 ```json
 {
   "subject": "Welcome, Alice!",
-  "body": "Hi Alice,\n\nWelcome to Beacon Cloud. Your account is ready."
+  "body": "Hi Alice,\n\nWelcome to Beaco Cloud. Your account is ready."
 }
 ```
 
@@ -147,7 +147,7 @@ Example preview response:
 
 ## System Templates vs Project Templates
 
-Beacon supports two ownership scopes:
+Beaco supports two ownership scopes:
 
 | Type | Created By | Editable By | Visibility |
 | --- | --- | --- | --- |
@@ -241,14 +241,14 @@ This avoids abrupt behavior changes for active event producers.
 ```python
 import requests
 
-BASE_URL = "https://beacon.michaelogunjimi.com/api/v1"
+BASE_URL = "https://beaco.michaelogunjimi.com/api/v1"
 API_KEY = "YOUR_PROJECT_KEY"
 
 payload = {
     "event_type": "user.welcome",
     "template_id": "tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk",
     "recipients": [{"channels": ["email"], "email": "user@example.com"}],
-    "payload": {"user_name": "Alice", "app_name": "Beacon"}
+    "payload": {"user_name": "Alice", "app_name": "Beaco"}
 }
 
 resp = requests.post(

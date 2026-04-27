@@ -141,8 +141,8 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
         <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold text-white">
-            <span className="beacon-dot size-2 rounded-full bg-[var(--primary)]" />
-            Beacon
+            <span className="beaco-dot size-2 rounded-full bg-[var(--primary)]" />
+            Beaco
           </Link>
 
           <div className="hidden items-center gap-7 md:flex">
@@ -196,7 +196,7 @@ export default function Home() {
             {/* Pill badge */}
             <AnimateOnScroll variant="fade-up">
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3.5 py-1.5 backdrop-blur-sm">
-                <span className="beacon-dot size-1.5 rounded-full bg-[var(--primary)]" />
+                <span className="beaco-dot size-1.5 rounded-full bg-[var(--primary)]" />
                 <span className="text-[11px] font-medium tracking-wide text-[var(--primary)] sm:text-xs">
                   Notification Infrastructure for Developers
                 </span>
@@ -313,12 +313,12 @@ export default function Home() {
                   <span className="size-2.5 rounded-full bg-[#28c840]" />
                 </div>
                 <div className="flex-1 rounded-md border border-white/[0.06] bg-black/30 px-3 py-1 text-center text-[11px] tracking-wide text-[var(--gray-8)]">
-                  beacon.michaelogunjimi.com/dashboard
+                  beaco.michaelogunjimi.com/dashboard
                 </div>
               </div>
               <Image
                 src="/dashboard-preview.png"
-                alt="Beacon dashboard showing event delivery metrics, pipeline health, and recent notification activity"
+                alt="Beaco dashboard showing event delivery metrics, pipeline health, and recent notification activity"
                 width={1920}
                 height={1080}
                 className="h-auto w-full"
@@ -495,7 +495,7 @@ export default function Home() {
                 Production-grade infrastructure
               </h2>
               <p className="mt-5 max-w-xl text-[var(--gray-9)]">
-                Beacon runs as a resilient event pipeline with separated ingestion,
+                Beaco runs as a resilient event pipeline with separated ingestion,
                 processing, and delivery layers. Each stage is observable and designed for safe retries.
               </p>
 
@@ -615,7 +615,7 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-2 text-[var(--gray-9)]">
             <span className="size-1.5 rounded-full bg-[var(--primary)]" />
-            <span className="font-medium text-[var(--gray-10)]">Beacon</span>
+            <span className="font-medium text-[var(--gray-10)]">Beaco</span>
             <span>·</span>
             <span>Built by Michael Ogunjimi</span>
           </div>

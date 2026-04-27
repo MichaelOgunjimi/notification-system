@@ -1,14 +1,14 @@
 # Quickstart
 
-Send your first event with Beacon in minutes.
+Send your first event with Beaco in minutes.
 
 ## 1) Get Your API Key
 
-1. Sign in at `https://beacon.michaelogunjimi.com`
+1. Sign in at `https://beaco.michaelogunjimi.com`
 2. Open **Settings → API Keys**
 3. Create a **Project key**
 
-Beacon uses `X-API-Key` for authentication on protected endpoints.
+Beaco uses `X-API-Key` for authentication on protected endpoints.
 
 Key types:
 
@@ -20,13 +20,13 @@ Key types:
 All API requests use:
 
 ```text
-https://beacon.michaelogunjimi.com/api/v1
+https://beaco.michaelogunjimi.com/api/v1
 ```
 
 ## 3) Send Your First Event
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_API_KEY" \
   -d '{
@@ -55,7 +55,7 @@ Example response:
 ## 4) Check Event Status
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/events/EVENT_ID \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/EVENT_ID \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
@@ -74,7 +74,7 @@ Example response:
 ## 5) View Notifications
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/notifications \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 

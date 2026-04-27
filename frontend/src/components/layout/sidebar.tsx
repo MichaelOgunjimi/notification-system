@@ -115,7 +115,7 @@ function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarI
               <span className="text-[13px] font-bold text-black">B</span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold leading-none text-[var(--gray-10)]">Beacon</p>
+              <p className="text-[14px] font-semibold leading-none text-[var(--gray-10)]">Beaco</p>
               <p className="mt-1 text-[11px] leading-none text-[var(--gray-5)]">Notification Ops</p>
             </div>
 

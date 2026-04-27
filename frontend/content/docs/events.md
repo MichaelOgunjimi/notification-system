@@ -1,8 +1,8 @@
 # Events
 
-Events are the primary trigger mechanism in Beacon.
+Events are the primary trigger mechanism in Beaco.
 
-You publish an event that describes what happened, and Beacon handles notification fan-out, queueing, delivery, and tracking.
+You publish an event that describes what happened, and Beaco handles notification fan-out, queueing, delivery, and tracking.
 
 ## What Is an Event?
 
@@ -13,7 +13,7 @@ An event is a structured request that includes:
 - context data (`payload`)
 - optional delivery controls (`priority`, `template_id`, `idempotency_key`)
 
-Beacon stores the event and creates notification records asynchronously.
+Beaco stores the event and creates notification records asynchronously.
 
 ## Create an Event
 
@@ -26,7 +26,7 @@ POST /events
 Full URL:
 
 ```text
-https://beacon.michaelogunjimi.com/api/v1/events
+https://beaco.michaelogunjimi.com/api/v1/events
 ```
 
 Authentication:
@@ -49,7 +49,7 @@ X-API-Key: <project key or master key>
 ### Example: Single Event
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -169,7 +169,7 @@ Behavior:
 ### Example: Idempotent Replay
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -197,7 +197,7 @@ If batch validation fails, no partial batch is committed.
 ### Example: Batch Request
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events/batch \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -218,7 +218,7 @@ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events/batch \
 
 ## Event → Notification Fan-Out
 
-Beacon creates one notification per:
+Beaco creates one notification per:
 
 ```text
 recipient × channel
@@ -237,7 +237,7 @@ This fan-out model ensures channel isolation and independent retry behavior.
 
 ## Validation Rules
 
-Beacon validates event payloads before acceptance.
+Beaco validates event payloads before acceptance.
 
 ### Recipient and Channel Validation
 
@@ -268,7 +268,7 @@ GET /events/{id}
 Example:
 
 ```bash
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/events/evt_01j4z89n8x5t5b5w3j9m8k0h2z \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/evt_01j4z89n8x5t5b5w3j9m8k0h2z \
   -H "X-API-Key: YOUR_PROJECT_KEY"
 ```
 
@@ -282,7 +282,7 @@ For delivery-level detail, use [Delivery Pipeline](/docs/delivery) and notificat
 2. Always send `idempotency_key` from upstream producers.
 3. Keep payloads explicit and template-focused.
 4. Use `priority=high` sparingly for truly urgent flows.
-5. Validate channel-specific data before calling Beacon.
+5. Validate channel-specific data before calling Beaco.
 
 ## Related Docs
 

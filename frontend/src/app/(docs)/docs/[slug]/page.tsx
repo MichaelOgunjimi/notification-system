@@ -25,11 +25,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const doc = DOC_DEFINITIONS.find((entry) => entry.slug === slug);
   if (!doc) {
-    return { title: "Not Found — Beacon Docs" };
+    return { title: "Not Found — Beaco Docs" };
   }
 
   return {
-    title: `${doc.title} — Beacon Docs`,
+    title: `${doc.title} — Beaco Docs`,
     description: doc.description,
   };
 }

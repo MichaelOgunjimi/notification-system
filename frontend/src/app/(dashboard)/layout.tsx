@@ -93,7 +93,7 @@ export default function DashboardLayout({
   }, [router]);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("beacon-sidebar-collapsed");
+    const saved = window.localStorage.getItem("beaco-sidebar-collapsed");
     if (saved === "true") setIsSidebarCollapsed(true);
   }, []);
 
@@ -104,7 +104,7 @@ export default function DashboardLayout({
   const toggleSidebar = () => {
     setIsSidebarCollapsed((c) => {
       const next = !c;
-      window.localStorage.setItem("beacon-sidebar-collapsed", String(next));
+      window.localStorage.setItem("beaco-sidebar-collapsed", String(next));
       return next;
     });
   };
@@ -117,7 +117,7 @@ export default function DashboardLayout({
       .find(([key]) => pathname === key || pathname.startsWith(`${key}/`));
     return (
       match?.[1] ?? {
-        title: "Beacon",
+        title: "Beaco",
         description: "Internal operations dashboard for your notification platform.",
       }
     );

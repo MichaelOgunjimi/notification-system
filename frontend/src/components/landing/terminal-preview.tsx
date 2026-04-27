@@ -5,9 +5,9 @@ import { Check, Copy } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
-export const CURL_COMMAND = `$ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events`
+export const CURL_COMMAND = `$ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events`
 
-const TERMINAL_TEXT = `$ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \\
+const TERMINAL_TEXT = `$ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \\
   -H "X-API-Key: nk_your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{

@@ -1,6 +1,6 @@
-const IS_MASTER_KEY = "beacon_is_master";
-const KEY_NAME_KEY = "beacon_key_name";
-const KEY_PREFIX_KEY = "beacon_key_prefix";
+const IS_MASTER_KEY = "beaco_is_master";
+const KEY_NAME_KEY = "beaco_key_name";
+const KEY_PREFIX_KEY = "beaco_key_prefix";
 
 export interface AuthInfo {
   isMaster: boolean;
@@ -39,5 +39,5 @@ export function isAuthenticated(): boolean {
   return document.cookie
     .split(";")
     .map((item) => item.trim())
-    .some((item) => item.startsWith("beacon_session="));
+    .some((item) => item.startsWith("beaco_session="));
 }

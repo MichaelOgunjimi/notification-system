@@ -1,27 +1,27 @@
 # Webhooks
 
-Beacon can deliver notifications to your systems in real time using outbound HTTP webhooks.
+Beaco can deliver notifications to your systems in real time using outbound HTTP webhooks.
 
 ## How Webhook Delivery Works
 
-1. You submit an event to Beacon.
+1. You submit an event to Beaco.
 2. A recipient includes `channels: ["webhook"]` and a `webhook_url`.
-3. Beacon sends an HTTP `POST` request to that URL.
-4. Beacon records delivery status, retries transient failures, and exposes logs via API.
+3. Beaco sends an HTTP `POST` request to that URL.
+4. Beaco records delivery status, retries transient failures, and exposes logs via API.
 
 ## Configure Webhook Recipients
 
 Include `webhook_url` in the recipient object when using the webhook channel.
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "event_type": "invoice.paid",
     "recipients": [{
       "channels": ["webhook"],
-      "webhook_url": "https://example.com/beacon/webhooks"
+      "webhook_url": "https://example.com/beaco/webhooks"
     }],
     "payload": {
       "invoice_id": "inv_10022",
@@ -32,7 +32,7 @@ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
 
 ## Webhook Payload Format
 
-Beacon sends a JSON body with event and delivery context.
+Beaco sends a JSON body with event and delivery context.
 
 ```json
 {
@@ -51,11 +51,11 @@ Common headers:
 | Header | Description |
 | --- | --- |
 | `Content-Type: application/json` | JSON payload format |
-| `X-Beacon-Signature-256` | HMAC-SHA256 signature for verification |
+| `X-Beaco-Signature-256` | HMAC-SHA256 signature for verification |
 
 ## Retry Behavior
 
-Beacon retries failed webhook deliveries using exponential backoff with jitter.
+Beaco retries failed webhook deliveries using exponential backoff with jitter.
 
 | Condition | Behavior |
 | --- | --- |
@@ -74,7 +74,7 @@ Verification steps:
 
 1. Read raw request body.
 2. Compute `HMAC_SHA256(secret, raw_body)`.
-3. Compare with `X-Beacon-Signature-256` using constant-time comparison.
+3. Compare with `X-Beaco-Signature-256` using constant-time comparison.
 
 ### Node.js / Express Example
 
@@ -93,8 +93,8 @@ app.use(
   }),
 );
 
-app.post("/beacon/webhooks", (req, res) => {
-  const signature = req.header("X-Beacon-Signature-256");
+app.post("/beaco/webhooks", (req, res) => {
+  const signature = req.header("X-Beaco-Signature-256");
   if (!signature || !webhookSecret) {
     return res.status(401).send("Missing signature");
   }

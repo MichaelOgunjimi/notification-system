@@ -1,6 +1,6 @@
 # Delivery Pipeline
 
-Beacon delivery is asynchronous, queue-driven, and designed for failure recovery.
+Beaco delivery is asynchronous, queue-driven, and designed for failure recovery.
 
 This page explains how notifications move from accepted events to delivered (or dead-letter) outcomes.
 
@@ -42,7 +42,7 @@ Notifications move through these statuses:
 
 ## Async Processing with Celery + Redis
 
-Beacon uses Celery workers with Redis queues for background processing.
+Beaco uses Celery workers with Redis queues for background processing.
 
 Key characteristics:
 
@@ -70,7 +70,7 @@ Transient failures are retried automatically.
 
 ### Backoff Formula
 
-Beacon uses exponential backoff with jitter:
+Beaco uses exponential backoff with jitter:
 
 ```text
 delay = base_delay × 2^retry_count + jitter
@@ -162,14 +162,14 @@ POST /dead-letter/{id}/discard
 ### Example: Retry a Dead-Letter Message
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/retry \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/retry \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 
 ### Example: Discard a Dead-Letter Message
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/discard \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/dlq_01j4zdh4k2x9m6f2p7r9w3s8ab/discard \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 
@@ -194,7 +194,7 @@ POST /suppressions
 Example:
 
 ```bash
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/suppressions \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/suppressions \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_MASTER_KEY" \
   -d '{
@@ -221,7 +221,7 @@ Idempotency prevents duplicate processing when producers retry submissions.
 How it works:
 
 1. Producer sends event with `idempotency_key`.
-2. Beacon stores first successful event response.
+2. Beaco stores first successful event response.
 3. Duplicate submission with same key returns original event (`200 OK`).
 4. No duplicate notifications are created.
 
@@ -233,7 +233,7 @@ Track delivery using:
 
 - `GET /events/{id}` for event-level state
 - `GET /notifications` for delivery-level status
-- Beacon dashboard at `https://beacon.michaelogunjimi.com`
+- Beaco dashboard at `https://beaco.michaelogunjimi.com`
 
 Operational checks:
 
@@ -255,7 +255,7 @@ Operational checks:
 
 ```bash
 # 1) Submit idempotent event
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
@@ -266,11 +266,11 @@ curl -X POST https://beacon.michaelogunjimi.com/api/v1/events \
   }'
 
 # 2) Inspect notification states
-curl -X GET https://beacon.michaelogunjimi.com/api/v1/notifications \
+curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications \
   -H "X-API-Key: YOUR_PROJECT_KEY"
 
 # 3) Retry dead-letter item if needed
-curl -X POST https://beacon.michaelogunjimi.com/api/v1/dead-letter/DLQ_ID/retry \
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/DLQ_ID/retry \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 

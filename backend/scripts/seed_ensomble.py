@@ -1,7 +1,7 @@
 """Seed script — populate Ensomble demo data for a second API key.
 
 This is a temporary script that creates realistic notification data
-as if the Ensomble musician-booking marketplace were a Beacon customer.
+as if the Ensomble musician-booking marketplace were a Beaco customer.
 
 Usage:
     cd backend && POSTGRES_PORT=5433 uv run python -m scripts.seed_ensomble
@@ -146,7 +146,7 @@ MUSICIANS = [
 ]
 
 WEBHOOK_URLS = [
-    "https://api.ensomble.com/webhooks/beacon",
+    "https://api.ensomble.com/webhooks/beaco",
     "https://hooks.ensomble.com/events",
     "https://internal.ensomble.com/notifications",
 ]

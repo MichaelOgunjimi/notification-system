@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (upstreamResponse.ok) {
       const secure = process.env.NODE_ENV === "production";
 
-      response.cookies.set("beacon_token", apiKey, {
+      response.cookies.set("beaco_token", apiKey, {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         secure,
       });
 
-      response.cookies.set("beacon_session", "1", {
+      response.cookies.set("beaco_session", "1", {
         sameSite: "lax",
         path: "/",
         maxAge: COOKIE_MAX_AGE,

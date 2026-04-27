@@ -25,9 +25,9 @@ export default function DocsShellLayout({
         </button>
         <Link href="/" className="flex items-center gap-2 text-sm font-semibold">
           <BookOpen size={18} className="text-[var(--primary)]" />
-          <span>Beacon</span>
+          <span>Beaco</span>
         </Link>
-        <span className="text-sm font-semibold text-[var(--gray-9)]">Beacon Docs</span>
+        <span className="text-sm font-semibold text-[var(--gray-9)]">Beaco Docs</span>
       </header>
 
       {drawerOpen && (
@@ -46,7 +46,7 @@ export default function DocsShellLayout({
         <div className="flex h-14 items-center justify-between border-b border-[var(--gray-3)] px-4">
           <span className="flex items-center gap-2 text-sm font-semibold">
             <BookOpen size={18} className="text-[var(--primary)]" />
-            Beacon Docs
+            Beaco Docs
           </span>
           <button
             type="button"

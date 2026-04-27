@@ -17,9 +17,9 @@ import { getDocsByGroup } from "@/lib/docs";
 import type { DocSlug } from "@/lib/docs";
 
 export const metadata: Metadata = {
-  title: "Documentation — Beacon",
+  title: "Documentation — Beaco",
   description:
-    "Learn how to integrate and operate Beacon as a hosted notification platform.",
+    "Learn how to integrate and operate Beaco as a hosted notification platform.",
 };
 
 const ICONS: Record<DocSlug, ReactNode> = {
@@ -45,7 +45,7 @@ export default function DocsIndexPage() {
           Documentation
         </div>
         <h1 className="text-[36px] font-semibold tracking-tight text-[var(--foreground)]">
-          Beacon Documentation
+          Beaco Documentation
         </h1>
         <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-[var(--gray-9)]">
           Everything you need to understand, integrate, and operate the
