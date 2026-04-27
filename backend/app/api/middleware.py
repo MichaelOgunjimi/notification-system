@@ -27,6 +27,9 @@ _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
 )
 
+# Synthetic ID used for the master key — not stored in api_keys table, skip usage tracking
+_MASTER_KEY_ID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Inject a unique request ID into every request/response cycle."""
@@ -86,8 +89,8 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
                 if api_key_id is None:
                     return response
 
-            # Validate api_key_id is not the nil UUID
-            if api_key_id == "00000000-0000-0000-0000-000000000000":
+            # Skip master key — its synthetic ID doesn't exist in api_keys table
+            if api_key_id == _MASTER_KEY_ID:
                 return response
 
             hour_bucket = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
