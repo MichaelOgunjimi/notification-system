@@ -1,4 +1,4 @@
-.PHONY: dev test lint lint-fix format type-check check setup migrate migrate-create seed docker-up docker-down docker-rebuild install worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: dev dev-frontend test lint lint-fix format type-check check setup migrate migrate-create seed docker-up docker-down docker-rebuild docker-rebuild-frontend install worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 install:
 	cd backend && uv sync
@@ -9,6 +9,9 @@ setup:
 
 dev:
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+dev-frontend:
+	cd frontend && npm run dev
 
 test:
 	cd backend && uv run pytest -v
@@ -21,6 +24,9 @@ lint-fix:
 
 type-check:
 	cd backend && uv run mypy app/
+
+type-check-frontend:
+	cd frontend && npx tsc --noEmit
 
 check:
 	cd backend && uv run pre-commit run --all-files
@@ -45,6 +51,9 @@ docker-down:
 
 docker-rebuild:
 	docker compose down --rmi all && docker compose up -d --build
+
+docker-rebuild-frontend:
+	docker compose up -d --build frontend
 
 worker-dispatcher:
 	cd backend && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation -l info

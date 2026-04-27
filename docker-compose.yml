@@ -114,6 +114,23 @@ services:
     networks:
       - notification-net
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - .env
+    environment:
+      API_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: /api
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - notification-net
+
 volumes:
   pgdata:
   redisdata:
