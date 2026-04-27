@@ -6,13 +6,13 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
+# Install all dependencies (needed for build)
 RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build Next.js app
+# Build Next.js app with standalone output
 RUN npm run build
 
 # ── Runtime stage ────────────────────────────────────────────
@@ -20,24 +20,18 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -u 1000 -G appuser -s /bin/sh -D appuser
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-# Copy only necessary files from builder
-COPY --from=builder --chown=appuser:appuser /app/package.json /app/package-lock.json ./
-COPY --from=builder --chown=appuser:appuser /app/.next /app/.next
-COPY --from=builder --chown=appuser:appuser /app/public /app/public
-
-# Install production dependencies only
-RUN npm ci --only=production
-
-# Switch to non-root user
-USER appuser
+# Copy standalone output (contains its own node_modules)
+COPY --from=builder /app/.next/standalone ./
+# Copy static assets
+COPY --from=builder /app/.next/static ./.next/static
+# Copy public folder
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-ENV NODE_ENV=production
-
-# Start Next.js in production mode
-CMD ["npm", "start"]
+# Use standalone server (no npm needed)
+CMD ["node", "server.js"]
