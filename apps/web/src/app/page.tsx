@@ -1,149 +1,126 @@
 import Image from "next/image"
 import Link from "next/link"
-import {
-  ArrowRight,
-  BarChart3,
-  Code2,
-  Cpu,
-  FileText,
-  Fingerprint,
-  Key,
-  Layers,
-  Mail,
-  MessageSquare,
-  Radio,
-  RefreshCw,
-  Send,
-  Terminal,
-  Webhook,
-  Zap,
-} from "lucide-react"
+import { ArrowCounterClockwise } from "@phosphor-icons/react/dist/ssr/ArrowCounterClockwise"
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight"
+import { BracketsCurly } from "@phosphor-icons/react/dist/ssr/BracketsCurly"
+import { ChatCircle } from "@phosphor-icons/react/dist/ssr/ChatCircle"
+import { ClockCounterClockwise } from "@phosphor-icons/react/dist/ssr/ClockCounterClockwise"
+import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr/EnvelopeSimple"
+import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint"
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck"
+import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo"
 
 import AnimateOnScroll, {
   StaggerGroup,
   StaggerItem,
 } from "@/components/landing/animate-on-scroll"
-import AnimatedCounter from "@/components/landing/animated-counter"
-import HeroBackground from "@/components/landing/hero-background"
 import MobileNav from "@/components/landing/mobile-nav"
-import { CopyCommandButton, CURL_COMMAND } from "@/components/landing/terminal-preview"
-import TerminalPreview from "@/components/landing/terminal-preview"
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import PublicFooter from "@/components/landing/public-footer"
+import BrandLogo from "@/components/brand/brand-logo"
 import { docsUrl } from "@/lib/urls"
 
 const navLinks = [
-  { label: "Features", href: "#features" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Reliability", href: "#reliability" },
   { label: "Docs", href: docsUrl() },
-  { label: "Dashboard", href: "/dashboard" },
 ]
 
-const pipelineSteps = [
-  {
-    number: "01",
-    icon: Terminal,
-    title: "Ingest",
-    description: "Send an event via REST API with channel routing and metadata",
-    color: "text-blue-400",
-    glow: "rgba(96, 165, 250, 0.15)",
-  },
-  {
-    number: "02",
-    icon: Layers,
-    title: "Queue",
-    description: "Event is validated, deduplicated, and pushed to Redis queue",
-    color: "text-violet-400",
-    glow: "rgba(167, 139, 250, 0.15)",
-  },
-  {
-    number: "03",
-    icon: Zap,
-    title: "Process",
-    description: "Celery worker renders templates and prepares the payload",
-    color: "text-[var(--primary)]",
-    glow: "rgba(245, 158, 11, 0.15)",
-  },
-  {
-    number: "04",
-    icon: Send,
-    title: "Deliver",
-    description: "Dispatched via email, SMS, or webhook with retry on failure",
-    color: "text-emerald-400",
-    glow: "rgba(52, 211, 153, 0.15)",
-  },
+const channels = [
+  { icon: EnvelopeSimple, label: "Email" },
+  { icon: ChatCircle, label: "SMS" },
+  { icon: WebhooksLogo, label: "Webhooks" },
 ]
 
-const featureCards = [
+const platformGuarantees = [
+  { value: "03", label: "Channels", detail: "One consistent event contract" },
+  { value: "Safe", label: "Retries", detail: "Duplicate requests stop at ingress" },
+  { value: "Full", label: "History", detail: "Every attempt keeps its context" },
+]
+
+const deliverySteps = [
+  { title: "Accept", description: "Validate the event and lock its idempotency key." },
+  { title: "Route", description: "Fan out to the right channel and render its template." },
+  { title: "Deliver", description: "Send through the provider with channel-aware retries." },
+  { title: "Record", description: "Keep every attempt available for support and audit work." },
+]
+
+const reliabilityFeatures = [
   {
-    number: "01",
-    title: "Multi-Channel Delivery",
+    icon: ArrowCounterClockwise,
+    title: "Retries that know when to stop",
     description:
-      "Route notifications to email via Resend, SMS via Twilio, or webhook to any endpoint — all from a single API call.",
-    icon: Radio,
-    span: "lg:col-span-2 lg:row-span-2",
-    badges: ["Email", "SMS", "Webhook"],
+      "Transient failures back off automatically. Permanent failures move somewhere useful instead of looping forever.",
+    className: "lg:col-span-7",
   },
   {
-    number: "02",
-    title: "Smart Retries & DLQ",
+    icon: ClockCounterClockwise,
+    title: "A dead-letter queue you can work from",
     description:
-      "Exponential backoff with jitter. Failed after max retries? Automatically routed to dead-letter queue for manual inspection.",
-    icon: RefreshCw,
-    span: "lg:col-span-2",
-    detail: "retry",
+      "Inspect the payload, provider response, and attempt history before you replay a failed delivery.",
+    className: "lg:col-span-5",
   },
   {
-    number: "03",
-    title: "Jinja2 Templates",
-    description:
-      "Dynamic content with variable interpolation. Create templates once, reuse across channels.",
-    icon: FileText,
-    span: "",
-    detail: "template",
-  },
-  {
-    number: "04",
-    title: "Real-time Dashboard",
-    description:
-      "Full observability — monitor events, deliveries, failures, queue depth, and latency from a single dashboard.",
-    icon: BarChart3,
-    span: "",
-  },
-  {
-    number: "05",
-    title: "Idempotency Built-in",
-    description:
-      "Duplicate events are automatically deduplicated using idempotency keys. Safe to retry without side effects.",
     icon: Fingerprint,
-    span: "",
+    title: "Idempotency at the door",
+    description:
+      "Safe retries begin before an event reaches the queue, so duplicate requests do not become duplicate messages.",
+    className: "lg:col-span-4",
   },
   {
-    number: "06",
-    title: "API-First Design",
+    icon: ShieldCheck,
+    title: "Suppression before send",
     description:
-      "Clean REST API with scoped project keys and role-based platform administration. Every action is API-accessible.",
-    icon: Key,
-    span: "",
+      "Block opted-out or unsafe recipients centrally, with a traceable reason attached to every decision.",
+    className: "lg:col-span-8",
   },
 ]
 
-const techStack = [
-  { icon: Code2, label: "PostgreSQL", desc: "Event persistence & audit trail" },
-  { icon: Cpu, label: "Redis + Celery", desc: "Async task queue & workers" },
-  { icon: Zap, label: "FastAPI", desc: "High-performance async API" },
-  { icon: Layers, label: "Alembic", desc: "Database migrations" },
-]
+const requestExample = `curl -X POST https://api.beaco.dev/v1/events \\
+  -H "X-API-Key: nk_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "event_type": "invoice.paid",
+    "channels": ["email", "webhook"],
+    "recipient": { "email": "mina@example.com" },
+    "data": { "invoice_id": "inv_84Q2" }
+  }'`
+
+const ArrowButton = ({ label }: { label: string }) => (
+  <span className="site-primary-action">
+    <span>{label}</span>
+    <span className="site-primary-action-icon">
+      <ArrowRight size={14} weight="bold" aria-hidden="true" />
+    </span>
+  </span>
+)
 
 export default function Home() {
   return (
-    <main className="relative scroll-smooth bg-[var(--background)] text-[var(--foreground)]">
+    <main
+      id="main-content"
+      className="marketing-shell min-h-dvh overflow-x-clip bg-[var(--site-canvas)] text-[var(--site-ink)]"
+    >
+      <div className="relative z-30 border-b border-white/[0.06] bg-[#090908] px-4 py-2.5 text-center text-[11px] tracking-[0.01em] text-[var(--site-muted)]">
+        <span className="sm:hidden">Built for reliable delivery.</span>
+        <span className="hidden sm:inline">Notification infrastructure for teams that need the full delivery story.</span>
+        <Link
+          href={docsUrl("/quickstart")}
+          className="ml-2 inline-flex items-center gap-1.5 text-[var(--site-accent)] transition-colors duration-300 hover:text-[var(--site-accent-bright)]"
+        >
+          <span className="sm:hidden">Quickstart</span>
+          <span className="hidden sm:inline">Read the quickstart</span>
+          <ArrowRight size={12} weight="bold" aria-hidden="true" />
+        </Link>
+      </div>
 
-      {/* ── Navbar ── */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
-        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold text-white">
-            <span className="beaco-dot size-2 rounded-full bg-[var(--primary)]" />
-            Beaco
+      <header className="sticky top-3 z-40 px-3 sm:px-4">
+        <nav className="site-nav mx-auto flex h-16 w-full max-w-[1240px] items-center gap-8 px-3 sm:px-4">
+          <Link
+            href="/"
+            className="group flex items-center gap-2.5 text-[14px] font-semibold tracking-[-0.02em]"
+            aria-label="Beaco home"
+          >
+            <BrandLogo priority className="transition-transform duration-300 ease-[var(--site-ease)] group-hover:-translate-y-0.5" />
           </Link>
 
           <div className="hidden items-center gap-7 md:flex">
@@ -151,494 +128,211 @@ export default function Home() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-[13px] text-[var(--gray-9)] transition-colors hover:text-white"
+                className="text-[12px] text-[var(--site-muted)] transition-colors duration-300 hover:text-[var(--site-ink)]"
               >
                 {link.label}
               </Link>
             ))}
-            <a
-              href="https://github.com/michaelowiti/notification-system"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[13px] text-[var(--gray-9)] transition-colors hover:text-white"
-            >
-              GitHub
-            </a>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden md:block">
-              <Link
-                href={docsUrl("/quickstart")}
-                className={cn(
-                  buttonVariants(),
-                  "h-8 rounded-lg bg-[var(--primary)] px-4 text-xs font-medium text-[var(--primary-foreground)] hover:bg-[color:color-mix(in_oklab,var(--primary),black_18%)]"
-                )}
-              >
-                Get Started
-              </Link>
-            </div>
+          <div className="ml-auto hidden items-center gap-2 md:flex">
+            <Link
+              href="/login"
+              className="rounded-[9px] px-3 py-2 text-[12px] font-medium text-[var(--site-muted)] transition-colors duration-300 hover:text-[var(--site-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
+            >
+              Sign in
+            </Link>
+            <Link href={docsUrl("/quickstart")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
+              <ArrowButton label="Start building" />
+            </Link>
+          </div>
+
+          <div className="ml-auto md:hidden">
             <MobileNav links={navLinks} />
           </div>
         </nav>
       </header>
 
-      {/* ── Hero ── */}
-      <section className="relative isolate overflow-hidden">
-        {/* Animated canvas background with grid + floating nodes */}
-        <HeroBackground />
+      <div className="site-page-grid mx-auto mt-7 w-[calc(100%-1rem)] max-w-[1240px] sm:mt-8 sm:w-[calc(100%-2rem)]">
+        <section className="site-grid-section">
+          <div className="grid overflow-hidden bg-[var(--site-panel)] lg:min-h-[570px] lg:grid-cols-[minmax(0,1.12fr)_minmax(390px,0.88fr)]">
+            <div className="relative flex flex-col justify-center px-6 py-11 sm:px-10 sm:py-14 lg:px-14 lg:py-14 xl:px-[68px]">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--site-accent)]/30 to-transparent" />
+              <AnimateOnScroll variant="fade-up">
+                <p className="mb-6 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--site-muted)]">
+                  <span className="h-px w-6 bg-[var(--site-accent)]" />
+                  Built for the messages that matter
+                </p>
+                <h1 className="max-w-[620px] text-[clamp(2.15rem,10.4vw,4.65rem)] font-medium leading-[0.94] tracking-[-0.065em]">
+                  <span className="block sm:whitespace-nowrap">Message delivery.</span>
+                  <span className="block text-[var(--site-muted-bright)] sm:whitespace-nowrap">Under control.</span>
+                </h1>
+              </AnimateOnScroll>
 
-        {/* Radial glow overlay */}
-        <div className="pointer-events-none absolute top-0 left-1/2 -z-[5] h-[700px] w-[1100px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.10)_0%,transparent_55%)]" />
+              <AnimateOnScroll variant="fade-up" delay={90}>
+                <p className="mt-6 max-w-[510px] text-[15px] leading-7 text-[var(--site-muted)] text-pretty sm:text-[16px]">
+                  One API for email, SMS, and webhooks, with queues, retries, templates, and a complete delivery trail.
+                </p>
+              </AnimateOnScroll>
 
-        <div className="mx-auto w-full max-w-6xl px-4 pt-24 pb-14 sm:px-6 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-24">
-          <div className="flex flex-col items-center text-center">
-
-            {/* Pill badge */}
-            <AnimateOnScroll variant="fade-up">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3.5 py-1.5 backdrop-blur-sm">
-                <span className="beaco-dot size-1.5 rounded-full bg-[var(--primary)]" />
-                <span className="text-[11px] font-medium tracking-wide text-[var(--primary)] sm:text-xs">
-                  Notification Infrastructure for Developers
-                </span>
-              </div>
-            </AnimateOnScroll>
-
-            {/* Heading */}
-            <AnimateOnScroll variant="fade-up" delay={100}>
-              <h1 className="mt-7 max-w-4xl text-[clamp(2.25rem,6vw,4.5rem)] leading-[1.08] font-bold tracking-tight text-white sm:mt-8">
-                Event-driven notifications{" "}
-                <span className="hero-highlight">as&nbsp;a&nbsp;service</span>
-              </h1>
-            </AnimateOnScroll>
-
-            {/* Subheading */}
-            <AnimateOnScroll variant="fade-up" delay={200}>
-              <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-[var(--gray-8)] sm:mt-6 sm:text-base lg:text-lg">
-                Send notifications via email, SMS, and webhooks with a single API call.
-                Built-in queues, retries, templates, and real-time observability.
-              </p>
-            </AnimateOnScroll>
-
-            {/* Channel badges */}
-            <AnimateOnScroll variant="fade-up" delay={250}>
-              <div className="mt-5 flex items-center gap-2">
-                {[
-                  { icon: Mail, label: "Email" },
-                  { icon: MessageSquare, label: "SMS" },
-                  { icon: Webhook, label: "Webhook" },
-                ].map(({ icon: Icon, label }) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] font-medium text-[var(--gray-9)] backdrop-blur-sm"
-                  >
-                    <Icon className="size-3 text-[var(--primary)]" />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </AnimateOnScroll>
-
-            {/* CTAs */}
-            <AnimateOnScroll variant="fade-up" delay={300}>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  href={docsUrl("/quickstart")}
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "group h-11 bg-[var(--primary)] px-6 text-sm font-medium text-black hover:bg-[color:color-mix(in_oklab,var(--primary),black_12%)]"
-                  )}
-                >
-                  Get Started
-                  <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-                <Link
-                  href={docsUrl()}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                    "h-11 border-white/10 bg-white/[0.03] px-6 text-sm text-[var(--gray-10)] hover:border-white/20 hover:bg-white/[0.06]"
-                  )}
-                >
-                  Read the Docs
-                </Link>
-              </div>
-            </AnimateOnScroll>
-
-            {/* Inline curl — hidden on small mobile, scrollable otherwise */}
-            <AnimateOnScroll variant="fade-up" delay={350}>
-              <div className="mt-6 hidden max-w-full items-center gap-2 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 backdrop-blur-sm sm:inline-flex">
-                <code className="overflow-x-auto whitespace-nowrap font-mono text-xs text-[var(--gray-8)] sm:text-[13px]">
-                  {CURL_COMMAND}
-                </code>
-                <CopyCommandButton text={CURL_COMMAND} iconOnly />
-              </div>
-            </AnimateOnScroll>
-          </div>
-
-          {/* Terminal preview */}
-          <AnimateOnScroll variant="scale-in" delay={450}>
-            <div className="mx-auto mt-12 max-w-3xl sm:mt-16">
-              <TerminalPreview />
-            </div>
-          </AnimateOnScroll>
-        </div>
-      </section>
-
-      {/* Subtle static grid for remaining sections */}
-      <div className="grid-bg pointer-events-none fixed inset-0 -z-20 opacity-50" />
-
-      {/* ── Dashboard Preview ── */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
-        <AnimateOnScroll variant="fade-up">
-          <div className="text-center">
-            <p className="text-xs font-semibold tracking-widest text-[var(--primary)] uppercase">
-              Observability
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Monitor everything in real-time
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[var(--gray-9)]">
-              A single operational view for events, delivery health, queue depth, and failure diagnostics.
-            </p>
-          </div>
-        </AnimateOnScroll>
-
-        <AnimateOnScroll variant="scale-in" delay={200}>
-          <div className="mt-14 [perspective:1400px]">
-            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--gray-1)] shadow-[0_0_100px_rgba(245,158,11,0.1),0_20px_60px_rgba(0,0,0,0.4)] [transform:rotateX(2deg)]">
-              {/* Browser chrome */}
-              <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[var(--gray-2)] px-4 py-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                  <span className="size-2.5 rounded-full bg-[#28c840]" />
+              <AnimateOnScroll variant="fade-up" delay={150}>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <Link href={docsUrl("/quickstart")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
+                    <ArrowButton label="Start building" />
+                  </Link>
+                  <Link href={docsUrl()} className="site-secondary-action inline-flex h-12 items-center justify-center px-5 text-[13px] font-medium">
+                    Explore the docs
+                  </Link>
                 </div>
-                <div className="flex-1 rounded-md border border-white/[0.06] bg-black/30 px-3 py-1 text-center text-[11px] tracking-wide text-[var(--gray-8)]">
-                  beaco.michaelogunjimi.com/dashboard
-                </div>
+              </AnimateOnScroll>
+            </div>
+
+            <div className="grid border-t border-white/[0.07] bg-[#090908] lg:grid-rows-[1fr_auto] lg:border-l lg:border-t-0">
+              <div className="relative min-h-[280px] overflow-hidden sm:min-h-[410px] lg:min-h-0">
+                <Image
+                  src="/beaco-routing-dark.webp"
+                  alt="Three graphite notification modules connected by an amber signal rail"
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 44vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10" />
               </div>
-              <Image
-                src="/dashboard-preview.png"
-                alt="Beaco dashboard showing event delivery metrics, pipeline health, and recent notification activity"
-                width={1920}
-                height={1080}
-                className="h-auto w-full"
-                priority
-              />
-            </div>
-          </div>
-        </AnimateOnScroll>
-
-        {/* Stats row */}
-        <StaggerGroup className="mt-8 grid gap-3 sm:grid-cols-3" staggerMs={120}>
-          <StaggerItem>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 text-center">
-              <p className="text-2xl font-bold tabular-nums text-white">
-                <AnimatedCounter end={204} suffix="+" />
-              </p>
-              <p className="mt-1 text-xs text-[var(--gray-9)]">Events Processed</p>
-            </div>
-          </StaggerItem>
-          <StaggerItem>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 text-center">
-              <p className="text-2xl font-bold tabular-nums text-white">
-                <AnimatedCounter end={88.5} suffix="%" decimals={1} />
-              </p>
-              <p className="mt-1 text-xs text-[var(--gray-9)]">Delivery Rate</p>
-            </div>
-          </StaggerItem>
-          <StaggerItem>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 text-center">
-              <p className="text-2xl font-bold tabular-nums text-white">
-                {"< "}<AnimatedCounter end={2} suffix="s" />
-              </p>
-              <p className="mt-1 text-xs text-[var(--gray-9)]">Avg Latency</p>
-            </div>
-          </StaggerItem>
-        </StaggerGroup>
-      </section>
-
-      {/* ── How It Works — Pipeline ── */}
-      <section className="relative mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.06),transparent_60%)]" />
-
-        <AnimateOnScroll variant="fade-up">
-          <div className="text-center">
-            <p className="text-xs font-semibold tracking-widest text-[var(--primary)] uppercase">
-              Pipeline
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              How it works
-            </h2>
-          </div>
-        </AnimateOnScroll>
-
-        <StaggerGroup className="mt-14 grid gap-4 md:grid-cols-4" staggerMs={100}>
-          {pipelineSteps.map((step, index) => {
-            const Icon = step.icon
-            return (
-              <StaggerItem key={step.title}>
-                <div className="group relative h-full">
-                  <div className="feature-card h-full rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-sm">
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-[11px] font-bold tracking-widest text-[var(--gray-8)]">
-                        {step.number}
-                      </span>
-                    </div>
-                    <div
-                      className="mt-3 mb-4 inline-flex rounded-xl p-2.5"
-                      style={{ backgroundColor: step.glow }}
-                    >
-                      <Icon className={cn("size-5", step.color)} />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">{step.title}</h3>
-                    <p className="mt-2 text-[13px] leading-relaxed text-[var(--gray-9)]">
-                      {step.description}
-                    </p>
-                  </div>
-                  {/* Connector arrow */}
-                  {index < pipelineSteps.length - 1 && (
-                    <div className="absolute top-1/2 -right-2.5 z-10 hidden -translate-y-1/2 md:block">
-                      <ArrowRight className="size-4 text-[var(--gray-6)]" />
-                    </div>
-                  )}
+              <div className="flex items-center justify-between gap-4 border-t border-white/[0.07] bg-[#0b0b0a] px-5 py-4 sm:px-7 sm:py-5">
+                <div>
+                  <p className="text-[11px] font-semibold text-[var(--site-ink)]">One event, three routes</p>
+                  <p className="mt-1 text-[10px] text-[var(--site-muted)]">Each channel keeps its own delivery history.</p>
                 </div>
-              </StaggerItem>
-            )
-          })}
-        </StaggerGroup>
-      </section>
-
-      {/* ── Features — Bento Grid ── */}
-      <section id="features" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
-        <AnimateOnScroll variant="fade-up">
-          <p className="text-xs font-semibold tracking-widest text-[var(--primary)] uppercase">
-            Features
-          </p>
-          <h2 className="mt-3 text-4xl leading-tight font-bold tracking-tight text-white sm:text-5xl">
-            Built for reliability
-          </h2>
-          <p className="mt-4 max-w-2xl text-[var(--gray-9)]">
-            Every component is designed for production workloads — idempotent delivery,
-            automatic retries, and full observability out of the box.
-          </p>
-        </AnimateOnScroll>
-
-        <StaggerGroup className="mt-12 grid gap-4 lg:grid-cols-4" staggerMs={80}>
-          {featureCards.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <StaggerItem key={feature.title} className={feature.span}>
-                <div className="feature-card h-full rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="inline-flex rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 p-2.5">
-                      <Icon className="size-5 text-[var(--primary)]" />
-                    </div>
-                    <span className="text-[11px] font-bold tracking-widest text-[var(--gray-7)]">
-                      {feature.number}
+                <div className="flex items-center gap-1.5" aria-label="Supported channels">
+                  {channels.map(({ icon: Icon, label }) => (
+                    <span key={label} title={label} className="grid size-8 place-items-center rounded-[8px] border border-white/[0.09] bg-white/[0.055] text-[var(--site-ink)]">
+                      <Icon size={14} weight="light" aria-hidden="true" />
+                      <span className="sr-only">{label}</span>
                     </span>
-                  </div>
-                  <h3 className="mt-5 text-lg font-semibold text-white">{feature.title}</h3>
-                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--gray-9)]">
-                    {feature.description}
-                  </p>
-
-                  {/* Card-specific extras */}
-                  {feature.badges && (
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {feature.badges.map((b) => (
-                        <span
-                          key={b}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-xs text-[var(--gray-10)]"
-                        >
-                          {b === "Email" && <Mail className="size-3" />}
-                          {b === "SMS" && <MessageSquare className="size-3" />}
-                          {b === "Webhook" && <Webhook className="size-3" />}
-                          {b}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {feature.detail === "retry" && (
-                    <div className="mt-5 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2 font-mono text-xs text-[var(--gray-10)]">
-                      <span>1</span>
-                      <ArrowRight className="size-3 text-[var(--gray-7)]" />
-                      <span>2</span>
-                      <ArrowRight className="size-3 text-[var(--gray-7)]" />
-                      <span>3</span>
-                      <ArrowRight className="size-3 text-[var(--gray-7)]" />
-                      <span className="font-semibold text-[var(--primary)]">DLQ</span>
-                    </div>
-                  )}
-                  {feature.detail === "template" && (
-                    <div className="mt-5 rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2 font-mono text-xs text-[var(--gray-10)]">
-                      Hello {"{{name}}"}, your {"{{plan}}"} is active
-                    </div>
-                  )}
+                  ))}
                 </div>
-              </StaggerItem>
-            )
-          })}
-        </StaggerGroup>
-      </section>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* ── Architecture ── */}
-      <section className="relative mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.06),transparent_60%)]" />
+        <section className="site-grid-section" aria-label="Platform guarantees">
+          <div className="grid w-full grid-cols-2 md:grid-cols-12">
+            {platformGuarantees.map(({ value, label, detail }, index) => (
+              <div
+                key={label}
+                className={`site-stat-block px-5 py-7 text-center sm:px-8 sm:py-9 sm:text-left lg:px-10 ${
+                  index === 0
+                    ? "col-span-2 border-b border-white/[0.07] md:col-span-3 md:border-b-0 md:border-r"
+                    : index === 1
+                      ? "col-span-1 border-r border-white/[0.07] md:col-span-4"
+                      : "col-span-1 md:col-span-5"
+                }`}
+              >
+                <p className="font-mono text-[17px] font-medium tracking-[-0.04em] text-[var(--site-accent)] sm:text-[20px]">{value}</p>
+                <p className="mt-1 text-[11px] font-medium text-[var(--site-ink)] sm:text-[12px]">{label}</p>
+                <p className="mt-1.5 hidden text-[11px] text-[var(--site-muted)] sm:block">{detail}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-          <AnimateOnScroll variant="fade-right">
-            <div>
-              <p className="text-xs font-semibold tracking-widest text-[var(--primary)] uppercase">
-                Architecture
-              </p>
-              <h2 className="mt-3 text-4xl leading-tight font-bold tracking-tight text-white sm:text-5xl">
-                Production-grade infrastructure
+      <section id="how-it-works" className="site-grid-section site-grid-field">
+        <div className="px-6 py-20 sm:px-10 sm:py-24 lg:px-14 lg:py-28">
+          <AnimateOnScroll>
+            <div className="max-w-[720px]">
+              <h2 className="text-[clamp(2.35rem,4.5vw,4.35rem)] font-medium leading-[0.98] tracking-[-0.06em] text-balance">
+                One event enters. Beaco handles the rest.
               </h2>
-              <p className="mt-5 max-w-xl text-[var(--gray-9)]">
-                Beaco runs as a resilient event pipeline with separated ingestion,
-                processing, and delivery layers. Each stage is observable and designed for safe retries.
+              <p className="mt-5 max-w-[610px] text-[15px] leading-7 text-[var(--site-muted)]">
+                Your application emits business events. Beaco turns them into dependable customer messages and keeps the operational detail attached.
               </p>
-
-              <div className="mt-8 grid grid-cols-2 gap-3">
-                {techStack.map((tech) => {
-                  const TechIcon = tech.icon
-                  return (
-                    <div
-                      key={tech.label}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
-                    >
-                      <TechIcon className="size-4 text-[var(--primary)]" />
-                      <p className="mt-2 text-sm font-medium text-white">{tech.label}</p>
-                      <p className="mt-0.5 text-xs text-[var(--gray-8)]">{tech.desc}</p>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           </AnimateOnScroll>
 
-          <AnimateOnScroll variant="fade-left" delay={150}>
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-sm">
-              <p className="mb-4 text-[11px] font-bold tracking-widest text-[var(--gray-8)] uppercase">
-                Event Pipeline
-              </p>
-              <div className="space-y-2">
-                {[
-                  { label: "Event API", sub: "POST /api/v1/events", accent: false },
-                  { label: "Redis Queue", sub: "Async task dispatch", accent: false },
-                  { label: "Celery Worker", sub: "Template render + payload prep", accent: false },
-                  {
-                    label: "Channel Adapter",
-                    sub: "Email · SMS · Webhook",
-                    accent: false,
-                  },
-                  { label: "Dead-Letter Queue", sub: "Failed after 3 retries", accent: true },
-                ].map((item, i, arr) => (
-                  <div key={item.label}>
-                    <div
-                      className={cn(
-                        "rounded-lg border px-4 py-3",
-                        item.accent
-                          ? "border-[var(--primary)]/25 bg-[var(--primary)]/5"
-                          : "border-white/[0.06] bg-black/20"
-                      )}
-                    >
-                      <p
-                        className={cn(
-                          "text-sm font-medium",
-                          item.accent ? "text-[var(--primary)]" : "text-white"
-                        )}
-                      >
-                        {item.label}
-                      </p>
-                      <p className="mt-0.5 text-xs text-[var(--gray-8)]">{item.sub}</p>
-                    </div>
-                    {i < arr.length - 1 && (
-                      <div className="flex items-center gap-1 py-1 pl-4">
-                        <div className="h-4 w-px bg-[var(--gray-5)]" />
-                        {i === arr.length - 2 && (
-                          <span className="ml-1 text-[10px] text-[var(--gray-7)]">
-                            on failure
-                          </span>
-                        )}
+          <div className="mt-14 border border-white/[0.075]">
+            <div className="grid overflow-hidden bg-[#0a0a09] lg:grid-cols-12">
+              <AnimateOnScroll variant="fade-right" className="min-w-0 p-6 sm:p-8 lg:col-span-7 lg:p-10 xl:p-12">
+                <div className="mb-8 flex items-center gap-2 text-[var(--site-muted)]">
+                  <BracketsCurly size={16} weight="light" className="text-[var(--site-accent)]" aria-hidden="true" />
+                  <span className="font-mono text-[11px]">Create an event</span>
+                </div>
+                <pre className="overflow-x-auto font-mono text-[11px] leading-6 text-[#dedcd3] sm:text-[12px]">
+                  <code>{requestExample}</code>
+                </pre>
+              </AnimateOnScroll>
+
+              <StaggerGroup className="border-t border-white/[0.07] bg-[var(--site-soft)] p-6 sm:p-8 lg:col-span-5 lg:border-l lg:border-t-0 lg:p-10" staggerMs={70}>
+                {deliverySteps.map((step, index) => (
+                  <StaggerItem key={step.title}>
+                    <div className="grid grid-cols-[38px_1fr] gap-4 pb-8 last:pb-0">
+                      <span className="grid size-[38px] place-items-center rounded-[9px] border border-white/[0.09] bg-white/[0.035] font-mono text-[10px] text-[var(--site-muted)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div className="border-b border-white/[0.07] pb-8 last:border-b-0">
+                        <h3 className="text-[15px] font-medium tracking-[-0.02em]">{step.title}</h3>
+                        <p className="mt-1.5 max-w-[360px] text-[12px] leading-5 text-[var(--site-muted)]">{step.description}</p>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerGroup>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="reliability" className="site-grid-section site-grid-field site-grid-field-reverse">
+        <div className="px-6 py-20 sm:px-10 sm:py-24 lg:px-14 lg:py-28">
+          <AnimateOnScroll>
+            <div className="max-w-[760px]">
+              <h2 className="text-[clamp(2.35rem,4.5vw,4.35rem)] font-medium leading-[0.98] tracking-[-0.06em] text-balance">
+                The failure cases already have a home.
+              </h2>
+              <p className="mt-5 max-w-[610px] text-[15px] leading-7 text-[var(--site-muted)]">
+                Queues and providers fail in different ways. Beaco keeps each recovery path explicit, inspectable, and safe to operate.
+              </p>
             </div>
           </AnimateOnScroll>
+
+          <StaggerGroup className="mt-14 grid border-l border-t border-white/[0.075] lg:grid-cols-12" staggerMs={65}>
+            {reliabilityFeatures.map(({ icon: Icon, title, description, className }, index) => (
+              <StaggerItem key={title} className={className}>
+                <article className={`site-feature-card group relative min-h-[250px] overflow-hidden border-b border-r border-white/[0.075] p-7 sm:p-9 ${index === 0 || index === 3 ? "bg-[var(--site-soft)] lg:min-h-[315px]" : "bg-[var(--site-panel)] lg:min-h-[275px]"}`}>
+                  <div className="absolute right-0 top-0 size-36 bg-[radial-gradient(circle_at_top_right,rgba(233,170,49,0.09),transparent_68%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <span className="grid size-11 place-items-center rounded-[11px] border border-white/[0.09] bg-white/[0.035] text-[var(--site-ink)]">
+                    <Icon size={19} weight="light" aria-hidden="true" />
+                  </span>
+                  <div className={`${index === 0 || index === 3 ? "mt-20" : "mt-14"} max-w-[520px]`}>
+                    <h3 className="text-[20px] font-medium tracking-[-0.035em]">{title}</h3>
+                    <p className="mt-3 text-[13px] leading-6 text-[var(--site-muted)]">{description}</p>
+                  </div>
+                </article>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section className="relative mx-auto w-full max-w-6xl px-4 py-24 text-center sm:px-6">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.12),transparent_55%)]" />
-
-        <AnimateOnScroll variant="fade-up">
-          <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            Start sending notifications
-            <br />
-            <span className="text-[var(--primary)]">in minutes</span>
-          </h2>
-          <p className="mt-4 text-[var(--gray-9)]">
-            Free to use. Open source. No credit card required.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href={docsUrl("/quickstart")}
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "group h-11 bg-[var(--primary)] px-6 text-sm font-medium text-black hover:bg-[color:color-mix(in_oklab,var(--primary),black_12%)]"
-              )}
-            >
-              Get Started
-              <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <a
-              href="https://github.com/michaelowiti/notification-system"
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-11 border-white/10 bg-white/[0.03] px-6 text-sm text-[var(--gray-10)] hover:border-white/20 hover:bg-white/[0.06]"
-              )}
-            >
-              View on GitHub
-            </a>
+      <section className="site-grid-section">
+          <div className="site-cta relative grid overflow-hidden bg-[var(--site-panel)] lg:grid-cols-12">
+            <div className="px-6 py-14 sm:px-10 lg:col-span-9 lg:px-14 lg:py-16">
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--site-accent)]">The first event takes minutes</p>
+              <h2 className="mt-4 max-w-[780px] text-[clamp(2.4rem,4.8vw,4.8rem)] font-medium leading-[0.96] tracking-[-0.065em] text-balance">
+                Start with one event. Keep the control.
+              </h2>
+            </div>
+            <div className="flex items-center border-t border-white/[0.07] px-6 py-10 sm:px-10 sm:py-12 lg:col-span-3 lg:border-l lg:border-t-0 lg:px-10 lg:py-16">
+              <Link href={docsUrl("/quickstart")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
+                <ArrowButton label="Open the quickstart" />
+              </Link>
+            </div>
           </div>
-        </AnimateOnScroll>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-white/[0.06]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-2 text-[var(--gray-9)]">
-            <span className="size-1.5 rounded-full bg-[var(--primary)]" />
-            <span className="font-medium text-[var(--gray-10)]">Beaco</span>
-            <span>·</span>
-            <span>Built by Michael Ogunjimi</span>
-          </div>
-          <div className="flex items-center gap-5 text-[var(--gray-8)]">
-            <Link href={docsUrl()} className="transition-colors hover:text-white">
-              Docs
-            </Link>
-            <Link href="/dashboard" className="transition-colors hover:text-white">
-              Dashboard
-            </Link>
-            <a
-              href="https://github.com/michaelowiti/notification-system"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-white"
-            >
-              GitHub
-            </a>
-            <span className="text-[var(--gray-6)]">© 2026</span>
-          </div>
-        </div>
-      </footer>
+        <PublicFooter />
+      </div>
     </main>
   )
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Crown } from "lucide-react";
 import { isAuthenticated, setAuthInfo } from "@/lib/auth";
+import BrandLogo from "@/components/brand/brand-logo";
 
 interface ValidateResponse {
   valid: boolean;
@@ -74,10 +75,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] p-8">
         {/* Logo + title */}
         <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]">
-            <span className="text-lg font-bold text-black">B</span>
-          </div>
-          <h1 className="text-xl font-semibold text-[var(--gray-10)]">Beaco</h1>
+          <BrandLogo
+            className="flex-col gap-2"
+            markClassName="size-14"
+            labelClassName="text-xl font-semibold text-[var(--gray-10)]"
+          />
           <p className="text-sm text-[var(--gray-9)]">Sign in to your dashboard</p>
         </div>
 

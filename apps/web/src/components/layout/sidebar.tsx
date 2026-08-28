@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import BrandLogo from "@/components/brand/brand-logo";
 import {
   Dialog,
   DialogClose,
@@ -102,18 +103,18 @@ function SidebarInner({ collapsed = false, onClose, onToggleCollapse }: SidebarI
             type="button"
             onClick={onToggleCollapse}
             aria-label="Expand sidebar"
-            className="group/logo relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f59e0b,#fbbf24)] shadow-[0_2px_10px_rgba(245,158,11,0.35)] transition-shadow hover:shadow-[0_4px_16px_rgba(245,158,11,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/70"
+            className="group/logo relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] transition-colors hover:bg-[var(--gray-3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/70"
           >
-            <span className="text-[13px] font-bold text-black transition-opacity duration-100 group-hover/logo:opacity-0">
-              B
-            </span>
+            <BrandLogo
+              showLabel={false}
+              markClassName="size-[26px]"
+              className="transition-opacity duration-100 group-hover/logo:opacity-0"
+            />
             <ChevronRight className="absolute h-3.5 w-3.5 text-black opacity-0 transition-opacity duration-100 group-hover/logo:opacity-100" />
           </button>
         ) : (
           <>
-            <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f59e0b,#fbbf24)] shadow-[0_2px_10px_rgba(245,158,11,0.3)]">
-              <span className="text-[13px] font-bold text-black">B</span>
-            </div>
+            <BrandLogo showLabel={false} markClassName="size-[34px]" />
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold leading-none text-[var(--gray-10)]">Beaco</p>
               <p className="mt-1 text-[11px] leading-none text-[var(--gray-5)]">Notification Ops</p>

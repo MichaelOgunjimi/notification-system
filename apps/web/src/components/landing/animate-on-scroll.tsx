@@ -24,6 +24,7 @@ export default function AnimateOnScroll({
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    let revealTimer: ReturnType<typeof setTimeout> | undefined
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -38,7 +39,7 @@ export default function AnimateOnScroll({
       ([entry]) => {
         if (entry.isIntersecting) {
           // Apply delay then reveal
-          setTimeout(() => {
+          revealTimer = setTimeout(() => {
             el.classList.add("aos-visible")
           }, delay)
           if (once) observer.unobserve(el)
@@ -50,7 +51,10 @@ export default function AnimateOnScroll({
     )
 
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (revealTimer) clearTimeout(revealTimer)
+    }
   }, [delay, once])
 
   return (
@@ -65,20 +69,19 @@ type StaggerProps = {
   children: ReactNode
   className?: string
   staggerMs?: number
-  variant?: AnimateOnScrollProps["variant"]
 }
 
 export function StaggerGroup({
   children,
   className = "",
   staggerMs = 80,
-  variant = "fade-up",
 }: StaggerProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const container = ref.current
     if (!container) return
+    const revealTimers: Array<ReturnType<typeof setTimeout>> = []
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -95,7 +98,9 @@ export function StaggerGroup({
       ([entry]) => {
         if (entry.isIntersecting) {
           items.forEach((el, i) => {
-            setTimeout(() => el.classList.add("aos-visible"), i * staggerMs)
+            revealTimers.push(
+              setTimeout(() => el.classList.add("aos-visible"), i * staggerMs)
+            )
           })
           observer.unobserve(container)
         }
@@ -104,7 +109,10 @@ export function StaggerGroup({
     )
 
     observer.observe(container)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      revealTimers.forEach(clearTimeout)
+    }
   }, [staggerMs])
 
   return (

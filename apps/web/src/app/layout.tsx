@@ -1,13 +1,30 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: "Beaco — Notification Ops",
-  description: "Event-driven notification system dashboard",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  title: "Beaco | Notification infrastructure that stays accountable",
+  description:
+    "Send email, SMS, and webhook notifications through one API with built-in retries, templates, observability, and failure recovery.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/brand/png/favicon.ico" },
+      { url: "/brand/png/beaco-mark-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/brand/png/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "Beaco | Notification infrastructure that stays accountable",
+    description:
+      "Send email, SMS, and webhook notifications through one API with built-in retries, templates, observability, and failure recovery.",
+    images: [{ url: "/brand/png/beaco-social-card.png", width: 1200, height: 630, alt: "Beaco" }],
+  },
 };
 
 export default function RootLayout({
@@ -19,10 +36,14 @@ export default function RootLayout({
     <html
       lang="en"
       className="dark"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
       style={{ colorScheme: "dark" }}
     >
-      <body suppressHydrationWarning className={`${inter.variable} overflow-x-hidden font-sans antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${geist.variable} ${geistMono.variable} overflow-x-hidden font-sans antialiased`}
+      >
         <a
           href="#main-content"
           className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
