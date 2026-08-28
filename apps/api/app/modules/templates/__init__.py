@@ -1,0 +1,1 @@
+"""Notification template module."""

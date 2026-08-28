@@ -1,0 +1,23 @@
+{
+  "name": "beaco",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/docs",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,docs -c cyan,magenta \"npm run dev:web\" \"npm run dev:docs\"",
+    "dev:web": "npm run dev --workspace @beaco/web",
+    "dev:docs": "npm run dev --workspace @beaco/docs",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace @beaco/web",
+    "build:docs": "npm run build --workspace @beaco/docs",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
