@@ -1,6 +1,6 @@
 x-worker-common: &worker-common
   build:
-    context: ./backend
+    context: ./apps/api
     dockerfile: Dockerfile
   restart: unless-stopped
   depends_on:
@@ -8,6 +8,8 @@ x-worker-common: &worker-common
       condition: service_healthy
     redis:
       condition: service_healthy
+    mailpit:
+      condition: service_started
   env_file:
     - .env
   environment: &worker-env
@@ -16,6 +18,9 @@ x-worker-common: &worker-common
     CELERY_BROKER_URL: redis://redis:6379/0
     CELERY_RESULT_BACKEND: redis://redis:6379/1
     REDIS_URL: redis://redis:6379/0
+    EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+    SMTP_HOST: ${SMTP_HOST:-mailpit}
+    SMTP_PORT: ${SMTP_PORT:-1025}
   networks:
     - notification-net
   deploy:
@@ -59,9 +64,18 @@ services:
     networks:
       - notification-net
 
+  mailpit:
+    image: axllent/mailpit:v1.31.0
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - notification-net
+
   api:
     build:
-      context: ./backend
+      context: ./apps/api
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -69,6 +83,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -114,20 +130,39 @@ services:
     networks:
       - notification-net
 
-  frontend:
+  web:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        BACKEND_URL: http://api:8000
+        NEXT_PUBLIC_DOCS_URL: ${DOCS_URL:-http://localhost:3001}
     restart: unless-stopped
     depends_on:
       - api
     env_file:
       - .env
     environment:
-      API_URL: http://api:8000
-      NEXT_PUBLIC_API_URL: /api
+      BACKEND_URL: http://api:8000
+      NEXT_PUBLIC_DOCS_URL: ${DOCS_URL:-http://localhost:3001}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - notification-net
+
+  docs:
+    build:
+      context: .
+      dockerfile: apps/docs/Dockerfile
+      args:
+        NEXT_PUBLIC_WEB_URL: ${FRONTEND_URL:-http://localhost:3000}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_WEB_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "${DOCS_PORT:-3001}:3001"
     networks:
       - notification-net
 

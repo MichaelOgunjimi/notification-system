@@ -54,6 +54,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .next/
+*.tsbuildinfo
 
 # Misc
 *.log
@@ -72,6 +73,9 @@ error.msg
 skills-lock.json
 
 *.playwright-cli
+
+
+graphify-out/
 
 DESIGN_REFERENCE.md
 CODE_REVIEW.md

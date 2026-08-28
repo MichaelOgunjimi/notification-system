@@ -7,7 +7,7 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
-        exclude: ^backend/alembic/versions/
+        exclude: ^apps/api/alembic/versions/
       - id: check-merge-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -21,14 +21,14 @@ repos:
     hooks:
       - id: mypy
         name: mypy type check
-        entry: bash -c 'cd backend && uv run mypy app/'
+        entry: bash -c 'cd apps/api && uv run mypy app/'
         language: system
         pass_filenames: false
-        files: ^backend/app/
+        files: ^apps/api/app/
 
       - id: pytest
         name: pytest
-        entry: bash -c 'cd backend && uv run pytest -q'
+        entry: bash -c 'cd apps/api && uv run pytest -q'
         language: system
         pass_filenames: false
-        files: ^backend/
+        files: ^apps/api/

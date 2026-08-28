@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --gray-1: #141517;
+  --gray-2: #191b1e;
+  --gray-3: #212629;
+  --gray-4: #293034;
+  --gray-7: #434a4d;
+  --gray-9: #a1a4a5;
+  --gray-10: #f0f0f0;
+  --background: #000000;
+  --foreground: #f0f0f0;
+  --primary: #f59e0b;
+  --border: #212629;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-border: var(--border);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.docs-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.docs-toc-aside {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .docs-content-grid {
+    grid-template-columns: minmax(0, 900px) 240px;
+    gap: 2.5rem;
+  }
+
+  .docs-toc-aside {
+    display: block;
+  }
+}
