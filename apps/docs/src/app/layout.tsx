@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { DocsShell } from "@/components/docs-shell";
+import { getDocsSearchIndex } from "@/lib/docs";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <DocsShell>{children}</DocsShell>
+        <DocsShell searchItems={getDocsSearchIndex()}>{children}</DocsShell>
       </body>
     </html>
   );

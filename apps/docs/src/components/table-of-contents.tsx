@@ -1,6 +1,6 @@
 "use client";
 
-import { List } from "lucide-react";
+import { ListBullets } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 export interface TocItem {
@@ -63,16 +63,16 @@ export function TableOfContents({ headings }: { headings: TocItem[] }) {
   }
 
   return (
-    <nav aria-label="Table of contents" className="sticky top-8 max-h-[calc(100dvh-4rem)] overflow-y-auto">
-      <p className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-[var(--gray-9)]">
-        <List size={14} className="text-[var(--gray-7)]" />
+    <nav aria-label="Table of contents" className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto">
+      <p className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#77766f]">
+        <ListBullets size={14} className="text-[var(--docs-accent)]" />
         On this page
       </p>
 
       <div className="relative pl-4">
-        <div className="absolute left-0 top-0 h-full w-px bg-[var(--gray-3)]" />
+        <div className="absolute left-0 top-0 h-full w-px bg-white/[0.075]" />
         <div
-          className="absolute left-0 w-[2px] rounded-full bg-[var(--primary)] transition-all duration-200"
+          className="absolute left-0 w-[2px] rounded-full bg-[var(--docs-accent)] transition-all duration-200"
           style={{
             top: `${indicator.top}px`,
             height: `${indicator.height}px`,
@@ -95,12 +95,12 @@ export function TableOfContents({ headings }: { headings: TocItem[] }) {
                     setActiveId(heading.id);
                   }
                 }}
-                className={`block rounded-md px-2 py-1.5 text-[13px] transition-colors ${
+                className={`block rounded-md px-2 py-1.5 text-[11px] leading-5 transition-colors ${
                   heading.level === 3 ? "ml-3" : ""
                 } ${
                   activeId === heading.id
-                    ? "text-[var(--primary)]"
-                    : "text-[var(--gray-7)] hover:text-[var(--foreground)]"
+                    ? "text-[var(--docs-accent)]"
+                    : "text-[#77766f] hover:text-[var(--docs-ink)]"
                 }`}
               >
                 {heading.text}

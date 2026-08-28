@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Copy, Check } from "lucide-react";
+import { Check, Copy } from "@phosphor-icons/react";
 
 const LANG_LABELS: Record<string, string> = {
   bash: "Bash",
@@ -45,19 +45,19 @@ export function CodeBlock({
   const label = LANG_LABELS[language.toLowerCase()] ?? language.toUpperCase();
 
   return (
-    <div className="my-5 overflow-hidden rounded-xl border border-[var(--gray-3)]">
-      <div className="flex items-center justify-between border-b border-[var(--gray-3)] px-4 py-2 bg-[rgba(255,255,255,0.025)]">
-        <span className="text-[12px] font-medium tracking-wide text-[var(--gray-7)] select-none">
+    <div className="my-7 overflow-hidden rounded-lg border border-white/[0.075]">
+      <div className="flex items-center justify-between border-b border-white/[0.075] bg-white/[0.022] px-4 py-2.5">
+        <span className="select-none text-[9px] font-medium uppercase tracking-[0.15em] text-[#696860]">
           {label}
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-[var(--gray-7)] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--foreground)]"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-[#77766f] transition-colors hover:bg-white/[0.06] hover:text-[var(--docs-ink)]"
         >
           {copied ? (
             <>
               <Check size={14} />
-              <span>Copied!</span>
+              <span>Copied</span>
             </>
           ) : (
             <>
@@ -73,7 +73,7 @@ export function CodeBlock({
         customStyle={{
           margin: 0,
           padding: "1rem 1.25rem",
-          background: "#0d0f12",
+          background: "#090908",
           fontSize: "13px",
           lineHeight: "1.7",
           borderRadius: 0,

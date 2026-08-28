@@ -27,6 +27,10 @@ export interface DocDefinition {
   group: DocGroup;
 }
 
+export interface DocSearchItem extends DocDefinition {
+  content: string;
+}
+
 export const DOC_DEFINITIONS: DocDefinition[] = [
   {
     slug: "introduction",
@@ -150,6 +154,24 @@ function extractHeadings(markdown: string): TocHeading[] {
 function readContentFile(slug: string): string {
   const contentPath = path.join(process.cwd(), "content", "docs", `${slug}.md`);
   return fs.readFileSync(contentPath, "utf-8");
+}
+
+function markdownToSearchText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```\w*|```/g, " "))
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#>*_~`|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function getDocsSearchIndex(): DocSearchItem[] {
+  return DOC_DEFINITIONS.map((definition) => ({
+    ...definition,
+    content: markdownToSearchText(readContentFile(definition.slug)).slice(0, 16000),
+  }));
 }
 
 export function getDocContent(slug: string): {
