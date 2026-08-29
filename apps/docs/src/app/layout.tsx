@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }} data-scroll-behavior="smooth">
       <body className={`${inter.variable} bg-[var(--background)] font-sans text-[var(--foreground)] antialiased`}>
         <a
           href="#main-content"

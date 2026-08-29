@@ -284,8 +284,8 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/DLQ_ID/retry \
 
 ## Related Docs
 
-- [Introduction](/docs/introduction) for platform architecture overview.
-- [Events](/docs/events) for event submission and lifecycle.
-- [Channels](/docs/channels) for channel constraints and configuration.
-- [Templates](/docs/templates) for render-time content behavior.
-- [Quickstart](/docs/quickstart) for local setup and first event.
+- [Introduction](/introduction) for platform architecture overview.
+- [Events](/events) for event submission and lifecycle.
+- [Channels](/channels) for channel constraints and configuration.
+- [Templates](/templates) for render-time content behavior.
+- [Quickstart](/quickstart) for local setup and first event.

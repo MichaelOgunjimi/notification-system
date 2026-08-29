@@ -79,7 +79,7 @@ export function DocsShell({
     <DocsSearchContext.Provider value={() => setSearchOpen(true)}>
       <div className="docs-shell min-h-dvh bg-[var(--docs-canvas)] text-[var(--docs-ink)]">
         <header className="docs-topbar fixed inset-x-0 top-0 z-40 h-16 border-b border-white/[0.075]">
-          <div className="mx-auto grid h-full max-w-[1680px] grid-cols-[1fr_auto] items-center gap-4 px-4 lg:grid-cols-[264px_minmax(260px,620px)_1fr] lg:px-6">
+          <div className="mx-auto grid h-full max-w-[1440px] grid-cols-[1fr_auto] items-center gap-4 px-4 lg:grid-cols-[auto_minmax(280px,620px)_1fr] lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -147,12 +147,7 @@ export function DocsShell({
           <DocsSidebar onNavigate={() => setDrawerOpen(false)} />
         </aside>
 
-        <div className="mx-auto grid min-h-dvh max-w-[1680px] grid-cols-1 pt-16 lg:grid-cols-[264px_minmax(0,1fr)]">
-          <aside className="hidden h-[calc(100dvh-4rem)] overflow-y-auto border-r border-white/[0.075] bg-[#090908]/90 lg:sticky lg:top-16 lg:block">
-            <DocsSidebar />
-          </aside>
-          <main id="main-content" className="docs-grid-field min-w-0">{children}</main>
-        </div>
+        <main id="main-content" className="docs-reading-field min-h-dvh pt-16">{children}</main>
 
         <DocsSearch items={searchItems} open={searchOpen} onOpenChange={setSearchOpen} />
       </div>

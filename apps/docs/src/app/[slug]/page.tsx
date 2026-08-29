@@ -9,6 +9,7 @@ import {
   DOC_DEFINITIONS,
 } from "@/lib/docs";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { DocsSidebar } from "@/components/docs-sidebar";
 import { TableOfContents } from "@/components/table-of-contents";
 
 export function generateStaticParams() {
@@ -48,9 +49,15 @@ export default async function DocSlugPage({
   const { previous, next } = getDocNeighbors(slug);
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-5 py-10 sm:px-8 sm:py-14 xl:px-12 xl:py-16">
+    <div className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 sm:py-14 xl:px-10 xl:py-16">
       <div className="docs-content-grid">
-        <article className="min-w-0 rounded-xl border border-white/[0.075] bg-[#0a0a09]/88 px-5 py-8 shadow-[inset_0_1px_rgba(255,255,255,0.02)] sm:px-9 sm:py-11 lg:px-12">
+        <aside className="docs-article-nav">
+          <div className="sticky top-24 -ml-3">
+            <DocsSidebar />
+          </div>
+        </aside>
+
+        <article className="min-w-0 py-2 sm:py-4">
           <MarkdownRenderer content={content} />
 
           <nav className="mt-16 grid border-t border-white/[0.075] sm:grid-cols-2">

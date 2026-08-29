@@ -64,7 +64,7 @@ Beaco retries failed webhook deliveries using exponential backoff with jitter.
 | HTTP `2xx` | Mark delivered |
 | Max retries exceeded | Move to dead-letter state |
 
-See [Delivery Pipeline](/docs/delivery) for retry and dead-letter operations.
+See [Delivery Pipeline](/delivery) for retry and dead-letter operations.
 
 ## Verify Webhook Signatures (HMAC-SHA256)
 
@@ -129,7 +129,7 @@ app.post("/beaco/webhooks", (req, res) => {
 
 ## Related Docs
 
-- [Channels](/docs/channels)
-- [Events](/docs/events)
-- [Delivery Pipeline](/docs/delivery)
-- [API Reference](/docs/api-reference)
+- [Channels](/channels)
+- [Events](/events)
+- [Delivery Pipeline](/delivery)
+- [API Reference](/api-reference)

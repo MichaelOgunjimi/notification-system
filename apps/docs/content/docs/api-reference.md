@@ -3,48 +3,26 @@
 Beaco exposes a JSON REST API for event ingestion, delivery operations, templates, analytics, and admin controls.
 
 - **Base URL:** `https://beaco.michaelogunjimi.com/api/v1`
-- **Authentication:** `X-API-Key` header on all endpoints except `GET /health`
+- **Authentication:** bearer access token or scoped `X-API-Key`, depending on the endpoint
 
-For conceptual guides, see [Events](/docs/events), [Templates](/docs/templates), and [Delivery Pipeline](/docs/delivery).
+For conceptual guides, see [Events](/events), [Templates](/templates), and [Delivery Pipeline](/delivery).
 
 ## Authentication
 
-All authenticated requests must include:
+Beaco has two authentication planes:
+
+| Credential | Used for | Header |
+| --- | --- | --- |
+| Human access token | Organizations, projects, members, invitations, API-key management, and platform administration | `Authorization: Bearer TOKEN` |
+| Project API key | Events, templates, notifications, delivery operations, and project observability | `X-API-Key: KEY` |
+
+For example, a notification operation includes:
 
 ```bash
 curl -H "X-API-Key: YOUR_API_KEY" ...
 ```
 
-Beaco supports two API key types:
-
-| Key type | Scope | Can access |
-| --- | --- | --- |
-| Master key | Global/admin | `/settings/*`, `/admin/*`, plus all project data |
-| Project key | Project-scoped | Regular endpoints scoped to its own data |
-
-> Project keys cannot call master-only endpoints. Those requests return `403`.
-
-### Validate API Key
-
-#### `POST /auth/validate`
-
-Validate whether the provided key is active and authorized.
-
-- **Auth required:** Yes (master or project)
-
-```bash
-curl -X POST https://beaco.michaelogunjimi.com/api/v1/auth/validate \
-  -H "X-API-Key: YOUR_API_KEY"
-```
-
-```json
-{
-  "valid": true,
-  "api_key_id": "1f2721ab-9e73-4dfb-b60e-ea0ef8f2dc17",
-  "scope": "project",
-  "name": "checkout-service"
-}
-```
+Project API keys are created under `/projects/{project_id}/api-keys` by an authorized human user. Each key carries explicit scopes such as `events:write`, `templates:read`, or `notifications:read`; a missing scope returns `403`.
 
 ## Events
 
@@ -52,7 +30,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/auth/validate \
 
 Create an event and enqueue notification fan-out.
 
-- **Auth required:** Yes (project key only)
+- **Auth required:** project API key with `events:write`
 - **Response:** `202 Accepted`
 
 #### Request body
@@ -99,11 +77,15 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
 
 ```json
 {
-  "event_id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
+  "id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
+  "event_type": "order.shipped",
   "status": "accepted",
   "priority": "high",
-  "notification_count": 2,
-  "created_at": "2026-04-17T12:15:32Z"
+  "recipient_count": 1,
+  "has_failures": false,
+  "idempotency_key": "ship-ord_991-v1",
+  "created_at": "2026-04-17T12:15:32Z",
+  "updated_at": "2026-04-17T12:15:32Z"
 }
 ```
 
@@ -111,7 +93,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
 
 Create multiple events atomically.
 
-- **Auth required:** Yes (project key only)
+- **Auth required:** scoped project API key
 - **Response:** `202 Accepted`
 - **Limit:** max `50` events
 
@@ -146,7 +128,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
 
 List events.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -182,7 +164,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/events?page=1&per_page=2&p
 
 Get event details with related notifications.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/3d434cf3-2f63-4a82-aae4-fbead6877445 \
@@ -209,7 +191,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/3d434cf3-2f63-4a82-a
 
 List notifications.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -244,7 +226,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/notifications?channel=emai
 
 Get notification detail with attempt logs.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications/f8ce0a5f-9d95-4483-95d7-bda38ab718e8 \
@@ -267,13 +249,13 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications/f8ce0a5f-9d95
 
 ## Templates
 
-See [Templates](/docs/templates).
+See [Templates](/templates).
 
 ### `GET /templates`
 
 List templates.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -304,7 +286,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/templates?channel=email" \
 
 Create template.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -336,7 +318,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
 
 Get template by id.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
@@ -358,7 +340,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f5
 
 Update template (partial payload allowed).
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -390,7 +372,7 @@ curl -X PUT https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f5
 
 Delete template.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 - **Response:** `204 No Content`
 
 ```bash
@@ -402,7 +384,7 @@ curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-
 
 Render template using variables.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -430,7 +412,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f
 
 Schedule future event delivery.
 
-- **Auth required:** Yes (project key only)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -462,7 +444,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
 
 List scheduled events.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -491,7 +473,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=sc
 
 Cancel scheduled event.
 
-- **Auth required:** Yes (project key only)
+- **Auth required:** scoped project API key
 - **Response:** `204 No Content`
 
 ```bash
@@ -505,7 +487,7 @@ curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/scheduled-events/39ac7bf
 
 List suppressions.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -534,7 +516,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/suppressions?channel=email
 
 Create suppression.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -566,7 +548,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/suppressions \
 
 Delete suppression.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 - **Response:** `204 No Content`
 
 ```bash
@@ -580,7 +562,7 @@ curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/suppressions/90763e0e-e4
 
 List dead-letter messages.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -610,7 +592,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/dead-letter?status=active&
 
 Get dead-letter detail.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e \
@@ -633,7 +615,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4
 
 Re-enqueue dead-letter message.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/retry \
@@ -648,7 +630,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-
 
 Acknowledge/discard dead-letter message.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4ac4-b7ec-a6ce77861d2e/discard \
@@ -665,7 +647,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-
 
 List alert rules.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/alerts \
@@ -682,7 +664,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/alerts \
 
 Create alert rule.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Request body
 
@@ -710,7 +692,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/alerts \
 
 Update alert rule.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 ```bash
 curl -X PUT https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-aee1-50b70b538795 \
@@ -727,7 +709,7 @@ curl -X PUT https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-a
 
 Delete alert rule.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 - **Response:** `204 No Content`
 
 ```bash
@@ -741,7 +723,7 @@ curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f8
 
 Get aggregate delivery metrics.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -772,7 +754,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics?date_from=2026-0
 
 Get time-bucketed notification counts.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -804,7 +786,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics/trends?date_from
 
 List audit entries.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -836,7 +818,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/audit-log?action=api_key.c
 
 Get API usage per endpoint per hour.
 
-- **Auth required:** Yes (master or project)
+- **Auth required:** scoped project API key
 
 #### Query parameters
 
@@ -863,194 +845,33 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/usage?endpoint=/events&fro
 }
 ```
 
-## Settings (Master Key Only)
+## Settings
 
-### `POST /settings/api-keys`
+Project API keys with `settings:read` can inspect the effective channel configuration and retry policies used by the delivery workers.
 
-Create API key.
+- `GET /settings/channels`
+- `GET /settings/retry-policies`
 
-- **Auth required:** Yes (master only)
+API-key creation and rotation are human control-plane operations under `/projects/{project_id}/api-keys`, not settings endpoints.
 
-#### Request body
+## Human Control Plane
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `name` | string | Yes | Key name |
-| `rate_limit_per_min` | integer | No | Per-key limit override |
+Bearer-authenticated users manage the resources around notification integrations:
 
-```bash
-curl -X POST https://beaco.michaelogunjimi.com/api/v1/settings/api-keys \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: MASTER_KEY" \
-  -d '{"name":"checkout-service","rate_limit_per_min":1200}'
-```
+- `/auth/*` — magic-link sessions, refresh, logout, and the current user
+- `/oauth/github/*` — GitHub sign-in and account connection
+- `/organizations/*` — organizations, members, invitations, usage, and audit history
+- `/organizations/{organization_id}/projects` — create and list projects
+- `/projects/{project_id}` — inspect, update, or delete a project
+- `/projects/{project_id}/api-keys` — create, list, update, rotate, or revoke scoped keys
 
-```json
-{
-  "id": "2f44dad2-41a2-4f4c-8d7a-a6ca73f08953",
-  "name": "checkout-service",
-  "key_prefix": "bk_live_",
-  "api_key": "bk_live_4vQ...raw-key-shown-once",
-  "rate_limit_per_min": 1200,
-  "created_at": "2026-04-17T13:05:00Z"
-}
-```
+These endpoints use `Authorization: Bearer TOKEN`. API-key secrets are returned only when created or rotated.
 
-> The raw `api_key` value is shown only once.
+## Platform Administration
 
-### `GET /settings/api-keys`
+`/admin/*` is a separate bearer-authenticated platform control plane. Access is granted through an `AdminUser` record and explicit permissions, not a master API key.
 
-List API keys.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET "https://beaco.michaelogunjimi.com/api/v1/settings/api-keys?page=1&per_page=25" \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-{
-  "items": [{"id":"2f44dad2-41a2-4f4c-8d7a-a6ca73f08953","name":"checkout-service","key_prefix":"bk_live_","is_active":true,"last_used_at":"2026-04-17T13:08:10Z"}],
-  "total": 1,
-  "page": 1,
-  "per_page": 25,
-  "total_pages": 1
-}
-```
-
-### `DELETE /settings/api-keys/{id}`
-
-Revoke API key.
-
-- **Auth required:** Yes (master only)
-- **Response:** `204 No Content`
-
-```bash
-curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/settings/api-keys/2f44dad2-41a2-4f4c-8d7a-a6ca73f08953 \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-### `GET /settings/channels`
-
-List channel configs.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET https://beaco.michaelogunjimi.com/api/v1/settings/channels \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-[
-  {"channel":"email","enabled":true,"provider":"resend"},
-  {"channel":"sms","enabled":true,"provider":"twilio"},
-  {"channel":"webhook","enabled":true,"timeout_seconds":30}
-]
-```
-
-### `GET /settings/retry-policies`
-
-List retry policy per channel.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET https://beaco.michaelogunjimi.com/api/v1/settings/retry-policies \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-[
-  {"channel":"email","max_retries":5,"base_delay_seconds":10},
-  {"channel":"sms","max_retries":3,"base_delay_seconds":5},
-  {"channel":"webhook","max_retries":7,"base_delay_seconds":15}
-]
-```
-
-## Admin (Master Key Only)
-
-### `GET /admin/keys`
-
-List all API keys with event counts.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET https://beaco.michaelogunjimi.com/api/v1/admin/keys \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-{"items":[{"api_key_id":"2f44dad2-41a2-4f4c-8d7a-a6ca73f08953","name":"checkout-service","event_count":4902}]}
-```
-
-### `GET /admin/health`
-
-Get system health snapshot.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET https://beaco.michaelogunjimi.com/api/v1/admin/health \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-{
-  "status":"healthy",
-  "database":{"status":"ok","latency_ms":4},
-  "redis":{"status":"ok","latency_ms":2},
-  "queues":{"email":{"depth":3},"sms":{"depth":0},"webhook":{"depth":7}},
-  "error_rate_5m":0.003
-}
-```
-
-### `GET /admin/analytics`
-
-Cross-key aggregated analytics.
-
-- **Auth required:** Yes (master only)
-
-```bash
-curl -X GET "https://beaco.michaelogunjimi.com/api/v1/admin/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-{"projects":8,"total_events":48302,"total_notifications":120221,"delivery_rate":0.978}
-```
-
-### `GET /admin/usage`
-
-List all usage data.
-
-- **Auth required:** Yes (master only)
-
-#### Query parameters
-
-| Param | Type | Description |
-| --- | --- | --- |
-| `api_key_id` | UUID | Optional key filter |
-| `from` | datetime | Start |
-| `to` | datetime | End |
-| `endpoint` | string | Endpoint filter |
-
-```bash
-curl -X GET "https://beaco.michaelogunjimi.com/api/v1/admin/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
-  -H "X-API-Key: MASTER_KEY"
-```
-
-```json
-{
-  "items": [{"api_key_id":"2f44dad2-41a2-4f4c-8d7a-a6ca73f08953","hour":"2026-04-17T13:00:00Z","endpoint":"/events","request_count":300}],
-  "total": 1,
-  "page": 1,
-  "per_page": 25,
-  "total_pages": 1
-}
-```
+The current surface covers platform health, analytics, usage, audit history, API-key inspection, system accounts and credentials, administrator records, and system templates.
 
 ## Health
 

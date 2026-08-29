@@ -151,9 +151,9 @@ Retries and dead-letter workflows are first-class parts of the product, not bolt
 
 ### Multi-Tenant Isolation
 
-API keys isolate projects and access patterns.
+Organizations contain projects, and each project owns its API keys and notification data.
 
-Master and project key scopes make it possible to separate admin operations from regular event publishing.
+Human roles govern the control plane while explicit API-key scopes limit what each application or service can do.
 
 ### Strong Observability
 
@@ -205,11 +205,11 @@ Expected behavior:
 
 Continue with:
 
-- [Quickstart](/docs/quickstart) to get an API key and send your first event.
-- [Events](/docs/events) to understand payload structure, lifecycle, and idempotency.
-- [Channels](/docs/channels) to configure Email, SMS, and Webhook behavior.
-- [Templates](/docs/templates) to build reusable content and preview rendered output.
-- [Delivery Pipeline](/docs/delivery) to operate retries, DLQ, and suppressions.
+- [Quickstart](/quickstart) to get an API key and send your first event.
+- [Events](/events) to understand payload structure, lifecycle, and idempotency.
+- [Channels](/channels) to configure Email, SMS, and Webhook behavior.
+- [Templates](/templates) to build reusable content and preview rendered output.
+- [Delivery Pipeline](/delivery) to operate retries, DLQ, and suppressions.
 
 ## Design Principles
 
@@ -224,4 +224,4 @@ These principles make Beaco easier to integrate, operate, and trust in productio
 
 ## Next Step
 
-Start with [Quickstart](/docs/quickstart) and send a real event in under five minutes.
+Start with [Quickstart](/quickstart) and send a real event in under five minutes.

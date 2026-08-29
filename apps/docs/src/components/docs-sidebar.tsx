@@ -64,10 +64,10 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         href="/"
         onClick={onNavigate}
-        className={`mb-7 flex items-center gap-2.5 rounded-md px-3 py-2 text-[12px] transition-colors ${
+      className={`mb-7 flex items-center gap-2.5 border-l px-3 py-1.5 text-[12px] transition-colors ${
           pathname === "/"
-            ? "bg-white/[0.06] text-[var(--docs-ink)]"
-            : "text-[var(--docs-muted)] hover:bg-white/[0.035] hover:text-[var(--docs-ink)]"
+            ? "border-[var(--docs-accent)] text-[var(--docs-ink)]"
+            : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
         }`}
       >
         <House size={15} className={pathname === "/" ? "text-[var(--docs-accent)]" : "text-[#68675f]"} />
@@ -88,17 +88,16 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    className={`group flex items-center gap-2.5 rounded-md px-3 py-2 text-[12px] transition-colors ${
+                    className={`group flex items-center gap-2.5 border-l px-3 py-1.5 text-[12px] transition-colors ${
                       active
-                        ? "bg-[color-mix(in_srgb,var(--docs-accent)_9%,transparent)] text-[var(--docs-ink)]"
-                        : "text-[var(--docs-muted)] hover:bg-white/[0.035] hover:text-[var(--docs-ink)]"
+                        ? "border-[var(--docs-accent)] text-[var(--docs-ink)]"
+                        : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
                     }`}
                   >
                     <span className={active ? "text-[var(--docs-accent)]" : "text-[#68675f] group-hover:text-[#9a9890]"}>
                       {DOC_ICONS[item.slug]}
                     </span>
                     {item.label}
-                    {active ? <span className="ml-auto size-1 rounded-full bg-[var(--docs-accent)]" /> : null}
                   </Link>
                 );
               })}
@@ -107,9 +106,6 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </div>
 
-      <div className="mt-8 border-t border-white/[0.065] px-3 pt-5">
-        <p className="text-[10px] leading-5 text-[#626159]">Beaco docs · v1 foundation</p>
-      </div>
     </nav>
   );
 }

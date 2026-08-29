@@ -282,7 +282,7 @@ Example strategy:
 
 ## Related Docs
 
-- [Events](/docs/events) for recipient schema and fan-out behavior.
-- [Templates](/docs/templates) for channel-specific content rendering.
-- [Delivery Pipeline](/docs/delivery) for retries, DLQ, and suppression logic.
-- [Quickstart](/docs/quickstart) to send your first channel-specific event.
+- [Events](/events) for recipient schema and fan-out behavior.
+- [Templates](/templates) for channel-specific content rendering.
+- [Delivery Pipeline](/delivery) for retries, DLQ, and suppression logic.
+- [Quickstart](/quickstart) to send your first channel-specific event.

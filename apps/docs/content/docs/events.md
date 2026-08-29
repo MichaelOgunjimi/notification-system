@@ -274,7 +274,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/evt_01j4z89n8x5t5b5w
 
 Use this endpoint to track event-level progress.
 
-For delivery-level detail, use [Delivery Pipeline](/docs/delivery) and notification endpoints.
+For delivery-level detail, use [Delivery Pipeline](/delivery) and notification endpoints.
 
 ## Best Practices
 
@@ -286,8 +286,8 @@ For delivery-level detail, use [Delivery Pipeline](/docs/delivery) and notificat
 
 ## Related Docs
 
-- [Introduction](/docs/introduction)
-- [Quickstart](/docs/quickstart)
-- [Channels](/docs/channels)
-- [Templates](/docs/templates)
-- [Delivery Pipeline](/docs/delivery)
+- [Introduction](/introduction)
+- [Quickstart](/quickstart)
+- [Channels](/channels)
+- [Templates](/templates)
+- [Delivery Pipeline](/delivery)

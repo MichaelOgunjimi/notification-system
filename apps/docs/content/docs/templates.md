@@ -145,30 +145,16 @@ Example preview response:
 
 > Use preview during CI checks for template integrity before deployment.
 
-## System Templates vs Project Templates
-
-Beaco supports two ownership scopes:
-
-| Type | Created By | Editable By | Visibility |
-| --- | --- | --- | --- |
-| System template | Master context | Master key only | Global/shared |
-| Project template | Project API key | Owning project (master can inspect/manage) | Project-scoped |
-
-Rules:
-
-- System templates are read-only for regular project keys.
-- Project keys cannot edit system templates.
-- Master key can edit system templates and inspect all templates.
-
 ## Template Ownership Model
 
 Every template is associated with the API key that created it.
 
 Ownership implications:
 
-- regular keys see and manage their own templates
-- authorized platform administrators can inspect templates across projects
-- cross-project edits are restricted unless performed with master privileges
+- keys with `templates:read` can inspect templates available to that integration
+- keys with `templates:write` can create and manage their own templates
+- internal system defaults may be made available by the platform but are not managed through a master key
+- authorized platform administrators use the separate admin control plane
 
 This model supports multi-tenant safety and predictable content boundaries.
 
@@ -262,7 +248,7 @@ print(resp.status_code, resp.json())
 
 ## Related Docs
 
-- [Events](/docs/events) for template usage during event creation.
-- [Channels](/docs/channels) for channel-specific content constraints.
-- [Delivery Pipeline](/docs/delivery) for async delivery behavior after render.
-- [Quickstart](/docs/quickstart) for first-run API flow.
+- [Events](/events) for template usage during event creation.
+- [Channels](/channels) for channel-specific content constraints.
+- [Delivery Pipeline](/delivery) for async delivery behavior after render.
+- [Quickstart](/quickstart) for first-run API flow.

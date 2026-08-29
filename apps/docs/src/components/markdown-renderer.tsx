@@ -1,7 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
-import rehypeRaw from "rehype-raw";
 import type { Components } from "react-markdown";
 import { CodeBlock } from "./code-block";
 
@@ -152,7 +151,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeSlug, rehypeRaw]}
+      rehypePlugins={[rehypeSlug]}
       components={components}
     >
       {content}
