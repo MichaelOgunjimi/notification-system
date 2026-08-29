@@ -3,9 +3,12 @@
 ## Image-generated master
 
 - `png/beaco-mark-master.png`: transparent 1400px image-generated master mark
-- `png/beaco-lockup-horizontal-*.png`: transparent wide logo lockups
-- `png/beaco-lockup-stacked-*.png`: transparent stacked logo lockups
+- `png/beaco-lockup-horizontal-dark.png`: white-wordmark lockup for dark surfaces
+- `png/beaco-lockup-horizontal-light.png`: black-wordmark, black-bell lockup for light surfaces
+- `png/beaco-lockup-stacked-dark.png`: white-wordmark lockup for dark surfaces
+- `png/beaco-lockup-stacked-light.png`: black-wordmark, black-bell lockup for light surfaces
 - `png/beaco-wordmark-*.png`: standalone wordmarks
+- `png/beaco-mark-on-light.png`: transparent approved mark with a black bell for light surfaces
 
 ## Raster exports
 
@@ -18,7 +21,9 @@ The `png/` directory contains transparent mark exports from 16px through 1024px,
 - Use the stacked lockup only in centered or square compositions.
 - Keep clear space around the mark equal to at least one quarter of its width.
 - Do not add glow, shadow, or a containing shape below 48px.
-- Use the full amber-gold mark on dark UI. On light UI, place it on a dark brand tile when the white bell needs stronger contrast.
+- Use the original white-bell mark and `*-dark` lockups on dark UI.
+- Use `beaco-mark-on-light.png` and the `*-light` lockups on light UI. These preserve the amber B and switch only the bell and wordmark contrast elements to black.
+- App icons, favicons, and the maskable icon keep their original white bell because their exported dark background supplies the required contrast.
 - Use the maskable icon for installable app manifests. It includes the required safe-area padding.
 
 Brand colors:
