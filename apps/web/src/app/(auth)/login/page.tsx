@@ -1,139 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, Crown } from "lucide-react";
-import { isAuthenticated, setAuthInfo } from "@/lib/auth";
-import BrandLogo from "@/components/brand/brand-logo";
-
-interface ValidateResponse {
-  valid: boolean;
-  is_master: boolean;
-  name: string | null;
-  key_prefix: string | null;
-}
+import { ArrowRight, GithubLogo, SpinnerGap } from "@phosphor-icons/react";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { githubLoginUrl, requestMagicLink } from "@/lib/auth/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Already authenticated — send straight to dashboard
-  useEffect(() => {
-    if (isAuthenticated()) router.replace("/dashboard");
-  }, [router]);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const trimmed = apiKey.trim();
-    if (!trimmed) {
-      setError("Please enter your API key.");
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setError("Enter a valid email address.");
       return;
     }
+
     setError(null);
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: trimmed }),
-      });
-
-      const data = (await response.json()) as ValidateResponse;
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          setError("Invalid API key. Please check and try again.");
-          return;
-        }
-        throw new Error("Login failed");
-      }
-
-      if (!data.valid) {
-        setError("Invalid API key. Please check and try again.");
-        return;
-      }
-
-      setAuthInfo({
-        isMaster: data.is_master,
-        name: data.name ?? (data.is_master ? "Master" : "Project key"),
-        keyPrefix: data.key_prefix ?? trimmed.slice(0, 10),
-      });
-
-      router.replace("/dashboard");
-    } catch {
-      setError("Unable to reach the server. Please try again.");
-    } finally {
+      await requestMagicLink(normalizedEmail);
+      router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "We could not send the link.");
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-sm rounded-lg border border-[var(--gray-3)] bg-[var(--gray-2)] p-8">
-        {/* Logo + title */}
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <BrandLogo
-            className="flex-col gap-2"
-            markClassName="size-14"
-            labelClassName="text-xl font-semibold text-[var(--gray-10)]"
-          />
-          <p className="text-sm text-[var(--gray-9)]">Sign in to your dashboard</p>
-        </div>
+    <AuthShell>
+      <div>
+        <p className="font-mono text-[11px] tracking-[0.12em] text-[var(--site-accent)]">WELCOME BACK</p>
+        <h2 className="mt-4 text-[2rem] font-semibold tracking-[-0.05em] sm:text-[2.35rem]">Sign in to Beaco</h2>
+        <p className="mt-3 max-w-md text-[14px] leading-6 text-[var(--site-muted-bright)]">Enter your work email. We’ll send a private link that signs you in or creates your account.</p>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="api-key" className="text-[13px] font-medium text-[var(--gray-9)]">
-              API Key
-            </label>
-            <div className="relative">
-              <input
-                id="api-key"
-                type={showKey ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="nk_..."
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  if (error) setError(null);
-                }}
-                disabled={loading}
-                className="w-full rounded-md border border-[var(--gray-3)] bg-[var(--gray-1)] px-3 py-2 pr-10 font-mono text-[13px] text-[var(--gray-10)] placeholder-[var(--gray-5)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/40 disabled:opacity-50"
-              />
-              <button
-                type="button"
-                aria-label={showKey ? "Hide API key" : "Show API key"}
-                onClick={() => setShowKey((s) => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--gray-5)] transition hover:text-[var(--gray-8)]"
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {error && (
-              <p role="alert" className="text-[12px] text-red-400">
-                {error}
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
+        <form onSubmit={handleSubmit} noValidate className="mt-9">
+          <label htmlFor="email" className="text-[13px] font-medium text-[var(--site-ink)]">Work email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-4 py-2 text-[13px] font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {loading ? "Signing in…" : "Sign in"}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              if (error) setError(null);
+            }}
+            aria-describedby={error ? "email-error" : "email-note"}
+            aria-invalid={Boolean(error)}
+            placeholder="you@company.com"
+            className="auth-input mt-2 h-14 w-full px-4 text-[15px] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          {error ? (
+            <p id="email-error" role="alert" className="mt-2 text-[12px] leading-5 text-[#f09a8f]">{error}</p>
+          ) : (
+            <p id="email-note" className="mt-2 text-[12px] leading-5 text-[var(--site-muted)]">The link expires after 15 minutes and can be used once.</p>
+          )}
+
+          <button type="submit" disabled={loading} className="auth-primary-action mt-6 w-full">
+            <span>{loading ? "Sending your link" : "Continue with email"}</span>
+            {loading ? <SpinnerGap size={18} className="animate-spin" /> : <ArrowRight size={18} />}
           </button>
         </form>
 
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-[var(--gray-5)]">
-          <Crown className="h-3 w-3" />
-          Master key grants full admin access
-        </p>
+        <div className="my-7 flex items-center gap-4" aria-hidden="true">
+          <span className="h-px flex-1 bg-[var(--site-line)]" /><span className="text-[11px] text-[var(--site-muted)]">or</span><span className="h-px flex-1 bg-[var(--site-line)]" />
+        </div>
+
+        <a href={githubLoginUrl()} className="auth-secondary-action w-full"><GithubLogo size={19} weight="fill" /> Continue with GitHub</a>
+
+        <p className="mt-8 text-pretty text-[11px] leading-5 text-[var(--site-muted)]">By continuing, you agree to Beaco’s terms and acknowledge the privacy policy. We only use your email to secure and operate your account.</p>
       </div>
-    </div>
+    </AuthShell>
   );
 }
