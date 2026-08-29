@@ -48,6 +48,13 @@ export default function MobileNav({ links }: MobileNavProps) {
               GitHub
             </a>
             <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="rounded-[9px] px-3 py-2.5 text-sm text-[var(--site-ink)] transition hover:bg-[var(--site-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
+            >
+              Sign in
+            </Link>
+            <Link
               href={docsUrl("/quickstart")}
               onClick={() => setOpen(false)}
               className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-[9px] bg-[var(--site-accent)] px-4 text-sm font-semibold text-[var(--site-accent-ink)] transition hover:bg-[var(--site-accent-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] active:translate-y-px"

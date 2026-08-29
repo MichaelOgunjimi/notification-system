@@ -85,8 +85,8 @@ const requestExample = `curl -X POST https://api.beaco.dev/v1/events \\
     "data": { "invoice_id": "inv_84Q2" }
   }'`
 
-const ArrowButton = ({ label }: { label: string }) => (
-  <span className="site-primary-action">
+const ArrowButton = ({ label, className = "" }: { label: string; className?: string }) => (
+  <span className={`site-primary-action ${className}`}>
     <span>{label}</span>
     <span className="site-primary-action-icon">
       <ArrowRight size={14} weight="bold" aria-hidden="true" />
@@ -176,11 +176,11 @@ export default function Home() {
               </AnimateOnScroll>
 
               <AnimateOnScroll variant="fade-up" delay={150}>
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Link href={docsUrl("/quickstart")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
-                    <ArrowButton label="Start building" />
+                <div className="mt-7 grid grid-cols-2 gap-2 sm:max-w-[390px]">
+                  <Link href={docsUrl("/quickstart")} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
+                    <ArrowButton label="Start building" className="w-full" />
                   </Link>
-                  <Link href={docsUrl()} className="site-secondary-action inline-flex h-12 items-center justify-center px-5 text-[13px] font-medium">
+                  <Link href={docsUrl()} className="site-secondary-action inline-flex h-12 w-full items-center justify-center px-4 text-[13px] font-medium">
                     Explore the docs
                   </Link>
                 </div>
