@@ -37,8 +37,11 @@ async def test_request_magic_link_sends_one_time_link_without_exposing_account_s
 
     send_call = send_email.call_args
     assert send_call.args[0] == "new.user@example.com"
-    assert send_call.args[1] == "Sign in to Notification System"
+    assert send_call.args[1] == "Your private link to Beaco"
     assert f"{settings.FRONTEND_URL}/auth/magic-link?token=" in send_call.args[2]
+    assert "beaco-lockup-horizontal-dark.png" in send_call.args[2]
+    assert "beaco-mark-on-light.png" in send_call.args[2]
+    assert "plain_text" in send_call.kwargs
 
 
 async def test_verified_email_magic_link_signs_in_existing_user(

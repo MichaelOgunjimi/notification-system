@@ -134,10 +134,19 @@ class TestEmailErrorClassification:
             adapter.api_key = ""
             adapter.from_address = "notifications@beaco.local"
 
-        result = adapter.send("user@test.com", "Magic link", "<p>Sign in</p>")
+        result = adapter.send(
+            "user@test.com",
+            "Magic link",
+            "<p>Sign in</p>",
+            plain_text="Sign in with this private link.",
+        )
 
         assert result.success is True
         smtp.send_message.assert_called_once()
         message = smtp.send_message.call_args.args[0]
         assert message["To"] == "user@test.com"
         assert message["Subject"] == "Magic link"
+        assert (
+            "Sign in with this private link."
+            in message.get_body(preferencelist=("plain",)).get_content()
+        )

@@ -10,8 +10,18 @@ from pathlib import Path
 from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# apps/api/app/core/config.py -> repository root
-_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+
+def _find_env_file() -> Path:
+    """Find the nearest project env file in source and container layouts."""
+    config_path = Path(__file__).resolve()
+    for directory in config_path.parents:
+        candidate = directory / ".env"
+        if candidate.is_file():
+            return candidate
+    return Path.cwd() / ".env"
+
+
+_ENV_FILE = _find_env_file()
 
 
 class Settings(BaseSettings):
@@ -19,6 +29,7 @@ class Settings(BaseSettings):
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Database

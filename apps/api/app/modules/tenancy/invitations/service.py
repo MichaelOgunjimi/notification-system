@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.crypto import hash_api_key
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
+from app.modules.delivery.transactional_email import organization_invitation_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
@@ -131,14 +132,21 @@ async def create_invitation(
     await db.commit()
 
     link = f"{settings.FRONTEND_URL.rstrip('/')}/invitations/accept?token={quote(raw_token)}"
+    email_message = organization_invitation_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=normalized_email,
+        inviter_name=actor.name,
+        organization_name=access.organization.name,
+        role=role.value,
+        action_url=link,
+        expires_days=max(1, settings.ORGANIZATION_INVITATION_TTL_SECONDS // 86400),
+    )
     result = await asyncio.to_thread(
         EmailAdapter().send,
         normalized_email,
-        f"Join {access.organization.name}",
-        (
-            f"<p>You were invited to join {access.organization.name}.</p>"
-            f'<p><a href="{link}">Accept invitation</a></p>'
-        ),
+        email_message.subject,
+        email_message.html,
+        plain_text=email_message.text,
     )
     if not result.success:
         invitation.revoked_at = utc_now()

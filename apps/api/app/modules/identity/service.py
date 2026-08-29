@@ -18,6 +18,7 @@ from sqlmodel import col
 from app.core.config import settings
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
+from app.modules.delivery.transactional_email import magic_link_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.refresh_token import RefreshToken
@@ -144,17 +145,20 @@ async def request_magic_link(email: str, redis: Redis) -> None:
         json.dumps({"email": email}),
     )
     link = f"{settings.FRONTEND_URL.rstrip('/')}/auth/magic-link?token={quote(token)}"
-    body = (
-        "<p>Use this one-time link to sign in to Notification System:</p>"
-        f'<p><a href="{link}">Sign in</a></p>'
-        "<p>If you did not request this link, you can ignore this email.</p>"
+    email_message = magic_link_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=email,
+        recipient_name=email.partition("@")[0],
+        action_url=link,
+        expires_minutes=max(1, settings.MAGIC_LINK_TTL_SECONDS // 60),
     )
     adapter = EmailAdapter()
     result = await asyncio.to_thread(
         adapter.send,
         email,
-        "Sign in to Notification System",
-        body,
+        email_message.subject,
+        email_message.html,
+        plain_text=email_message.text,
     )
     if not result.success:
         await redis.delete(magic_link_cache_key(token))
