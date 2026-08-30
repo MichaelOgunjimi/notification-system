@@ -41,6 +41,7 @@ async def test_request_magic_link_sends_one_time_link_without_exposing_account_s
     assert f"{settings.FRONTEND_URL}/auth/magic-link?token=" in send_call.args[2]
     assert "beaco-lockup-horizontal-dark.png" in send_call.args[2]
     assert "beaco-mark-on-light.png" in send_call.args[2]
+    assert "beaco-mark-128.png" in send_call.args[2]
     assert "plain_text" in send_call.kwargs
 
 

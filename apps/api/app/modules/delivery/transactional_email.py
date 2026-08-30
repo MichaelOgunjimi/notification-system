@@ -40,7 +40,8 @@ def _render_shell(
     recipient: str,
 ) -> str:
     logo_url = _safe(_asset_url(frontend_url, "beaco-lockup-horizontal-dark.png"))
-    footer_mark_url = _safe(_asset_url(frontend_url, "beaco-mark-on-light.png"))
+    footer_mark_light_url = _safe(_asset_url(frontend_url, "beaco-mark-on-light.png"))
+    footer_mark_dark_url = _safe(_asset_url(frontend_url, "beaco-mark-128.png"))
     safe_action_url = _safe(action_url)
     return f"""<!doctype html>
 <html lang="en" style="color-scheme:light dark;supported-color-schemes:light dark;">
@@ -52,6 +53,7 @@ def _render_shell(
   <title>{_safe(subject)}</title>
   <style>
     :root {{ color-scheme: light dark; supported-color-schemes: light dark; }}
+    .email-mark-dark {{ display:none !important; max-height:0 !important; overflow:hidden !important; mso-hide:all; }}
     @media (prefers-color-scheme: dark) {{
       .email-root {{ background:#080807 !important; }}
       .email-card,.email-body {{ background:#11110f !important; color:#f2eee4 !important; }}
@@ -60,11 +62,15 @@ def _render_shell(
       .email-muted {{ color:#8f897e !important; }}
       .email-fallback {{ background:#191916 !important; color:#aba59a !important; }}
       .email-footer {{ background:#0b0b0a !important; border-color:#34332e !important; color:#f2eee4 !important; }}
+      .email-mark-light {{ display:none !important; max-height:0 !important; overflow:hidden !important; mso-hide:all !important; }}
+      .email-mark-dark {{ display:block !important; max-height:none !important; overflow:visible !important; }}
     }}
     [data-ogsc] .email-root {{ background:#080807 !important; }}
     [data-ogsc] .email-card,[data-ogsc] .email-body {{ background:#11110f !important; color:#f2eee4 !important; }}
     [data-ogsc] .email-copy {{ color:#b4aea2 !important; }}
     [data-ogsc] .email-footer {{ background:#0b0b0a !important; color:#f2eee4 !important; }}
+    [data-ogsc] .email-mark-light {{ display:none !important; max-height:0 !important; overflow:hidden !important; }}
+    [data-ogsc] .email-mark-dark {{ display:block !important; max-height:none !important; overflow:visible !important; }}
   </style>
 </head>
 <body style="margin:0;padding:0;background:#ded9cc;color:#211f1a;">
@@ -108,7 +114,10 @@ def _render_shell(
         </td></tr>
         <tr><td class="email-footer" bgcolor="#ebe7dc" style="padding:27px 40px;background:#ebe7dc;border-top:1px solid #ddd7ca;color:#211f1a;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
-            <td width="52" valign="top"><img src="{footer_mark_url}" width="38" height="38" alt="" style="display:block;width:38px;height:38px;border:0;border-radius:7px;"></td>
+            <td width="52" valign="top">
+              <img class="email-mark-light" src="{footer_mark_light_url}" width="38" height="38" alt="" style="display:block;width:38px;height:38px;border:0;">
+              <img class="email-mark-dark" src="{footer_mark_dark_url}" width="38" height="38" alt="" style="display:none;width:38px;height:38px;max-height:0;overflow:hidden;border:0;">
+            </td>
             <td valign="top"><div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:inherit;">Beaco</div><div class="email-muted" style="margin-top:4px;font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.5;color:#777064;">Notification infrastructure with an accountable delivery record.</div></td>
           </tr></table>
           <div class="email-line email-muted" style="margin-top:22px;padding-top:18px;border-top:1px solid #d7d1c4;font-family:'Courier New',Courier,monospace;font-size:9px;line-height:1.6;color:#777064;">Docs&nbsp;&nbsp;&middot;&nbsp;&nbsp;Security&nbsp;&nbsp;&middot;&nbsp;&nbsp;Privacy<span style="float:right;">Sent to {_safe(recipient)}</span></div>

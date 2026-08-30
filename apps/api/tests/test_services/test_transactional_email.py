@@ -20,6 +20,11 @@ def test_magic_link_email_has_branded_assets_dark_mode_and_plain_text() -> None:
     assert "@media (prefers-color-scheme: dark)" in message.html
     assert "beaco-lockup-horizontal-dark.png" in message.html
     assert "beaco-mark-on-light.png" in message.html
+    assert "beaco-mark-128.png" in message.html
+    assert 'class="email-mark-light"' in message.html
+    assert 'class="email-mark-dark"' in message.html
+    assert ".email-mark-light { display:none !important" in message.html
+    assert ".email-mark-dark { display:block !important" in message.html
     assert "grid" not in message.html.lower()
     assert "https://beaco.test/auth/magic-link?token=secret" in message.text
 
