@@ -19,12 +19,13 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
 
 COPY --from=builder /repo/apps/docs/.next/standalone ./
 COPY --from=builder /repo/apps/docs/.next/static ./apps/docs/.next/static
+COPY --from=builder /repo/apps/docs/public ./apps/docs/public
 
 EXPOSE 3001
 

@@ -21,6 +21,9 @@ x-worker-common: &worker-common
     EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
     SMTP_HOST: ${SMTP_HOST:-mailpit}
     SMTP_PORT: ${SMTP_PORT:-1025}
+    BACKEND_URL: https://beaco-api.michaelogunjimi.com
+    FRONTEND_URL: https://beaco.michaelogunjimi.com
+    CORS_ALLOWED_ORIGINS: http://localhost:3000 http://localhost:3001 https://beaco.michaelogunjimi.com https://beaco-docs.michaelogunjimi.com
   networks:
     - notification-net
   deploy:
@@ -66,10 +69,13 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.0
+    command: ["--database", "/data/mailpit.db"]
     restart: unless-stopped
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"
+    volumes:
+      - mailpitdata:/data
     networks:
       - notification-net
 
@@ -136,7 +142,8 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         BACKEND_URL: http://api:8000
-        NEXT_PUBLIC_DOCS_URL: ${DOCS_URL:-http://localhost:3001}
+        NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
+        NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
     restart: unless-stopped
     depends_on:
       - api
@@ -144,7 +151,8 @@ services:
       - .env
     environment:
       BACKEND_URL: http://api:8000
-      NEXT_PUBLIC_DOCS_URL: ${DOCS_URL:-http://localhost:3001}
+      NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
+      NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
@@ -155,20 +163,35 @@ services:
       context: .
       dockerfile: apps/docs/Dockerfile
       args:
-        NEXT_PUBLIC_WEB_URL: ${FRONTEND_URL:-http://localhost:3000}
+        NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_WEB_URL: ${FRONTEND_URL:-http://localhost:3000}
+      NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
     ports:
       - "${DOCS_PORT:-3001}:3001"
+    networks:
+      - notification-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --config /etc/cloudflared/config.yml run
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+      - docs
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
     networks:
       - notification-net
 
 volumes:
   pgdata:
   redisdata:
+  mailpitdata:
 
 networks:
   notification-net:

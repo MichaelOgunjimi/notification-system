@@ -3,8 +3,10 @@ FROM node:20-alpine AS builder
 WORKDIR /repo
 
 ARG BACKEND_URL=http://api:8000
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ARG NEXT_PUBLIC_DOCS_URL=http://localhost:3001
 ENV BACKEND_URL=$BACKEND_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_DOCS_URL=$NEXT_PUBLIC_DOCS_URL
 
 COPY package.json package-lock.json ./
@@ -21,7 +23,7 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
