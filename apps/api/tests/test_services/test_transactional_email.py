@@ -1,6 +1,6 @@
 """Presentation tests for account and organization transactional emails."""
 
-from app.modules.delivery.transactional_email import (
+from app.modules.delivery.templates.transactional import (
     magic_link_email,
     organization_invitation_email,
 )

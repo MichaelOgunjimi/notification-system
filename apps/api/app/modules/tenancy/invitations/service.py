@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.core.crypto import hash_api_key
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.transactional_email import organization_invitation_email
+from app.modules.delivery.templates.transactional import organization_invitation_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action

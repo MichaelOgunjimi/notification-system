@@ -18,7 +18,7 @@ from sqlmodel import col
 from app.core.config import settings
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.transactional_email import magic_link_email
+from app.modules.delivery.templates.transactional import magic_link_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.refresh_token import RefreshToken
