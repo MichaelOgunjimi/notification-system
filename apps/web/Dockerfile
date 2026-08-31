@@ -14,18 +14,20 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/docs/package.json apps/docs/package.json
+COPY packages/auth/package.json packages/auth/package.json
 COPY packages/typescript-config/package.json packages/typescript-config/package.json
 COPY packages/typescript-config/*.json packages/typescript-config/
 RUN npm ci
 
 COPY apps/web apps/web
+COPY packages/auth packages/auth
 RUN npm run build --workspace @beaco/web
 
 FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 

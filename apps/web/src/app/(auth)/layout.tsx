@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "@beaco/auth/react";
 
 export const metadata: Metadata = {
   title: "Sign in | Beaco",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <AuthProvider>{children}</AuthProvider>;
 }

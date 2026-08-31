@@ -1,9 +1,9 @@
-import { BACKEND_URL } from "@/lib/auth/server";
+import { BACKEND_API_URL } from "@/lib/auth/server";
 
 export async function POST(request: Request): Promise<Response> {
   const body = await request.text();
   try {
-    const upstream = await fetch(`${BACKEND_URL}/api/v1/auth/magic-link/request`, {
+    const upstream = await fetch(`${BACKEND_API_URL}/auth/magic-link/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,

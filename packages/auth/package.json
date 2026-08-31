@@ -1,0 +1,26 @@
+{
+  "name": "@beaco/auth",
+  "version": "0.1.0",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.102.8",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.102.8",
+    "@types/react": "^19",
+    "react": "19.2.4",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  }
+}

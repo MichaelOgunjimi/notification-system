@@ -2,42 +2,37 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   ACCESS_COOKIE,
-  clearSessionCookies,
-  getBackendUser,
+  deleteSessionCookies,
+  fetchCurrentUser,
+  isSecureRequest,
   REFRESH_COOKIE,
-  refreshTokens,
-  setSessionCookies,
+  refreshSession,
+  writeSessionCookies,
 } from "@/lib/auth/server";
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value;
 
   if (accessToken) {
-    const upstream = await getBackendUser(accessToken);
-    if (upstream.ok) {
-      return new Response(upstream.body, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const user = await fetchCurrentUser(accessToken);
+    if (user) return NextResponse.json(user);
   }
 
   if (refreshToken) {
-    const tokens = await refreshTokens(refreshToken);
+    const tokens = await refreshSession(refreshToken);
     if (tokens) {
-      const upstream = await getBackendUser(tokens.access_token);
-      if (upstream.ok) {
-        const user = await upstream.json();
+      const user = await fetchCurrentUser(tokens.accessToken);
+      if (user) {
         const response = NextResponse.json(user);
-        setSessionCookies(response, tokens);
+        writeSessionCookies(response, tokens, isSecureRequest(request));
         return response;
       }
     }
   }
 
   const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
-  clearSessionCookies(response);
+  deleteSessionCookies(response, isSecureRequest(request));
   return response;
 }

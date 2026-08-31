@@ -4,31 +4,29 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, GithubLogo, SpinnerGap } from "@phosphor-icons/react";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { githubLoginUrl, requestMagicLink } from "@/lib/auth/client";
+import { useAuthClient, useSendMagicLink } from "@beaco/auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const authClient = useAuthClient();
+  const sendMagicLink = useSendMagicLink();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const error = validationError ?? sendMagicLink.error?.message ?? null;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
-      setError("Enter a valid email address.");
+      setValidationError("Enter a valid email address.");
       return;
     }
 
-    setError(null);
-    setLoading(true);
-    try {
-      await requestMagicLink(normalizedEmail);
-      router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "We could not send the link.");
-      setLoading(false);
-    }
+    setValidationError(null);
+    const receipt = await sendMagicLink
+      .mutateAsync({ email: normalizedEmail })
+      .catch(() => null);
+    if (receipt) router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
   }
 
   return (
@@ -48,10 +46,11 @@ export default function LoginPage() {
             autoComplete="email"
             autoFocus
             value={email}
-            disabled={loading}
+            disabled={sendMagicLink.isPending}
             onChange={(event) => {
               setEmail(event.target.value);
-              if (error) setError(null);
+              if (validationError) setValidationError(null);
+              if (sendMagicLink.isError) sendMagicLink.reset();
             }}
             aria-describedby={error ? "email-error" : "email-note"}
             aria-invalid={Boolean(error)}
@@ -64,9 +63,9 @@ export default function LoginPage() {
             <p id="email-note" className="mt-2 text-[12px] leading-5 text-[var(--site-muted)]">The link expires after 15 minutes and can be used once.</p>
           )}
 
-          <button type="submit" disabled={loading} className="auth-primary-action mt-6 w-full">
-            <span>{loading ? "Sending your link" : "Continue with email"}</span>
-            {loading ? <SpinnerGap size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+          <button type="submit" disabled={sendMagicLink.isPending} className="auth-primary-action mt-6 w-full">
+            <span>{sendMagicLink.isPending ? "Sending your link" : "Continue with email"}</span>
+            {sendMagicLink.isPending ? <SpinnerGap size={18} className="animate-spin" /> : <ArrowRight size={18} />}
           </button>
         </form>
 
@@ -74,7 +73,7 @@ export default function LoginPage() {
           <span className="h-px flex-1 bg-[var(--site-line)]" /><span className="text-[11px] text-[var(--site-muted)]">or</span><span className="h-px flex-1 bg-[var(--site-line)]" />
         </div>
 
-        <a href={githubLoginUrl()} className="auth-secondary-action w-full"><GithubLogo size={19} weight="fill" /> Continue with GitHub</a>
+        <a href={authClient.getOAuthSignInUrl("github")} className="auth-secondary-action w-full"><GithubLogo size={19} weight="fill" /> Continue with GitHub</a>
 
         <p className="mt-8 text-pretty text-[11px] leading-5 text-[var(--site-muted)]">By continuing, you agree to Beaco’s terms and acknowledge the privacy policy. We only use your email to secure and operate your account.</p>
       </div>

@@ -8,12 +8,16 @@ import {
 } from "@/lib/auth/server";
 
 export async function POST(request: Request): Promise<Response> {
-  const body = await request.text();
+  const payload = (await request.json().catch(() => null)) as { code?: string } | null;
+  if (!payload?.code) {
+    return NextResponse.json({ detail: "Missing OAuth authorization code." }, { status: 400 });
+  }
+
   try {
-    const upstream = await fetch(`${BACKEND_API_URL}/auth/magic-link/verify`, {
+    const upstream = await fetch(`${BACKEND_API_URL}/auth/oauth/exchange`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify({ code: payload.code }),
       cache: "no-store",
     });
     if (!upstream.ok) {
