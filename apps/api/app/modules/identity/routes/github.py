@@ -3,7 +3,7 @@
 import json
 import secrets
 import uuid
-from urllib.parse import urlencode
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -14,7 +14,7 @@ from app.modules.identity.dependencies import CurrentUserDep
 from app.modules.identity.providers import github as github_provider
 from app.modules.identity.service import (
     connect_oauth_account,
-    create_user_tokens,
+    create_oauth_authorization_code,
     get_or_create_oauth_user,
 )
 
@@ -97,6 +97,7 @@ async def github_callback(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is inactive",
         )
-    tokens = await create_user_tokens(user, db, redis)
-    fragment = urlencode(tokens.model_dump())
-    return RedirectResponse(f"{settings.FRONTEND_URL.rstrip('/')}/auth/callback#{fragment}")
+    authorization_code = await create_oauth_authorization_code(user, redis)
+    return RedirectResponse(
+        f"{settings.FRONTEND_URL.rstrip('/')}/auth/callback?code={quote(authorization_code)}"
+    )

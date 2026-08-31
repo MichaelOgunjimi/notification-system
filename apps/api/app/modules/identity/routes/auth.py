@@ -9,11 +9,13 @@ from app.modules.identity.schemas import (
     MagicLinkRequest,
     MagicLinkVerifyRequest,
     MessageResponse,
+    OAuthCodeExchangeRequest,
     RefreshRequest,
     TokenResponse,
     UserResponse,
 )
 from app.modules.identity.service import (
+    exchange_oauth_authorization_code,
     refresh_access_token,
     request_magic_link,
     revoke_refresh_token,
@@ -56,6 +58,16 @@ async def consume_magic_link(
     redis: RedisDep,
 ) -> TokenResponse:
     return await verify_magic_link(body.token, db, redis)
+
+
+@router.post("/oauth/exchange", response_model=TokenResponse)
+async def exchange_oauth_code(
+    body: OAuthCodeExchangeRequest,
+    *,
+    db: SessionDep,
+    redis: RedisDep,
+) -> TokenResponse:
+    return await exchange_oauth_authorization_code(body.code, db, redis)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -33,6 +33,10 @@ class MagicLinkVerifyRequest(BaseModel):
     token: str
 
 
+class OAuthCodeExchangeRequest(BaseModel):
+    code: str
+
+
 class MessageResponse(BaseModel):
     message: str
 

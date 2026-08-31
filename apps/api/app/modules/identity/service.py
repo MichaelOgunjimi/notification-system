@@ -29,6 +29,7 @@ from app.modules.tenancy.lifecycle import create_organization, create_project
 
 _REFRESH_PREFIX = "refresh"
 _MAGIC_LINK_PREFIX = "magic_link"
+_OAUTH_CODE_PREFIX = "oauth_code"
 _MAGIC_LINK_RATE_SCRIPT = """
 local count = redis.call('INCR', KEYS[1])
 if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
@@ -48,6 +49,11 @@ def refresh_cache_key(jti: str) -> str:
 def magic_link_cache_key(token: str) -> str:
     digest = hashlib.sha256(token.encode()).hexdigest()
     return f"{_MAGIC_LINK_PREFIX}:{digest}"
+
+
+def oauth_code_cache_key(code: str) -> str:
+    digest = hashlib.sha256(code.encode()).hexdigest()
+    return f"{_OAUTH_CODE_PREFIX}:{digest}"
 
 
 async def _create_user_with_workspace(
@@ -364,6 +370,42 @@ async def create_user_tokens(
         str(user.id),
     )
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+async def create_oauth_authorization_code(user: User, redis: Redis) -> str:
+    """Create a short-lived, single-use code without issuing user tokens yet."""
+    code = secrets.token_urlsafe(32)
+    await redis.setex(
+        oauth_code_cache_key(code),
+        settings.OAUTH_CODE_TTL_SECONDS,
+        str(user.id),
+    )
+    return code
+
+
+async def exchange_oauth_authorization_code(
+    code: str,
+    db: AsyncSession,
+    redis: Redis,
+) -> TokenResponse:
+    """Consume an OAuth code and issue a fresh user session exactly once."""
+    user_id = await redis.getdel(oauth_code_cache_key(code))
+    if isinstance(user_id, bytes):
+        user_id = user_id.decode()
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth authorization code",
+        )
+
+    parsed_user_id = parse_user_id(str(user_id))
+    user_result = await db.execute(select(User).where(col(User.id) == parsed_user_id))
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    return await create_user_tokens(user, db, redis)
 
 
 def parse_user_id(value: str | None) -> uuid.UUID:

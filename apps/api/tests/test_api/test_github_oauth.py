@@ -15,6 +15,7 @@ from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.user import User
 from app.modules.identity.routes import github as github_oauth
+from app.modules.identity.service import oauth_code_cache_key
 from app.modules.identity.tokens import create_access_token
 from app.modules.tenancy.models.organization import (
     Organization,
@@ -81,12 +82,10 @@ async def test_github_callback_registers_user_and_default_tenant(
 
     assert response.status_code == 307
     redirect = urlparse(response.headers["location"])
-    tokens = parse_qs(redirect.fragment)
+    authorization_code = parse_qs(redirect.query)["code"][0]
     assert f"{redirect.scheme}://{redirect.netloc}{redirect.path}" == (
         "http://localhost:3000/auth/callback"
     )
-    assert tokens["access_token"][0]
-    assert tokens["refresh_token"][0]
 
     user = (
         await db.execute(select(User).where(User.email == "octocat@github.example"))
@@ -120,17 +119,46 @@ async def test_github_callback_registers_user_and_default_tenant(
     assert membership.role == OrganizationRole.OWNER
     assert project.slug == "default"
 
+    mock_redis.setex.assert_awaited_once_with(
+        oauth_code_cache_key(authorization_code),
+        settings.OAUTH_CODE_TTL_SECONDS,
+        str(user.id),
+    )
+    mock_redis.getdel.return_value = str(user.id)
+    exchange_response = await client.post(
+        "/api/v1/auth/oauth/exchange",
+        json={"code": authorization_code},
+    )
+    assert exchange_response.status_code == 200
+    tokens = exchange_response.json()
     refresh_payload = jwt.decode(
-        tokens["refresh_token"][0],
+        tokens["refresh_token"],
         settings.JWT_SECRET,
         algorithms=[settings.JWT_ALGORITHM],
     )
-    mock_redis.getdel.assert_awaited_once_with("oauth:state:oauth-state")
-    mock_redis.setex.assert_awaited_once_with(
+    mock_redis.getdel.assert_any_await("oauth:state:oauth-state")
+    mock_redis.getdel.assert_any_await(oauth_code_cache_key(authorization_code))
+    mock_redis.setex.assert_any_await(
         f"refresh:{refresh_payload['jti']}",
         int(settings.refresh_token_expire.total_seconds()),
         str(user.id),
     )
+
+
+async def test_oauth_authorization_code_is_single_use(
+    client: AsyncClient,
+    mock_redis: AsyncMock,
+) -> None:
+    mock_redis.getdel.return_value = None
+
+    response = await client.post(
+        "/api/v1/auth/oauth/exchange",
+        json={"code": "expired-or-reused"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == "Invalid or expired OAuth authorization code"
+    mock_redis.getdel.assert_awaited_once_with(oauth_code_cache_key("expired-or-reused"))
 
 
 async def test_github_callback_rejects_unknown_or_reused_state(

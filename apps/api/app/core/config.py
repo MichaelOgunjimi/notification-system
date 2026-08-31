@@ -146,6 +146,7 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:3000"
     OAUTH_STATE_TTL_SECONDS: int = 600
+    OAUTH_CODE_TTL_SECONDS: int = 60
 
     # CORS — space-separated list of allowed origins
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000 http://localhost:3001"
