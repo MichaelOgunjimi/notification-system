@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { QueryProvider } from "@/providers/query-provider";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
@@ -57,7 +56,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <QueryProvider>{children}</QueryProvider>
+        {children}
       </body>
     </html>
   );

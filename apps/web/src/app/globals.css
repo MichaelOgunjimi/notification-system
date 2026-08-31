@@ -4,18 +4,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Gray neutral ramp (Resend dark gray scale) */
-  --gray-1: #141517;
-  --gray-2: #191b1e;
-  --gray-3: #212629;
-  --gray-4: #293034;
-  --gray-5: #333b3e;
-  --gray-6: #3b4345;
-  --gray-7: #434a4d;
-  --gray-8: #52595b;
-  --gray-9: #a1a4a5;
-  --gray-10: #f0f0f0;
-
   --background: #000000;
   --foreground: #f0f0f0;
 
@@ -45,25 +33,6 @@
 
   --radius: 0.375rem;
 
-  --sidebar-width: 240px;
-  --header-height: 56px;
-
-  /* Status tokens */
-  --status-delivered: #22c55e;
-  --status-delivered-bg: rgba(34, 197, 94, 0.1);
-  --status-delivered-border: rgba(34, 197, 94, 0.2);
-
-  --status-failed: #ef4444;
-  --status-failed-bg: rgba(239, 68, 68, 0.1);
-  --status-failed-border: rgba(239, 68, 68, 0.2);
-
-  --status-retrying: #f97316;
-  --status-retrying-bg: rgba(249, 115, 22, 0.1);
-  --status-retrying-border: rgba(249, 115, 22, 0.2);
-
-  --status-pending: #6b7280;
-  --status-pending-bg: rgba(107, 114, 128, 0.1);
-  --status-pending-border: rgba(107, 114, 128, 0.2);
 }
 
 @theme inline {
@@ -425,43 +394,6 @@ a:hover .site-primary-action-icon {
   }
 }
 
-/* Docs content grid: article + TOC at xl breakpoint */
-.docs-content-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 1280px) {
-  .docs-content-grid {
-    grid-template-columns: minmax(0, 900px) 240px;
-    gap: 2.5rem;
-  }
-}
-.docs-toc-aside {
-  display: none;
-}
-@media (min-width: 1280px) {
-  .docs-toc-aside {
-    display: block;
-  }
-}
-
-/* Template detail grid: body + variables sidebar */
-.template-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 1024px) {
-  .template-detail-grid {
-    grid-template-columns: minmax(0, 1fr) 300px;
-  }
-}
-
-/* Notification detail grid: timeline/body + details sidebar */
-.notification-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
 /* Passwordless authentication surfaces */
 .auth-shell {
   --site-canvas: #070706;
@@ -602,10 +534,5 @@ a:hover .site-primary-action-icon {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-@media (min-width: 1024px) {
-  .notification-detail-grid {
-    grid-template-columns: minmax(0, 1fr) 320px;
   }
 }
