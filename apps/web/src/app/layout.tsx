@@ -23,7 +23,14 @@ export const metadata: Metadata = {
     title: "Beaco | Notification infrastructure that stays accountable",
     description:
       "Send email, SMS, and webhook notifications through one API with built-in retries, templates, observability, and failure recovery.",
-    images: [{ url: "/brand/png/beaco-social-card.png", width: 1200, height: 630, alt: "Beaco" }],
+    siteName: "Beaco",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Beaco | Notification infrastructure that stays accountable",
+    description:
+      "Send email, SMS, and webhook notifications through one API with built-in retries, templates, observability, and failure recovery.",
   },
 };
 

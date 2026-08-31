@@ -144,6 +144,7 @@ services:
         BACKEND_URL: http://api:8000
         NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
         NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
+        NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
     restart: unless-stopped
     depends_on:
       - api
@@ -153,6 +154,7 @@ services:
       BACKEND_URL: http://api:8000
       NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
       NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
+      NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
