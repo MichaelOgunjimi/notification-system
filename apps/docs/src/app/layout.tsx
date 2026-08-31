@@ -17,10 +17,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" style={{ colorScheme: "dark" }} data-scroll-behavior="smooth">
-      <body className={`${inter.variable} bg-[var(--background)] font-sans text-[var(--foreground)] antialiased`}>
+      <body className={`${inter.variable} bg-background font-sans text-foreground antialiased`}>
         <a
           href="#main-content"
-          className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          className="sr-only z-100 rounded-md bg-primary px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         >
           Skip to content
         </a>

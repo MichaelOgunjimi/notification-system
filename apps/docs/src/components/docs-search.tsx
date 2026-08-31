@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DocGroup, DocSearchItem } from "@/lib/docs";
 
 const groupLabels: Record<DocGroup, string> = {
@@ -29,10 +29,77 @@ function scoreResult(item: DocSearchItem, terms: string[]) {
   }, 0);
 }
 
+function highlightMatchedTerms(text: string, terms: string[]): ReactNode {
+  const normalizedTerms = [...new Set(terms.map((term) => term.toLowerCase()).filter(Boolean))];
+  if (!normalizedTerms.length) return text;
+
+  const matches = normalizedTerms.flatMap((term) => {
+    const lowered = text.toLowerCase();
+    const items: Array<{ start: number; end: number }> = [];
+    let index = 0;
+
+    while (index < lowered.length) {
+      const matchIndex = lowered.indexOf(term, index);
+      if (matchIndex < 0) break;
+      items.push({ start: matchIndex, end: matchIndex + term.length });
+      index = matchIndex + term.length;
+    }
+
+    return items;
+  });
+
+  if (!matches.length) return text;
+
+  const orderedMatches = matches
+    .sort((a, b) => a.start - b.start)
+    .reduce<Array<{ start: number; end: number }>>((merged, match) => {
+      const previous = merged.at(-1);
+      if (!previous || match.start > previous.end) {
+        merged.push(match);
+        return merged;
+      }
+
+      previous.end = Math.max(previous.end, match.end);
+      return merged;
+    }, []);
+
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+
+  orderedMatches.forEach((match) => {
+    if (cursor < match.start) {
+      parts.push(text.slice(cursor, match.start));
+    }
+
+    parts.push(
+      <mark
+        key={`${match.start}-${match.end}`}
+        className="rounded bg-[var(--docs-accent)]/20 px-0.5 font-semibold text-[var(--docs-ink)]"
+      >
+        {text.slice(match.start, match.end)}
+      </mark>,
+    );
+
+    cursor = match.end;
+  });
+
+  if (cursor < text.length) {
+    parts.push(text.slice(cursor));
+  }
+
+  return parts;
+}
+
 function resultExcerpt(item: DocSearchItem, query: string) {
-  const term = query.trim().toLowerCase().split(/\s+/)[0];
-  const matchAt = item.content.toLowerCase().indexOf(term);
-  if (!term || matchAt < 0) return item.description;
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return item.description;
+
+  const matchAt = terms
+    .map((term) => item.content.toLowerCase().indexOf(term))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (matchAt === undefined) return item.description;
 
   const start = Math.max(0, matchAt - 56);
   const end = Math.min(item.content.length, matchAt + 128);
@@ -150,13 +217,15 @@ export function DocsSearch({
                 >
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-[14px] font-medium text-[var(--docs-ink)]">{item.title}</span>
+                      <span className="text-[14px] font-medium text-[var(--docs-ink)]">
+                        {highlightMatchedTerms(item.title, terms)}
+                      </span>
                       <span className="text-[9px] uppercase tracking-[0.14em] text-[#706f68]">
                         {groupLabels[item.group]}
                       </span>
                     </span>
                     <span className="mt-1 block line-clamp-2 text-[12px] leading-5 text-[var(--docs-muted)]">
-                      {resultExcerpt(item, query)}
+                      {highlightMatchedTerms(resultExcerpt(item, query), terms)}
                     </span>
                   </span>
                   <ArrowRight size={16} className="mt-1 text-[#56554f] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--docs-accent)]" aria-hidden />
