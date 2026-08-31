@@ -14,6 +14,7 @@ import AnimateOnScroll, {
   StaggerGroup,
   StaggerItem,
 } from "@/components/landing/animate-on-scroll"
+import HeroBackground from "@/components/landing/hero-background"
 import MobileNav from "@/components/landing/mobile-nav"
 import PublicFooter from "@/components/landing/public-footer"
 import BrandLogo from "@/components/brand/brand-logo"
@@ -156,9 +157,10 @@ export default function Home() {
       <div className="site-page-grid mx-auto mt-7 w-[calc(100%-1rem)] max-w-[1240px] sm:mt-8 sm:w-[calc(100%-2rem)]">
         <section className="site-grid-section">
           <div className="grid overflow-hidden bg-[var(--site-panel)] lg:min-h-[570px] lg:grid-cols-[minmax(0,1.12fr)_minmax(390px,0.88fr)]">
-            <div className="relative flex flex-col justify-center px-6 py-11 sm:px-10 sm:py-14 lg:px-14 lg:py-14 xl:px-[68px]">
+            <div className="relative isolate flex flex-col justify-center overflow-hidden px-6 py-11 sm:px-10 sm:py-14 lg:px-14 lg:py-14 xl:px-[68px]">
+              <HeroBackground />
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--site-accent)]/30 to-transparent" />
-              <AnimateOnScroll variant="fade-up">
+              <AnimateOnScroll variant="fade-up" className="relative z-10">
                 <p className="mb-6 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--site-muted)]">
                   <span className="h-px w-6 bg-[var(--site-accent)]" />
                   Built for the messages that matter
@@ -169,13 +171,13 @@ export default function Home() {
                 </h1>
               </AnimateOnScroll>
 
-              <AnimateOnScroll variant="fade-up" delay={90}>
+              <AnimateOnScroll variant="fade-up" delay={90} className="relative z-10">
                 <p className="mt-6 max-w-[510px] text-[15px] leading-7 text-[var(--site-muted)] text-pretty sm:text-[16px]">
                   One API for email, SMS, and webhooks, with queues, retries, templates, and a complete delivery trail.
                 </p>
               </AnimateOnScroll>
 
-              <AnimateOnScroll variant="fade-up" delay={150}>
+              <AnimateOnScroll variant="fade-up" delay={150} className="relative z-10">
                 <div className="mt-7 grid grid-cols-2 gap-2 sm:max-w-[390px]">
                   <Link href={docsUrl("/quickstart")} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
                     <ArrowButton label="Start building" className="w-full" />

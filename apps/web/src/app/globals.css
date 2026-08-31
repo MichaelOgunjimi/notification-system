@@ -140,7 +140,7 @@
     linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
-  background-size: auto, auto, 72px 72px, 72px 72px, 18px 18px, 18px 18px;
+  background-size: auto, auto, 56px 56px, 56px 56px, 14px 14px, 14px 14px;
   content: "";
   inset: 0;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.82) 58%, rgba(0, 0, 0, 0.38) 100%);
@@ -199,7 +199,7 @@
     linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px),
     linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
-  background-size: auto, 18px 18px, 18px 18px, 72px 72px, 72px 72px;
+  background-size: auto, 12px 12px, 12px 12px, 48px 48px, 48px 48px;
   overflow: hidden;
   position: relative;
 }
@@ -247,6 +247,7 @@
   justify-content: space-between;
   min-width: 146px;
   padding: 0 6px 0 16px;
+  white-space: nowrap;
   transition:
     transform 350ms var(--site-ease),
     background-color 350ms var(--site-ease),
@@ -318,7 +319,7 @@ a:hover .site-primary-action-icon {
   }
 
   .site-grid-field {
-    background-size: auto, 16px 16px, 16px 16px, 64px 64px, 64px 64px;
+    background-size: auto, 10px 10px, 10px 10px, 40px 40px, 40px 40px;
   }
 
   .site-grid-field::after {

@@ -3,9 +3,8 @@
 import { useEffect, useRef } from "react"
 
 /**
- * Animated hero background with Vercel-style grid lines and
- * floating notification-related nodes (envelopes, webhooks, etc.)
- * that drift slowly across the canvas.
+ * Animated hero background with a fine signal grid and drifting
+ * notification symbols. Density scales down on smaller screens.
  */
 export default function HeroBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -26,8 +25,7 @@ export default function HeroBackground() {
     let h = 0
 
     const AMBER = { r: 245, g: 158, b: 11 }
-    const GRID_SIZE = 56
-    const NODE_COUNT = 10
+    const GRID_SIZE = 36
 
     // Floating nodes representing notification concepts
     type Node = {
@@ -44,14 +42,14 @@ export default function HeroBackground() {
     const symbols = ["✉", "⚡", "↻", "⟐", "◆", "▲", "●", "◇", "⬡", "⊡"]
     let nodes: Node[] = []
 
-    function initNodes() {
-      nodes = Array.from({ length: NODE_COUNT }, (_, i) => ({
+    function initNodes(count: number) {
+      nodes = Array.from({ length: count }, (_, i) => ({
         x: Math.random() * w,
-        y: Math.random() * h * 0.8,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.15,
-        size: 12 + Math.random() * 8,
-        opacity: 0.1 + Math.random() * 0.15,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.12,
+        size: 9 + Math.random() * 6,
+        opacity: 0.08 + Math.random() * 0.13,
         symbol: symbols[i % symbols.length],
         pulsePhase: Math.random() * Math.PI * 2,
       }))
@@ -66,7 +64,8 @@ export default function HeroBackground() {
       canvas!.height = h * dpr
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      if (nodes.length === 0) initNodes()
+      const targetNodeCount = w < 640 ? 15 : w < 1024 ? 20 : 26
+      if (nodes.length !== targetNodeCount) initNodes(targetNodeCount)
     }
 
     function drawGrid(time: number) {
@@ -82,7 +81,7 @@ export default function HeroBackground() {
         const x = i * GRID_SIZE
         const distFromCenter = Math.abs(x - centerX) / (w * 0.5)
         const fade = Math.max(0, 1 - distFromCenter)
-        const alpha = 0.03 + 0.09 * fade
+        const alpha = 0.025 + 0.065 * fade
 
         ctx.beginPath()
         ctx.moveTo(x, 0)
@@ -97,7 +96,7 @@ export default function HeroBackground() {
         const y = j * GRID_SIZE
         const distFromCenter = Math.abs(y - centerY) / (h * 0.6)
         const fade = Math.max(0, 1 - distFromCenter)
-        const alpha = 0.03 + 0.09 * fade
+        const alpha = 0.025 + 0.065 * fade
 
         ctx.beginPath()
         ctx.moveTo(0, y)
@@ -121,10 +120,10 @@ export default function HeroBackground() {
             const pulse =
               0.5 +
               0.5 * Math.sin(time * 0.001 + i * 0.5 + j * 0.7)
-            const dotAlpha = 0.25 * fade * (0.5 + 0.5 * pulse)
+            const dotAlpha = 0.18 * fade * (0.5 + 0.5 * pulse)
 
             ctx.beginPath()
-            ctx.arc(x, y, 1.8, 0, Math.PI * 2)
+            ctx.arc(x, y, 1.25, 0, Math.PI * 2)
             ctx.fillStyle = `rgba(${AMBER.r}, ${AMBER.g}, ${AMBER.b}, ${dotAlpha})`
             ctx.fill()
           }
@@ -159,7 +158,7 @@ export default function HeroBackground() {
           0,
           node.x,
           node.y,
-          node.size * 2.5
+          node.size * 2
         )
         gradient.addColorStop(
           0,
@@ -168,10 +167,10 @@ export default function HeroBackground() {
         gradient.addColorStop(1, "transparent")
         ctx.fillStyle = gradient
         ctx.fillRect(
-          node.x - node.size * 2.5,
-          node.y - node.size * 2.5,
-          node.size * 5,
-          node.size * 5
+          node.x - node.size * 2,
+          node.y - node.size * 2,
+          node.size * 4,
+          node.size * 4
         )
 
         // Draw symbol
@@ -189,8 +188,8 @@ export default function HeroBackground() {
           const dy = nodes[i].y - nodes[j].y
           const dist = Math.sqrt(dx * dx + dy * dy)
 
-          if (dist < 280) {
-            const lineAlpha = 0.08 * (1 - dist / 280)
+          if (dist < 170) {
+            const lineAlpha = 0.055 * (1 - dist / 170)
             ctx.beginPath()
             ctx.moveTo(nodes[i].x, nodes[i].y)
             ctx.lineTo(nodes[j].x, nodes[j].y)
@@ -232,7 +231,7 @@ export default function HeroBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute inset-0 -z-10 h-full w-full"
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-80"
       aria-hidden="true"
     />
   )
