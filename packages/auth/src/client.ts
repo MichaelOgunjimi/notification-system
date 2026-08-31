@@ -18,11 +18,11 @@ async function readJson<T>(response: Response, fallback: string): Promise<T> {
 }
 
 class HttpAuthClient implements AuthClient {
-  private readonly apiPath: string;
+  private readonly appAuthPath: string;
   private readonly fetcher: typeof globalThis.fetch;
 
   constructor(options: AuthClientOptions = {}) {
-    this.apiPath = (options.apiPath ?? DEFAULT_AUTH_API_PATH).replace(/\/$/, "");
+    this.appAuthPath = (options.appAuthPath ?? DEFAULT_AUTH_API_PATH).replace(/\/$/, "");
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -62,7 +62,7 @@ class HttpAuthClient implements AuthClient {
   }
 
   getOAuthSignInUrl(provider: OAuthProvider): string {
-    return `${this.apiPath}/oauth/${provider}`;
+    return `${this.appAuthPath}/oauth/${provider}`;
   }
 
   private async request<T>(path: string, init: RequestInit, fallback: string): Promise<T> {
@@ -72,7 +72,7 @@ class HttpAuthClient implements AuthClient {
 
   private async fetch(path: string, init: RequestInit): Promise<Response> {
     try {
-      return await this.fetcher(`${this.apiPath}${path}`, {
+      return await this.fetcher(`${this.appAuthPath}${path}`, {
         ...init,
         cache: "no-store",
         credentials: "same-origin",

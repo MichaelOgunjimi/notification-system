@@ -23,7 +23,7 @@ export type OAuthCodeExchange = Readonly<{ code: string }>;
 
 export type AuthClientOptions = Readonly<{
   /** Same-origin path served by the Next.js authentication route handlers. */
-  apiPath?: string;
+  appAuthPath?: string;
   /** Injectable fetch implementation for tests and non-browser adapters. */
   fetch?: typeof globalThis.fetch;
 }>;

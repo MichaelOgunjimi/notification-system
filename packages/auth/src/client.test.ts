@@ -18,7 +18,7 @@ function fetchAdapter(handler: (input: RequestInfo | URL, init?: RequestInit) =>
 describe("createAuthClient", () => {
   it("normalizes an email before requesting a magic link", async () => {
     const fetcher = fetchAdapter(() => Response.json({ message: "sent" }, { status: 202 }));
-    const client = createAuthClient({ apiPath: "/identity", fetch: fetcher });
+    const client = createAuthClient({ appAuthPath: "/identity", fetch: fetcher });
 
     await client.sendMagicLink({ email: "  Person@Example.COM " });
 

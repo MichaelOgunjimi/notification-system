@@ -1,6 +1,3 @@
-import { NextResponse } from "next/server";
-import { PUBLIC_API_URL } from "@/lib/auth/server";
+import { beacoAuth } from "@/lib/auth/next";
 
-export function GET(): NextResponse {
-  return NextResponse.redirect(`${PUBLIC_API_URL}/oauth/github/login`, 307);
-}
+export const GET = beacoAuth.startOAuth("github");
