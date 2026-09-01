@@ -30,6 +30,7 @@ export type NextAuthAdapter = Readonly<{
   requestMagicLink(request: NextRequest): Promise<Response>;
   verifyMagicLink(request: NextRequest): Promise<Response>;
   logout(request: NextRequest): Promise<Response>;
+  forwardAuthenticated(request: NextRequest, backendPath: string): Promise<Response>;
 }>;
 
 const ACCESS_COOKIE = "beaco_access_token";
@@ -104,6 +105,16 @@ export function createNextAuthAdapter(
   const backendApiUrl = options.backendApiUrl.replace(/\/$/, "");
   const publicBackendApiUrl = options.publicBackendApiUrl.replace(/\/$/, "");
   const fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
+
+  async function refreshSession(refreshToken: string): Promise<BackendTokenSet | null> {
+    const response = await fetcher(`${backendApiUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    });
+    return response.ok ? ((await response.json()) as BackendTokenSet) : null;
+  }
 
   async function fetchUser(accessToken: string): Promise<User | null> {
     const response = await fetcher(`${backendApiUrl}/auth/me`, {
@@ -197,6 +208,68 @@ export function createNextAuthAdapter(
     requestMagicLink(request) {
       return proxyPost(request, "/auth/magic-link/request");
     },
+    async forwardAuthenticated(request, backendPath) {
+      if (!backendPath.startsWith("/") || backendPath.includes("://")) {
+        return NextResponse.json({ detail: "Invalid backend path." }, { status: 500 });
+      }
+
+      const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
+      const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+      const requestBody = request.method === "GET" || request.method === "HEAD"
+        ? undefined
+        : await request.arrayBuffer();
+
+      const callBackend = (token: string) => fetcher(`${backendApiUrl}${backendPath}`, {
+        method: request.method,
+        headers: {
+          Accept: request.headers.get("accept") ?? "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(requestBody
+            ? { "Content-Type": request.headers.get("content-type") ?? "application/json" }
+            : {}),
+        },
+        body: requestBody,
+        cache: "no-store",
+      });
+
+      try {
+        let tokens: BackendTokenSet | null = null;
+        let upstream = accessToken ? await callBackend(accessToken) : null;
+
+        if ((!upstream || upstream.status === 401) && refreshToken) {
+          tokens = await refreshSession(refreshToken);
+          upstream = tokens ? await callBackend(tokens.access_token) : null;
+        }
+
+        if (!upstream) {
+          const response = NextResponse.json(
+            { detail: "Not authenticated." },
+            { status: 401 },
+          );
+          deleteSessionCookies(response, isSecureRequest(request), appAuthPath);
+          return response;
+        }
+
+        const response = new NextResponse(upstream.body, {
+          status: upstream.status,
+          headers: {
+            "Cache-Control": "private, no-store",
+            "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+          },
+        });
+        if (tokens) {
+          writeSessionCookies(response, tokens, isSecureRequest(request), appAuthPath);
+        } else if (upstream.status === 401) {
+          deleteSessionCookies(response, isSecureRequest(request), appAuthPath);
+        }
+        return response;
+      } catch {
+        return NextResponse.json(
+          { detail: "The application service is unavailable." },
+          { status: 502 },
+        );
+      }
+    },
     verifyMagicLink(request) {
       return exchangeForSession(request, "/auth/magic-link/verify");
     },
@@ -214,14 +287,8 @@ export function createNextAuthAdapter(
       }
 
       if (refreshToken) {
-        const refreshResponse = await fetcher(`${backendApiUrl}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-          cache: "no-store",
-        });
-        if (refreshResponse.ok) {
-          const tokens = (await refreshResponse.json()) as BackendTokenSet;
+        const tokens = await refreshSession(refreshToken);
+        if (tokens) {
           const user = await fetchUser(tokens.access_token);
           if (user) {
             const response = NextResponse.json(user);

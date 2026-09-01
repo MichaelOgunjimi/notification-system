@@ -97,6 +97,22 @@ import { beacoAuth } from "@/lib/auth/next";
 export const GET = beacoAuth.startOAuth("github");
 ```
 
+Application-specific server routes can forward a request with the same protected session. The
+adapter adds the access credential server-side, refreshes and retries once after a `401`, and
+rotates the HTTP-only cookies without returning either credential to browser JavaScript:
+
+```ts
+// app/api/control-plane/organizations/route.ts
+import { beacoAuth } from "@/lib/auth/next";
+
+export function GET(request: NextRequest) {
+  return beacoAuth.forwardAuthenticated(request, "/organizations");
+}
+```
+
+The backend path must be chosen by trusted server code. Do not construct it directly from an
+unvalidated browser URL.
+
 The Session route is intentionally application-facing. It is not a FastAPI `/session` endpoint:
 
 ```mermaid

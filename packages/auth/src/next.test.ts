@@ -108,6 +108,79 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("forwards an authenticated application request without exposing credentials", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(Response.json([{ id: "organization-1", name: "Northstar" }])),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request("/api/control-plane/organizations", "beaco_access_token=access-token"),
+      "/organizations",
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    await expect(response.json()).resolves.toEqual([
+      { id: "organization-1", name: "Northstar" },
+    ]);
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api:8000/api/v1/organizations",
+      expect.objectContaining({
+        cache: "no-store",
+        headers: expect.objectContaining({ Authorization: "Bearer access-token" }),
+        method: "GET",
+      }),
+    );
+  });
+
+  it("refreshes credentials before retrying an authenticated application request", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          Response.json({
+            access_token: "renewed-access",
+            refresh_token: "renewed-refresh",
+            token_type: "bearer",
+          }),
+        );
+      }
+      if (fetcher.mock.calls.length === 1) {
+        return Promise.resolve(Response.json({ detail: "Expired" }, { status: 401 }));
+      }
+      return Promise.resolve(Response.json([{ id: "organization-1" }]));
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request(
+        "/api/control-plane/organizations",
+        "beaco_access_token=expired; beaco_refresh_token=refresh-token",
+      ),
+      "/organizations",
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain(
+      "beaco_access_token=renewed-access",
+    );
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "http://api:8000/api/v1/organizations",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer renewed-access" }),
+      }),
+    );
+  });
+
   it("exchanges an OAuth code for a cookie-backed Session", async () => {
     const fetcher = vi.fn((input: RequestInfo | URL) => {
       if (String(input).endsWith("/auth/oauth/exchange")) {
