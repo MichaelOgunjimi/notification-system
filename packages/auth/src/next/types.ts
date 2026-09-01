@@ -7,6 +7,7 @@ import type { OAuthProvider, User } from "../types";
  * @property id Stable backend user identifier.
  * @property email User email address.
  * @property name Display name from the backend.
+ * @property avatar_url Application-owned avatar URL or null.
  * @property is_active Whether the backend user account is active.
  * @property email_verified_at Verification timestamp or null.
  * @property created_at Creation timestamp from the backend.
@@ -15,6 +16,7 @@ export type BackendUser = {
   id: string;
   email: string;
   name: string;
+  avatar_url: string | null;
   is_active: boolean;
   email_verified_at: string | null;
   created_at: string;
@@ -59,6 +61,14 @@ export type NextAuthAdapter = Readonly<{
    * @returns Session payload or 401 when the user is anonymous.
    */
   session(request: NextRequest): Promise<Response>;
+
+  /**
+   * Forwards a profile update through the authenticated cookie boundary.
+   *
+   * @param request Incoming Next.js request containing profile changes.
+   * @returns Updated public user payload or an upstream validation error.
+   */
+  updateProfile(request: NextRequest): Promise<Response>;
 
   /**
    * Creates a route handler that redirects the browser to the backend OAuth login URL.

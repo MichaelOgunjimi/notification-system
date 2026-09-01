@@ -10,5 +10,6 @@ export type {
   OAuthProvider,
   Session,
   SessionStatus,
+  UpdateProfileInput,
   User,
 } from "./types";

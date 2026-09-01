@@ -4,6 +4,7 @@
  * @property id Stable application user identifier.
  * @property email Primary account email address.
  * @property name Display name for the account.
+ * @property avatarUrl User-selected or provider-seeded profile image URL.
  * @property isActive Whether the user is currently active.
  * @property emailVerifiedAt ISO timestamp for email verification, if available.
  * @property createdAt ISO timestamp for account creation.
@@ -12,9 +13,21 @@ export type User = Readonly<{
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
   isActive: boolean;
   emailVerifiedAt: string | null;
   createdAt: string;
+}>;
+
+/**
+ * User-owned profile fields accepted by the profile update endpoint.
+ *
+ * @property name New display name after trimming, when supplied.
+ * @property avatarUrl Absolute HTTP(S) avatar URL, or null to remove the avatar.
+ */
+export type UpdateProfileInput = Readonly<{
+  name?: string;
+  avatarUrl?: string | null;
 }>;
 
 /**
@@ -113,6 +126,14 @@ export interface AuthClient {
    * @returns Current user or null when no session is active.
    */
   getCurrentUser(): Promise<User | null>;
+
+  /**
+   * Updates user-owned profile fields without changing login identity.
+   *
+   * @param input Partial display name and avatar changes.
+   * @returns Updated authenticated user record.
+   */
+  updateProfile(input: UpdateProfileInput): Promise<User>;
 
   /**
    * Signs the current user out and clears the active session.

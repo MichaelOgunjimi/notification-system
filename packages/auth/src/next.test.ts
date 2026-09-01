@@ -6,6 +6,7 @@ const backendUser = {
   id: "user-1",
   email: "person@example.com",
   name: "Person",
+  avatar_url: "https://images.example.com/avatar.png",
   is_active: true,
   email_verified_at: "2026-08-31T10:00:00Z",
   created_at: "2026-08-31T09:00:00Z",
@@ -35,6 +36,7 @@ describe("createNextAuthAdapter", () => {
       id: "user-1",
       email: "person@example.com",
       name: "Person",
+      avatarUrl: "https://images.example.com/avatar.png",
       isActive: true,
       emailVerifiedAt: "2026-08-31T10:00:00Z",
       createdAt: "2026-08-31T09:00:00Z",
@@ -125,6 +127,39 @@ describe("createNextAuthAdapter", () => {
         cache: "no-store",
         headers: expect.objectContaining({ Authorization: "Bearer access-token" }),
         method: "GET",
+      }),
+    );
+  });
+
+  it("updates and normalizes a user profile through the cookie boundary", async () => {
+    const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+    const profileRequest = new NextRequest("https://app.example.com/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ name: "Person" }),
+      headers: {
+        "Content-Type": "application/json",
+        cookie: "beaco_access_token=access-token",
+      },
+    });
+
+    const response = await auth.updateProfile(profileRequest);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      name: "Person",
+      avatarUrl: "https://images.example.com/avatar.png",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api:8000/api/v1/auth/me",
+      expect.objectContaining({
+        body: expect.any(ArrayBuffer),
+        headers: expect.objectContaining({ Authorization: "Bearer access-token" }),
+        method: "PATCH",
       }),
     );
   });

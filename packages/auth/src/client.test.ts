@@ -6,6 +6,7 @@ const user = {
   id: "user-1",
   email: "person@example.com",
   name: "Person",
+  avatarUrl: null,
   isActive: true,
   emailVerifiedAt: "2026-08-31T10:00:00Z",
   createdAt: "2026-08-31T09:00:00Z",
@@ -48,6 +49,33 @@ describe("createAuthClient", () => {
     expect(fetcher).toHaveBeenCalledWith(
       "/api/auth/oauth/exchange",
       expect.objectContaining({ body: JSON.stringify({ code: "one-time-code" }) }),
+    );
+  });
+
+  it("updates profile fields through the same-origin auth boundary", async () => {
+    const updatedUser = {
+      ...user,
+      name: "Updated Person",
+      avatarUrl: "https://images.example.com/avatar.png",
+    };
+    const fetcher = fetchAdapter(() => Response.json(updatedUser));
+    const client = createAuthClient({ fetch: fetcher });
+
+    await expect(
+      client.updateProfile({
+        name: "  Updated Person  ",
+        avatarUrl: "https://images.example.com/avatar.png",
+      }),
+    ).resolves.toEqual(updatedUser);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/auth/profile",
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "Updated Person",
+          avatar_url: "https://images.example.com/avatar.png",
+        }),
+        method: "PATCH",
+      }),
     );
   });
 

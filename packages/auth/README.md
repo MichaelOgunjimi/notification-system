@@ -46,14 +46,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ```
 
 ```tsx
-import { useSendMagicLink, useSession } from "@beaco/auth/react";
+import { useSendMagicLink, useSession, useUpdateProfile } from "@beaco/auth/react";
 
 function SignIn() {
   const session = useSession();
   const sendMagicLink = useSendMagicLink();
+  const updateProfile = useUpdateProfile();
 
   // session.status is loading, authenticated, anonymous, or error.
   // sendMagicLink.mutate({ email: "person@example.com" })
+  // updateProfile.mutate({ name: "Maya", avatarUrl: "https://example.com/maya.jpg" })
   return null;
 }
 ```
@@ -89,6 +91,12 @@ Next.js still requires filesystem route files, but each route only exposes one a
 // app/api/auth/session/route.ts
 import { beacoAuth } from "@/lib/auth/next";
 export const GET = beacoAuth.session;
+```
+
+```ts
+// app/api/auth/profile/route.ts
+import { beacoAuth } from "@/lib/auth/next";
+export const PATCH = beacoAuth.updateProfile;
 ```
 
 ```ts
@@ -162,6 +170,7 @@ The default client expects the consuming application to expose:
 - `GET /oauth/:provider` → provider redirect
 - `POST /oauth/exchange` → `User`
 - `GET /session` → `User` or `401`
+- `PATCH /profile` → updated `User`
 - `POST /logout` → success response
 
 The application auth path defaults to `/api/auth`. Set the same `appAuthPath` on

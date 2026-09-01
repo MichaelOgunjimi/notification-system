@@ -11,6 +11,7 @@ import type {
   MagicLinkRequest,
   MagicLinkVerification,
   OAuthCodeExchange,
+  UpdateProfileInput,
   User,
 } from "../types";
 
@@ -83,6 +84,21 @@ export function useCompleteOAuthSignIn() {
   return useMutation<User, AuthError, OAuthCodeExchange>({
     mutationKey: authMutationKeys.completeOAuthSignIn,
     mutationFn: (exchange) => client.completeOAuthSignIn(exchange),
+    onSuccess: (user) => queryClient.setQueryData(authQueryKeys.session, user),
+  });
+}
+
+/**
+ * Updates the signed-in user's profile and synchronizes the session cache.
+ *
+ * @returns Mutation hook for changing the display name or avatar URL.
+ */
+export function useUpdateProfile() {
+  const client = useAuthClient();
+  const queryClient = useQueryClient();
+  return useMutation<User, AuthError, UpdateProfileInput>({
+    mutationKey: authMutationKeys.updateProfile,
+    mutationFn: (input) => client.updateProfile(input),
     onSuccess: (user) => queryClient.setQueryData(authQueryKeys.session, user),
   });
 }

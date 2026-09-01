@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 import { exchangeOAuth, logout, startOAuth } from "./oauth";
 import { requestMagicLink, verifyMagicLink } from "./magic-link";
-import { forwardAuthenticated, getSession } from "./session";
+import { forwardAuthenticated, getSession, updateProfile } from "./session";
 import type { NextAuthAdapter, NextAuthAdapterOptions, NextAuthRequestContext } from "./types";
 
 function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestContext {
@@ -13,6 +13,15 @@ function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestC
   };
 }
 
+/**
+ * Creates the server-only Next.js adapter that owns session cookies and proxies
+ * authenticated identity requests to the backend.
+ *
+ * @param options Internal and public backend locations plus optional fetch transport.
+ * @returns Route-handler methods for sign-in, session, profile, and authenticated proxy flows.
+ * @throws Nothing directly; individual handlers return HTTP error responses from their boundary.
+ * @security Access and refresh tokens remain inside HTTP-only cookies and server-side requests.
+ */
 export function createNextAuthAdapter(options: NextAuthAdapterOptions): NextAuthAdapter {
   const context = createRequestContext(options);
 
@@ -37,6 +46,9 @@ export function createNextAuthAdapter(options: NextAuthAdapterOptions): NextAuth
     },
     session(request) {
       return getSession(context, request);
+    },
+    updateProfile(request) {
+      return updateProfile(context, request);
     },
   };
 }

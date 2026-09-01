@@ -17,6 +17,7 @@ export const authMutationKeys = {
   sendMagicLink: ["auth", "magic-link", "send"] as const,
   verifyMagicLink: ["auth", "magic-link", "verify"] as const,
   completeOAuthSignIn: ["auth", "oauth", "complete"] as const,
+  updateProfile: ["auth", "profile", "update"] as const,
   signOut: ["auth", "sign-out"] as const,
 };
 

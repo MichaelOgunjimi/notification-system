@@ -7,6 +7,7 @@ import type {
   MagicLinkVerification,
   OAuthCodeExchange,
   OAuthProvider,
+  UpdateProfileInput,
   User,
 } from "./types";
 
@@ -86,6 +87,26 @@ class HttpAuthClient implements AuthClient {
     const response = await this.fetch("/session", { method: "GET" });
     if (response.status === 401) return null;
     return readJson<User>(response, "We could not load the current session.");
+  }
+
+  /**
+   * Updates the authenticated user's display profile.
+   *
+   * @param input Partial profile values to persist.
+   * @returns Updated authenticated user record.
+   */
+  async updateProfile(input: UpdateProfileInput): Promise<User> {
+    return this.request<User>(
+      "/profile",
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+          ...(input.avatarUrl !== undefined ? { avatar_url: input.avatarUrl } : {}),
+        }),
+      },
+      "We could not update your profile.",
+    );
   }
 
   /**

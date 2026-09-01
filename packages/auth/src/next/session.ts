@@ -59,10 +59,33 @@ export function toUser(user: BackendUser): User {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatarUrl: user.avatar_url,
     isActive: user.is_active,
     emailVerifiedAt: user.email_verified_at,
     createdAt: user.created_at,
   };
+}
+
+/**
+ * Updates the current user's backend profile through the authenticated proxy.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request containing profile changes.
+ * @returns Normalized public user payload or the upstream error response.
+ */
+export async function updateProfile(
+  context: NextAuthRequestContext,
+  request: NextRequest,
+): Promise<Response> {
+  const response = await forwardAuthenticated(context, request, "/auth/me");
+  if (!response.ok) return response;
+  const user = toUser((await response.json()) as BackendUser);
+  const normalizedResponse = NextResponse.json(user, {
+    status: response.status,
+    headers: response.headers,
+  });
+  normalizedResponse.headers.set("Cache-Control", "private, no-store");
+  return normalizedResponse;
 }
 
 /**
