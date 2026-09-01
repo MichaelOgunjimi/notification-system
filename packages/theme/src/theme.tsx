@@ -49,15 +49,48 @@ export type ThemeToggleProps = Omit<
   "children" | "onClick" | "type"
 >;
 
+const THEME_TRANSITION_DURATION_MS = 760;
+let transitionCleanupTimer: number | undefined;
+
+function transitionToTheme(
+  nextTheme: Exclude<BeacoTheme, "system">,
+  setTheme: (theme: BeacoTheme) => void,
+) {
+  if (
+    typeof window === "undefined" ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    setTheme(nextTheme);
+    return;
+  }
+
+  const root = document.documentElement;
+  if (transitionCleanupTimer) window.clearTimeout(transitionCleanupTimer);
+
+  root.classList.remove("theme-transitioning");
+  root.dataset.themeTransition = nextTheme;
+  // Restart the illumination animation when the control is pressed rapidly.
+  void root.offsetWidth;
+  root.classList.add("theme-transitioning");
+  setTheme(nextTheme);
+
+  transitionCleanupTimer = window.setTimeout(() => {
+    root.classList.remove("theme-transitioning");
+    delete root.dataset.themeTransition;
+    transitionCleanupTimer = undefined;
+  }, THEME_TRANSITION_DURATION_MS);
+}
+
 export function ThemeToggle({ className = "", ...props }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
+  const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
 
   return (
     <button
       type="button"
       className={`theme-toggle ${className}`.trim()}
       aria-label="Toggle color theme"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => transitionToTheme(nextTheme, setTheme)}
       {...props}
     >
       <svg

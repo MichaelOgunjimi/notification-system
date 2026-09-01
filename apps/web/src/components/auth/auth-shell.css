@@ -118,10 +118,6 @@
   border-color: var(--site-line-strong);
 }
 
-.dark .brand-mark--dark {
-  display: block;
-}
-
 .auth-primary-action:focus-visible,
 .auth-secondary-action:focus-visible {
   outline: 2px solid var(--site-accent);
