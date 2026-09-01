@@ -1,35 +1,35 @@
 {
-  "name": "@beaco/auth",
-  "version": "0.1.0",
-  "private": true,
-  "sideEffects": false,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./react": "./src/react.ts",
-    "./next": "./src/next.ts"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "type-check": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "@tanstack/react-query": "^5.102.8",
-    "next": ">=16",
-    "react": ">=18"
-  },
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@tanstack/react-query": "^5.102.8",
-    "@types/react": "^19",
-    "next": "16.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "typescript": "^5",
-    "vitest": "^4.1.11"
-  }
+	"name": "@beaco/auth",
+	"version": "0.1.0",
+	"private": true,
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./react": "./src/react.ts",
+		"./next": "./src/next.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"type-check": "tsc --noEmit"
+	},
+	"peerDependencies": {
+		"@tanstack/react-query": "^5.102.8",
+		"next": ">=16",
+		"react": ">=18"
+	},
+	"peerDependenciesMeta": {
+		"next": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@tanstack/react-query": "^5.102.8",
+		"@types/react": "^19",
+		"next": "16.2.3",
+		"react": "19.2.4",
+		"react-dom": "19.2.4",
+		"typescript": "^5",
+		"vitest": "^4.1.11"
+	}
 }
