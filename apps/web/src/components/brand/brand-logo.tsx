@@ -1,4 +1,5 @@
 import Image from "next/image"
+import "./brand-logo.css"
 
 type BrandLogoProps = {
   className?: string
@@ -24,7 +25,15 @@ export default function BrandLogo({
           fill
           priority={priority}
           sizes="48px"
-          className="object-contain"
+          className="brand-mark brand-mark--dark object-contain"
+        />
+        <Image
+          src="/brand/png/beaco-mark-on-light.png"
+          alt=""
+          fill
+          priority={priority}
+          sizes="48px"
+          className="brand-mark brand-mark--light object-contain"
         />
       </span>
       {showLabel ? <span className={labelClassName}>Beaco</span> : null}

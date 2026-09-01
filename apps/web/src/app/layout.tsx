@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@beaco/theme";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -39,24 +40,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className="dark"
-      data-scroll-behavior="smooth"
-      suppressHydrationWarning
-      style={{ colorScheme: "dark" }}
-    >
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body
         suppressHydrationWarning
         className={`${geist.variable} ${geistMono.variable} overflow-x-hidden font-sans antialiased`}
       >
-        <a
-          href="#main-content"
-          className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-        >
-          Skip to content
-        </a>
-        {children}
+        <ThemeProvider>
+          <a
+            href="#main-content"
+            className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          >
+            Skip to content
+          </a>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

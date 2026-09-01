@@ -15,7 +15,7 @@ const components: Partial<Components> = {
   ),
   h2: ({ children, ...props }) => (
     <h2
-      className="mb-5 mt-14 scroll-mt-28 border-t border-white/[0.075] pt-10 text-[24px] font-medium tracking-[-0.035em] text-[var(--docs-ink)]"
+      className="mb-5 mt-14 scroll-mt-28 border-t border-[var(--docs-line)] pt-10 text-[24px] font-medium tracking-[-0.035em] text-[var(--docs-ink)]"
       {...props}
     >
       {children}
@@ -23,7 +23,7 @@ const components: Partial<Components> = {
   ),
   h3: ({ children, ...props }) => (
     <h3
-      className="mb-3 mt-8 scroll-mt-28 text-[16px] font-medium tracking-[-0.015em] text-[#d7d5cc]"
+      className="mb-3 mt-8 scroll-mt-28 text-[16px] font-medium tracking-[-0.015em] text-[var(--docs-ink-soft)]"
       {...props}
     >
       {children}
@@ -71,7 +71,7 @@ const components: Partial<Components> = {
   ),
   blockquote: ({ children, ...props }) => (
     <blockquote
-      className="my-7 rounded-r-lg border-l-2 border-[var(--docs-accent)] bg-[color-mix(in_srgb,var(--docs-accent)_5%,transparent)] px-5 py-4 text-[14px] leading-[1.8] text-[#aaa89f]"
+      className="my-7 rounded-r-lg border-l-2 border-[var(--docs-accent)] bg-[color-mix(in_srgb,var(--docs-accent)_5%,transparent)] px-5 py-4 text-[14px] leading-[1.8] text-[var(--docs-muted)]"
       {...props}
     >
       {children}
@@ -90,7 +90,7 @@ const components: Partial<Components> = {
     }
     return (
       <code
-        className="rounded border border-white/10 bg-white/[0.045] px-1.5 py-0.5 font-mono text-[13px] text-[var(--docs-accent)]"
+        className="rounded border border-[var(--docs-line-strong)] bg-[var(--docs-control)] px-1.5 py-0.5 font-mono text-[13px] text-[var(--docs-accent)]"
         {...props}
       >
         {children}
@@ -99,7 +99,7 @@ const components: Partial<Components> = {
   },
   pre: ({ children }) => <>{children}</>,
   table: ({ children, ...props }) => (
-    <div className="my-7 overflow-x-auto rounded-lg border border-white/[0.075]">
+    <div className="my-7 overflow-x-auto rounded-lg border border-[var(--docs-line)]">
       <table
         className="min-w-full border-collapse text-[13px] text-[var(--docs-muted)]"
         {...props}
@@ -109,13 +109,13 @@ const components: Partial<Components> = {
     </div>
   ),
   thead: ({ children, ...props }) => (
-    <thead className="border-b border-white/[0.075] bg-white/[0.025]" {...props}>
+    <thead className="border-b border-[var(--docs-line)] bg-[var(--docs-control)]" {...props}>
       {children}
     </thead>
   ),
   th: ({ children, ...props }) => (
     <th
-      className="border-b border-white/[0.075] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#cfcdc4]"
+      className="border-b border-[var(--docs-line)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--docs-ink-soft)]"
       {...props}
     >
       {children}
@@ -123,24 +123,24 @@ const components: Partial<Components> = {
   ),
   td: ({ children, ...props }) => (
     <td
-      className="border-b border-white/[0.06] px-4 py-3"
+      className="border-b border-[var(--docs-line)] px-4 py-3"
       {...props}
     >
       {children}
     </td>
   ),
   tr: ({ children, ...props }) => (
-    <tr className="odd:bg-transparent even:bg-white/[0.018]" {...props}>
+    <tr className="odd:bg-transparent even:bg-[var(--docs-control)]" {...props}>
       {children}
     </tr>
   ),
-  hr: (props) => <hr className="my-10 border-white/[0.075]" {...props} />,
+  hr: (props) => <hr className="my-10 border-[var(--docs-line)]" {...props} />,
   img: ({ src, alt, ...props }) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={alt ?? ""}
-      className="my-6 max-w-full rounded-xl border border-white/[0.075]"
+      className="my-6 max-w-full rounded-xl border border-[var(--docs-line)]"
       loading="lazy"
       {...props}
     />

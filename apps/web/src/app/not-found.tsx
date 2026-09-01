@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight"
 import { House } from "@phosphor-icons/react/dist/ssr/House"
+import "@/components/landing/landing.css"
 
 import PublicFooter from "@/components/landing/public-footer"
 import BrandLogo from "@/components/brand/brand-logo"

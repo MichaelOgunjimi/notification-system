@@ -15,12 +15,14 @@ COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/docs/package.json apps/docs/package.json
 COPY packages/auth/package.json packages/auth/package.json
+COPY packages/theme/package.json packages/theme/package.json
 COPY packages/typescript-config/package.json packages/typescript-config/package.json
 COPY packages/typescript-config/*.json packages/typescript-config/
 RUN npm ci
 
 COPY apps/web apps/web
 COPY packages/auth packages/auth
+COPY packages/theme packages/theme
 RUN npm run build --workspace @beaco/web
 
 FROM node:20-alpine AS runtime

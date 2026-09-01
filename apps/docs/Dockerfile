@@ -8,11 +8,13 @@ ENV NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/docs/package.json apps/docs/package.json
+COPY packages/theme/package.json packages/theme/package.json
 COPY packages/typescript-config/package.json packages/typescript-config/package.json
 COPY packages/typescript-config/*.json packages/typescript-config/
 RUN npm ci
 
 COPY apps/docs apps/docs
+COPY packages/theme packages/theme
 RUN npm run build --workspace @beaco/docs
 
 FROM node:20-alpine AS runtime

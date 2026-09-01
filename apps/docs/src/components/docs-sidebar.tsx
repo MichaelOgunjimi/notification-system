@@ -70,14 +70,14 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
             : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
         }`}
       >
-        <House size={15} className={pathname === "/" ? "text-[var(--docs-accent)]" : "text-[#68675f]"} />
+        <House size={15} className={pathname === "/" ? "text-[var(--docs-accent)]" : "text-[var(--docs-muted-faint)]"} />
         Documentation home
       </Link>
 
       <div className="space-y-7">
         {sections.map((section) => (
           <section key={section.label}>
-            <p className="mb-2 px-3 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#626159]">
+            <p className="mb-2 px-3 text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--docs-muted-faint)]">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -94,7 +94,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                         : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
                     }`}
                   >
-                    <span className={active ? "text-[var(--docs-accent)]" : "text-[#68675f] group-hover:text-[#9a9890]"}>
+                    <span className={active ? "text-[var(--docs-accent)]" : "text-[var(--docs-muted-faint)] group-hover:text-[var(--docs-muted)]"}>
                       {DOC_ICONS[item.slug]}
                     </span>
                     {item.label}

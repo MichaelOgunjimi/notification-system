@@ -10,9 +10,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@beaco/theme": "*",
     "@phosphor-icons/react": "^2.1.10",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",
+    "next-themes": "^0.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",

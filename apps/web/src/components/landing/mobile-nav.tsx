@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { List } from "@phosphor-icons/react/dist/csr/List"
 import { X } from "@phosphor-icons/react/dist/csr/X"
+import { ThemeToggle } from "@beaco/theme"
 import { useState } from "react"
 import { docsUrl } from "@/lib/urls"
 
@@ -18,7 +19,7 @@ export default function MobileNav({ links }: MobileNavProps) {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex size-10 items-center justify-center rounded-[9px] border border-white/[0.09] bg-white/[0.035] text-[var(--site-ink)] transition hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
+        className="inline-flex size-10 items-center justify-center rounded-[9px] border border-[var(--site-line-strong)] bg-[var(--site-overlay)] text-[var(--site-ink)] transition hover:bg-[var(--site-overlay-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
       >
@@ -26,7 +27,7 @@ export default function MobileNav({ links }: MobileNavProps) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-12 z-50 w-56 rounded-[14px] border border-white/[0.09] bg-[#0c0c0a]/95 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <div className="absolute right-0 top-12 z-50 w-56 rounded-[14px] border border-[var(--site-line-strong)] bg-[var(--site-panel)]/95 p-2 shadow-[0_24px_70px_var(--site-shadow)] backdrop-blur-xl">
           <div className="flex flex-col gap-1">
             {links.map((link) => (
               <Link
@@ -54,6 +55,10 @@ export default function MobileNav({ links }: MobileNavProps) {
             >
               Sign in
             </Link>
+            <div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2 text-sm text-[var(--site-muted)]">
+              <span>Appearance</span>
+              <ThemeToggle />
+            </div>
             <Link
               href={docsUrl("/quickstart")}
               onClick={() => setOpen(false)}

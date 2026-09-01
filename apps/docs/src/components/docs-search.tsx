@@ -153,7 +153,7 @@ export function DocsSearch({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/75 px-3 pt-[8dvh] backdrop-blur-sm sm:px-6 sm:pt-[11dvh]"
+      className="fixed inset-0 z-[80] bg-[var(--docs-backdrop)] px-3 pt-[8dvh] backdrop-blur-sm sm:px-6 sm:pt-[11dvh]"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) closeSearch();
       }}
@@ -162,7 +162,7 @@ export function DocsSearch({
         role="dialog"
         aria-modal="true"
         aria-label="Search Beaco documentation"
-        className="mx-auto max-h-[78dvh] w-full max-w-[680px] overflow-hidden rounded-xl border border-white/10 bg-[#0d0d0b] shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+        className="mx-auto max-h-[78dvh] w-full max-w-[680px] overflow-hidden rounded-xl border border-[var(--docs-line-strong)] bg-[var(--docs-modal)] shadow-[0_30px_100px_var(--docs-shadow)]"
         onKeyDown={(event) => {
           if (event.key === "Escape") closeSearch();
           if (event.key === "ArrowDown") {
@@ -178,7 +178,7 @@ export function DocsSearch({
           }
         }}
       >
-        <div className="flex h-16 items-center gap-3 border-b border-white/8 px-5">
+        <div className="flex h-16 items-center gap-3 border-b border-[var(--docs-line)] px-5">
           <MagnifyingGlass size={20} className="shrink-0 text-[var(--docs-accent)]" aria-hidden />
           <input
             ref={inputRef}
@@ -189,15 +189,15 @@ export function DocsSearch({
             }}
             placeholder="Search guides, APIs, events…"
             aria-label="Search documentation"
-            className="min-w-0 flex-1 bg-transparent text-[16px] text-[var(--docs-ink)] outline-none placeholder:text-[#66665f]"
+            className="min-w-0 flex-1 bg-transparent text-[16px] text-[var(--docs-ink)] outline-none placeholder:text-[var(--docs-muted-faint)]"
           />
-          <kbd className="rounded border border-white/10 bg-white/4 px-2 py-1 text-[10px] tracking-wide text-[var(--docs-muted)]">
+          <kbd className="rounded border border-[var(--docs-line-strong)] bg-[var(--docs-control)] px-2 py-1 text-[10px] tracking-wide text-[var(--docs-muted)]">
             ESC
           </kbd>
         </div>
 
         <div className="max-h-[calc(78dvh-112px)] overflow-y-auto p-2">
-          <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#68675f]">
+          <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--docs-muted-faint)]">
             {terms.length ? `${results.length} results` : "Suggested reading"}
           </p>
 
@@ -211,8 +211,8 @@ export function DocsSearch({
                   onMouseEnter={() => setActiveIndex(index)}
                   className={`group grid grid-cols-[minmax(0,1fr)_auto] gap-5 rounded-lg border px-4 py-3.5 transition-colors ${
                     index === activeIndex
-                      ? "border-white/10 bg-white/[0.055]"
-                      : "border-transparent hover:bg-white/[0.035]"
+                      ? "border-[var(--docs-line-strong)] bg-[var(--docs-control-hover)]"
+                      : "border-transparent hover:bg-[var(--docs-control)]"
                   }`}
                 >
                   <span className="min-w-0">
@@ -220,7 +220,7 @@ export function DocsSearch({
                       <span className="text-[14px] font-medium text-[var(--docs-ink)]">
                         {highlightMatchedTerms(item.title, terms)}
                       </span>
-                      <span className="text-[9px] uppercase tracking-[0.14em] text-[#706f68]">
+                      <span className="text-[9px] uppercase tracking-[0.14em] text-[var(--docs-muted-faint)]">
                         {groupLabels[item.group]}
                       </span>
                     </span>
@@ -228,14 +228,14 @@ export function DocsSearch({
                       {highlightMatchedTerms(resultExcerpt(item, query), terms)}
                     </span>
                   </span>
-                  <ArrowRight size={16} className="mt-1 text-[#56554f] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--docs-accent)]" aria-hidden />
+                  <ArrowRight size={16} className="mt-1 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--docs-accent)]" aria-hidden />
                 </Link>
               ))}
             </div>
           ) : (
             <div className="px-4 py-12 text-center">
-              <p className="text-[14px] text-[#c2c0b6]">No documentation matched “{query}”.</p>
-              <p className="mt-2 text-[12px] text-[#706f68]">Try events, retries, channels, or API.</p>
+              <p className="text-[14px] text-[var(--docs-ink-soft)]">No documentation matched “{query}”.</p>
+              <p className="mt-2 text-[12px] text-[var(--docs-muted)]">Try events, retries, channels, or API.</p>
             </div>
           )}
         </div>

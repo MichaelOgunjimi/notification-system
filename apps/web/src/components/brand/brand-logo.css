@@ -1,0 +1,15 @@
+.brand-mark--light {
+  display: block;
+}
+
+.brand-mark--dark {
+  display: none;
+}
+
+.dark .brand-mark--light {
+  display: none;
+}
+
+.dark .brand-mark--dark {
+  display: block;
+}

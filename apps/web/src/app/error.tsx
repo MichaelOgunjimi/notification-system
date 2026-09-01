@@ -1,5 +1,7 @@
 "use client"
 
+import "@/components/landing/landing.css"
+
 import Link from "next/link"
 import { ArrowCounterClockwise } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise"
 import { House } from "@phosphor-icons/react/dist/csr/House"
@@ -52,7 +54,7 @@ export default function ErrorPage({
           </div>
 
           {error.digest ? (
-            <p className="mt-10 font-mono text-[10px] text-[#66665f]">Reference: {error.digest}</p>
+            <p className="mt-10 font-mono text-[10px] text-[var(--site-muted)]">Reference: {error.digest}</p>
           ) : null}
         </div>
       </section>

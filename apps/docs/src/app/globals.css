@@ -4,6 +4,20 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --gray-1: #fffdf8;
+  --gray-2: #f5f1e8;
+  --gray-3: #e7e1d5;
+  --gray-4: #d5cec0;
+  --gray-7: #716e65;
+  --gray-9: #4e4b44;
+  --gray-10: #1d1d1a;
+  --background: #f7f4ed;
+  --foreground: #1d1d1a;
+  --primary: #c98918;
+  --border: rgba(34, 32, 27, 0.12);
+}
+
+.dark {
   --gray-1: #0d0d0b;
   --gray-2: #121210;
   --gray-3: #24231f;
@@ -42,81 +56,5 @@
   ::selection {
     background: #e9aa31;
     color: #1c160b;
-  }
-}
-
-.docs-shell {
-  --docs-canvas: #11120f;
-  --docs-panel: #171814;
-  --docs-soft: #1c1d18;
-  --docs-ink: #eeeade;
-  --docs-muted: #9a998f;
-  --docs-line: rgba(255, 255, 255, 0.075);
-  --docs-accent: #d5a74d;
-  color-scheme: dark;
-}
-
-.docs-topbar {
-  background: rgba(17, 18, 15, 0.9);
-  backdrop-filter: blur(18px) saturate(120%);
-}
-
-.docs-reading-field {
-  background:
-    radial-gradient(circle at 50% -12%, rgba(213, 167, 77, 0.055), transparent 31rem),
-    var(--docs-canvas);
-}
-
-.docs-search-trigger {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.085);
-  border-radius: 12px;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
-  transition: background-color 220ms ease, border-color 220ms ease;
-}
-
-.docs-search-trigger:hover {
-  background: rgba(255, 255, 255, 0.045);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.docs-content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.docs-article-nav,
-.docs-toc-aside {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .docs-content-grid {
-    grid-template-columns: 210px minmax(0, 720px);
-    gap: 3.5rem;
-  }
-
-  .docs-article-nav {
-    display: block;
-  }
-}
-
-@media (min-width: 1280px) {
-  .docs-content-grid {
-    grid-template-columns: 210px minmax(0, 720px) 210px;
-    gap: 3.5rem;
-  }
-
-  .docs-toc-aside {
-    display: block;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .docs-shell *,
-  .docs-shell *::before,
-  .docs-shell *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
   }
 }

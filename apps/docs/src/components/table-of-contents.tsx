@@ -64,13 +64,13 @@ export function TableOfContents({ headings }: { headings: TocItem[] }) {
 
   return (
     <nav aria-label="Table of contents" className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto">
-      <p className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#77766f]">
+      <p className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--docs-muted)]">
         <ListBullets size={14} className="text-[var(--docs-accent)]" />
         On this page
       </p>
 
       <div className="relative pl-4">
-        <div className="absolute left-0 top-0 h-full w-px bg-white/[0.075]" />
+        <div className="absolute left-0 top-0 h-full w-px bg-[var(--docs-line)]" />
         <div
           className="absolute left-0 w-[2px] rounded-full bg-[var(--docs-accent)] transition-all duration-200"
           style={{
@@ -100,7 +100,7 @@ export function TableOfContents({ headings }: { headings: TocItem[] }) {
                 } ${
                   activeId === heading.id
                     ? "text-[var(--docs-accent)]"
-                    : "text-[#77766f] hover:text-[var(--docs-ink)]"
+                    : "text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
                 }`}
               >
                 {heading.text}

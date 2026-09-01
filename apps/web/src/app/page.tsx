@@ -9,6 +9,7 @@ import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr/EnvelopeSimple"
 import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint"
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck"
 import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo"
+import { ThemeToggle } from "@beaco/theme"
 
 import AnimateOnScroll, {
   StaggerGroup,
@@ -19,6 +20,7 @@ import MobileNav from "@/components/landing/mobile-nav"
 import PublicFooter from "@/components/landing/public-footer"
 import BrandLogo from "@/components/brand/brand-logo"
 import { docsUrl } from "@/lib/urls"
+import "@/components/landing/landing.css"
 
 const navLinks = [
   { label: "How it works", href: "#how-it-works" },
@@ -101,7 +103,7 @@ export default function Home() {
       id="main-content"
       className="marketing-shell min-h-dvh overflow-x-clip bg-[var(--site-canvas)] text-[var(--site-ink)]"
     >
-      <div className="relative z-30 border-b border-white/[0.06] bg-[#090908] px-4 py-2.5 text-center text-[11px] tracking-[0.01em] text-[var(--site-muted)]">
+      <div className="relative z-30 border-b border-[var(--site-line)] bg-[var(--site-elevated)] px-4 py-2.5 text-center text-[11px] tracking-[0.01em] text-[var(--site-muted)]">
         <span className="sm:hidden">Built for reliable delivery.</span>
         <span className="hidden sm:inline">Notification infrastructure for teams that need the full delivery story.</span>
         <Link
@@ -137,6 +139,7 @@ export default function Home() {
           </div>
 
           <div className="ml-auto hidden items-center gap-2 md:flex">
+            <ThemeToggle />
             <Link
               href="/login"
               className="rounded-[9px] px-3 py-2 text-[12px] font-medium text-[var(--site-muted)] transition-colors duration-300 hover:text-[var(--site-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
@@ -189,7 +192,7 @@ export default function Home() {
               </AnimateOnScroll>
             </div>
 
-            <div className="grid border-t border-white/[0.07] bg-[#090908] lg:grid-rows-[1fr_auto] lg:border-l lg:border-t-0">
+            <div className="grid border-t border-[var(--site-line)] bg-[var(--site-elevated)] lg:grid-rows-[1fr_auto] lg:border-l lg:border-t-0">
               <div className="relative min-h-[280px] overflow-hidden sm:min-h-[410px] lg:min-h-0">
                 <Image
                   src="/beaco-routing-dark.webp"
@@ -201,14 +204,14 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10" />
               </div>
-              <div className="flex items-center justify-between gap-4 border-t border-white/[0.07] bg-[#0b0b0a] px-5 py-4 sm:px-7 sm:py-5">
+              <div className="flex items-center justify-between gap-4 border-t border-[var(--site-line)] bg-[var(--site-panel)] px-5 py-4 sm:px-7 sm:py-5">
                 <div>
                   <p className="text-[11px] font-semibold text-[var(--site-ink)]">One event, three routes</p>
                   <p className="mt-1 text-[10px] text-[var(--site-muted)]">Each channel keeps its own delivery history.</p>
                 </div>
                 <div className="flex items-center gap-1.5" aria-label="Supported channels">
                   {channels.map(({ icon: Icon, label }) => (
-                    <span key={label} title={label} className="grid size-8 place-items-center rounded-[8px] border border-white/[0.09] bg-white/[0.055] text-[var(--site-ink)]">
+                    <span key={label} title={label} className="grid size-8 place-items-center rounded-[8px] border border-[var(--site-line-strong)] bg-[var(--site-overlay)] text-[var(--site-ink)]">
                       <Icon size={14} weight="light" aria-hidden="true" />
                       <span className="sr-only">{label}</span>
                     </span>
@@ -226,9 +229,9 @@ export default function Home() {
                 key={label}
                 className={`site-stat-block px-5 py-7 text-center sm:px-8 sm:py-9 sm:text-left lg:px-10 ${
                   index === 0
-                    ? "col-span-2 border-b border-white/[0.07] md:col-span-3 md:border-b-0 md:border-r"
+                    ? "col-span-2 border-b border-[var(--site-line)] md:col-span-3 md:border-b-0 md:border-r"
                     : index === 1
-                      ? "col-span-1 border-r border-white/[0.07] md:col-span-4"
+                      ? "col-span-1 border-r border-[var(--site-line)] md:col-span-4"
                       : "col-span-1 md:col-span-5"
                 }`}
               >
@@ -253,26 +256,26 @@ export default function Home() {
             </div>
           </AnimateOnScroll>
 
-          <div className="mt-14 border border-white/[0.075]">
-            <div className="grid overflow-hidden bg-[#0a0a09] lg:grid-cols-12">
+          <div className="mt-14 border border-[var(--site-line)]">
+            <div className="grid overflow-hidden bg-[var(--site-elevated)] lg:grid-cols-12">
               <AnimateOnScroll variant="fade-right" className="min-w-0 p-6 sm:p-8 lg:col-span-7 lg:p-10 xl:p-12">
                 <div className="mb-8 flex items-center gap-2 text-[var(--site-muted)]">
                   <BracketsCurly size={16} weight="light" className="text-[var(--site-accent)]" aria-hidden="true" />
                   <span className="font-mono text-[11px]">Create an event</span>
                 </div>
-                <pre className="overflow-x-auto font-mono text-[11px] leading-6 text-[#dedcd3] sm:text-[12px]">
+                <pre className="overflow-x-auto font-mono text-[11px] leading-6 text-[var(--site-code)] sm:text-[12px]">
                   <code>{requestExample}</code>
                 </pre>
               </AnimateOnScroll>
 
-              <StaggerGroup className="border-t border-white/[0.07] bg-[var(--site-soft)] p-6 sm:p-8 lg:col-span-5 lg:border-l lg:border-t-0 lg:p-10" staggerMs={70}>
+              <StaggerGroup className="border-t border-[var(--site-line)] bg-[var(--site-soft)] p-6 sm:p-8 lg:col-span-5 lg:border-l lg:border-t-0 lg:p-10" staggerMs={70}>
                 {deliverySteps.map((step, index) => (
                   <StaggerItem key={step.title}>
                     <div className="grid grid-cols-[38px_1fr] gap-4 pb-8 last:pb-0">
-                      <span className="grid size-[38px] place-items-center rounded-[9px] border border-white/[0.09] bg-white/[0.035] font-mono text-[10px] text-[var(--site-muted)]">
+                      <span className="grid size-[38px] place-items-center rounded-[9px] border border-[var(--site-line-strong)] bg-[var(--site-overlay)] font-mono text-[10px] text-[var(--site-muted)]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <div className="border-b border-white/[0.07] pb-8 last:border-b-0">
+                      <div className="border-b border-[var(--site-line)] pb-8 last:border-b-0">
                         <h3 className="text-[15px] font-medium tracking-[-0.02em]">{step.title}</h3>
                         <p className="mt-1.5 max-w-[360px] text-[12px] leading-5 text-[var(--site-muted)]">{step.description}</p>
                       </div>
@@ -298,12 +301,12 @@ export default function Home() {
             </div>
           </AnimateOnScroll>
 
-          <StaggerGroup className="mt-14 grid border-l border-t border-white/[0.075] lg:grid-cols-12" staggerMs={65}>
+          <StaggerGroup className="mt-14 grid border-l border-t border-[var(--site-line)] lg:grid-cols-12" staggerMs={65}>
             {reliabilityFeatures.map(({ icon: Icon, title, description, className }, index) => (
               <StaggerItem key={title} className={className}>
-                <article className={`site-feature-card group relative min-h-[250px] overflow-hidden border-b border-r border-white/[0.075] p-7 sm:p-9 ${index === 0 || index === 3 ? "bg-[var(--site-soft)] lg:min-h-[315px]" : "bg-[var(--site-panel)] lg:min-h-[275px]"}`}>
+                <article className={`site-feature-card group relative min-h-[250px] overflow-hidden border-b border-r border-[var(--site-line)] p-7 sm:p-9 ${index === 0 || index === 3 ? "bg-[var(--site-soft)] lg:min-h-[315px]" : "bg-[var(--site-panel)] lg:min-h-[275px]"}`}>
                   <div className="absolute right-0 top-0 size-36 bg-[radial-gradient(circle_at_top_right,rgba(233,170,49,0.09),transparent_68%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                  <span className="grid size-11 place-items-center rounded-[11px] border border-white/[0.09] bg-white/[0.035] text-[var(--site-ink)]">
+                  <span className="grid size-11 place-items-center rounded-[11px] border border-[var(--site-line-strong)] bg-[var(--site-overlay)] text-[var(--site-ink)]">
                     <Icon size={19} weight="light" aria-hidden="true" />
                   </span>
                   <div className={`${index === 0 || index === 3 ? "mt-20" : "mt-14"} max-w-[520px]`}>
@@ -325,7 +328,7 @@ export default function Home() {
                 Start with one event. Keep the control.
               </h2>
             </div>
-            <div className="flex items-center border-t border-white/[0.07] px-6 py-10 sm:px-10 sm:py-12 lg:col-span-3 lg:border-l lg:border-t-0 lg:px-10 lg:py-16">
+            <div className="flex items-center border-t border-[var(--site-line)] px-6 py-10 sm:px-10 sm:py-12 lg:col-span-3 lg:border-l lg:border-t-0 lg:px-10 lg:py-16">
               <Link href={docsUrl("/quickstart")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
                 <ArrowButton label="Open the quickstart" />
               </Link>

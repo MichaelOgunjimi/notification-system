@@ -45,14 +45,14 @@ export function CodeBlock({
   const label = LANG_LABELS[language.toLowerCase()] ?? language.toUpperCase();
 
   return (
-    <div className="my-7 overflow-hidden rounded-lg border border-white/[0.075]">
-      <div className="flex items-center justify-between border-b border-white/[0.075] bg-white/[0.022] px-4 py-2.5">
-        <span className="select-none text-[9px] font-medium uppercase tracking-[0.15em] text-[#696860]">
+    <div className="my-7 overflow-hidden rounded-lg border border-[var(--docs-line)]">
+      <div className="flex items-center justify-between border-b border-[var(--docs-line)] bg-[var(--docs-control)] px-4 py-2.5">
+        <span className="select-none text-[9px] font-medium uppercase tracking-[0.15em] text-[var(--docs-muted-faint)]">
           {label}
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-[#77766f] transition-colors hover:bg-white/[0.06] hover:text-[var(--docs-ink)]"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-[var(--docs-muted)] transition-colors hover:bg-[var(--docs-control-hover)] hover:text-[var(--docs-ink)]"
         >
           {copied ? (
             <>

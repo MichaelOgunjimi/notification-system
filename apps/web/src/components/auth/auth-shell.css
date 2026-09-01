@@ -1,0 +1,168 @@
+/* Passwordless authentication surfaces */
+.auth-shell {
+  --site-canvas: #070706;
+  --site-panel: #0d0d0b;
+  --site-ink: #f1efe7;
+  --site-muted: #85847c;
+  --site-muted-bright: #b9b7ad;
+  --site-line: rgba(255, 255, 255, 0.075);
+  --site-line-strong: rgba(255, 255, 255, 0.16);
+  --site-accent: #e9aa31;
+  --site-accent-ink: #1c160b;
+  --site-overlay: rgba(255, 255, 255, 0.035);
+  --site-overlay-hover: rgba(255, 255, 255, 0.055);
+  --theme-toggle-background: var(--site-overlay);
+  --theme-toggle-border: var(--site-line-strong);
+  --theme-toggle-foreground: var(--site-ink);
+  --theme-toggle-hover: var(--site-overlay-hover);
+  --theme-toggle-focus: var(--site-accent);
+  background:
+    radial-gradient(circle at 16% 16%, rgba(233, 170, 49, 0.075), transparent 25rem),
+    var(--site-canvas);
+  color-scheme: dark;
+}
+
+.light .auth-shell {
+  --site-canvas: #f4f0e7;
+  --site-panel: #fffdf8;
+  --site-ink: #1d1d1a;
+  --site-muted: #716e65;
+  --site-muted-bright: #4e4b44;
+  --site-line: rgba(34, 32, 27, 0.12);
+  --site-line-strong: rgba(34, 32, 27, 0.2);
+  --site-accent: #d99416;
+  --site-accent-ink: #1c160b;
+  --site-overlay: rgba(28, 25, 19, 0.035);
+  --site-overlay-hover: rgba(28, 25, 19, 0.065);
+  color-scheme: light;
+}
+
+.auth-story::before {
+  background-image:
+    linear-gradient(var(--site-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--site-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(135deg, #000, transparent 82%);
+  opacity: 0.68;
+  pointer-events: none;
+  position: absolute;
+}
+
+.auth-story::after {
+  background: linear-gradient(118deg, transparent 38%, rgba(233, 170, 49, 0.12) 49.8%, transparent 50.4%);
+  content: "";
+  inset: 0;
+  opacity: 0.45;
+  pointer-events: none;
+  position: absolute;
+}
+
+.auth-input {
+  background: var(--site-overlay);
+  border: 1px solid var(--site-line-strong);
+  border-radius: 10px;
+  color: var(--site-ink);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.auth-input::placeholder {
+  color: #696861;
+}
+
+.auth-input:focus {
+  background: var(--site-overlay-hover);
+  border-color: rgba(233, 170, 49, 0.72);
+  box-shadow: 0 0 0 3px rgba(233, 170, 49, 0.12);
+}
+
+.auth-primary-action,
+.auth-secondary-action {
+  align-items: center;
+  border-radius: 10px;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  gap: 10px;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 18px;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.auth-primary-action {
+  background: var(--site-accent);
+  color: var(--site-accent-ink);
+  justify-content: space-between;
+}
+
+.auth-primary-action:hover:not(:disabled) {
+  background: #f1b545;
+  transform: translateY(-1px);
+}
+
+.auth-primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.auth-secondary-action {
+  background: var(--site-overlay);
+  border: 1px solid var(--site-line-strong);
+  color: var(--site-ink);
+}
+
+.auth-secondary-action:hover {
+  background: var(--site-overlay-hover);
+  border-color: var(--site-line-strong);
+}
+
+.dark .brand-mark--dark {
+  display: block;
+}
+
+.auth-primary-action:focus-visible,
+.auth-secondary-action:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 3px;
+}
+
+.auth-primary-action:active,
+.auth-secondary-action:active {
+  transform: translateY(1px);
+}
+
+.auth-icon-frame {
+  align-items: center;
+  background: rgba(233, 170, 49, 0.085);
+  border: 1px solid rgba(233, 170, 49, 0.22);
+  border-radius: 12px;
+  color: var(--site-accent);
+  display: inline-flex;
+  height: 54px;
+  justify-content: center;
+  width: 54px;
+}
+
+.auth-icon-error {
+  background: rgba(240, 113, 103, 0.08);
+  border-color: rgba(240, 113, 103, 0.22);
+  color: #f09a8f;
+}
+
+.auth-icon-success {
+  background: rgba(132, 204, 154, 0.08);
+  border-color: rgba(132, 204, 154, 0.2);
+  color: #9bd3aa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell *,
+  .auth-shell *::before,
+  .auth-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

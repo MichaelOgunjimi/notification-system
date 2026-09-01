@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowLeft, BellRinging, CheckCircle, Fingerprint } from "@phosphor-icons/react/dist/ssr";
+import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
+import "./auth-shell.css";
 
 type AuthShellProps = {
   children: React.ReactNode;
@@ -20,10 +22,13 @@ export function AuthShell({
           <Link href="/" aria-label="Beaco home">
             <BrandLogo priority markClassName="size-8" labelClassName="text-[15px] font-semibold tracking-[-0.03em] text-[var(--site-ink)]" />
           </Link>
-          <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-[13px] text-[var(--site-muted-bright)] transition-colors hover:text-[var(--site-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
-            <ArrowLeft size={15} aria-hidden="true" />
-            Back to Beaco
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-[13px] text-[var(--site-muted-bright)] transition-colors hover:text-[var(--site-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]">
+              <ArrowLeft size={15} aria-hidden="true" />
+              Back to Beaco
+            </Link>
+          </div>
         </header>
 
         <div className="grid flex-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(32rem,1.08fr)]">
