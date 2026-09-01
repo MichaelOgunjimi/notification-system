@@ -4,6 +4,9 @@ type ErrorPayload = {
   error?: { message?: string; details?: ValidationIssue[] };
 };
 
+/**
+ * Standardized error categories exposed by the auth package.
+ */
 export type AuthErrorCode =
   | "invalid_request"
   | "unauthenticated"
@@ -21,11 +24,19 @@ function codeForStatus(status: number): AuthErrorCode {
   return "unexpected_error";
 }
 
+/**
+ * Error raised when an auth request fails with a backend or network problem.
+ */
 export class AuthError extends Error {
   readonly code: AuthErrorCode;
   readonly status: number;
   readonly retryable: boolean;
 
+  /**
+   * @param message Human-readable reason for the failure.
+   * @param status HTTP status code returned by the backend.
+   * @param options Optional ErrorOptions passed to the base Error implementation.
+   */
   constructor(message: string, status: number, options?: ErrorOptions) {
     super(message, options);
     this.name = "AuthError";
@@ -35,6 +46,13 @@ export class AuthError extends Error {
   }
 }
 
+/**
+ * Converts an HTTP error response into a structured auth error.
+ *
+ * @param response Response object from the auth endpoint.
+ * @param fallback Friendly fallback message when the backend does not provide one.
+ * @returns AuthError with a normalized code and status.
+ */
 export async function authErrorFromResponse(
   response: Response,
   fallback: string,
@@ -49,6 +67,12 @@ export async function authErrorFromResponse(
   return new AuthError(detail || fallback, response.status);
 }
 
+/**
+ * Wraps a transport failure as a standard auth service error.
+ *
+ * @param cause Underlying network or fetch error.
+ * @returns AuthError describing an unavailable sign-in service.
+ */
 export function authNetworkError(cause: unknown): AuthError {
   return new AuthError("The sign-in service is unavailable.", 503, { cause });
 }

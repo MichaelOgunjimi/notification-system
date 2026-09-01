@@ -14,6 +14,11 @@ import type {
   User,
 } from "../types";
 
+/**
+ * Reads the current authenticated session and exposes it in the app state shape.
+ *
+ * @returns Session metadata with status, error state, and a refetch helper.
+ */
 export function useSession() {
   const client = useAuthClient();
   const query = useQuery(sessionQuery(client));
@@ -36,6 +41,11 @@ export function useSession() {
   };
 }
 
+/**
+ * Sends a magic-link request from a React component.
+ *
+ * @returns Mutation hook for requesting a sign-in email.
+ */
 export function useSendMagicLink() {
   const client = useAuthClient();
   return useMutation<MagicLinkReceipt, AuthError, MagicLinkRequest>({
@@ -44,6 +54,11 @@ export function useSendMagicLink() {
   });
 }
 
+/**
+ * Verifies a magic-link token and updates the cached session state.
+ *
+ * @returns Mutation hook for completing passwordless sign-in.
+ */
 export function useVerifyMagicLink() {
   const client = useAuthClient();
   const queryClient = useQueryClient();
@@ -54,6 +69,11 @@ export function useVerifyMagicLink() {
   });
 }
 
+/**
+ * Completes an OAuth callback and updates the cached authenticated user.
+ *
+ * @returns Mutation hook for finishing provider sign-in.
+ */
 export function useCompleteOAuthSignIn() {
   const client = useAuthClient();
   const queryClient = useQueryClient();
@@ -64,6 +84,11 @@ export function useCompleteOAuthSignIn() {
   });
 }
 
+/**
+ * Signs the current user out and clears the cached auth state.
+ *
+ * @returns Mutation hook used to end the current session.
+ */
 export function useSignOut() {
   const client = useAuthClient();
   const queryClient = useQueryClient();

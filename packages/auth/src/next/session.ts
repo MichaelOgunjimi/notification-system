@@ -9,6 +9,13 @@ import {
 } from "./cookies";
 import type { BackendTokenSet, BackendUser, NextAuthRequestContext } from "./types";
 
+/**
+ * Refreshes the current session using the stored refresh token.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param refreshToken Refresh token stored in the browser cookie.
+ * @returns New access/refresh token pair or null when refresh fails.
+ */
 export async function refreshSession(
   context: NextAuthRequestContext,
   refreshToken: string,
@@ -22,6 +29,13 @@ export async function refreshSession(
   return response.ok ? ((await response.json()) as BackendTokenSet) : null;
 }
 
+/**
+ * Fetches the authenticated user profile from the backend using the access token.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param accessToken Bearer token attached to the authenticated request.
+ * @returns Public user record or null when not authenticated.
+ */
 export async function fetchUser(
   context: NextAuthRequestContext,
   accessToken: string,
@@ -34,6 +48,12 @@ export async function fetchUser(
   return toUser((await response.json()) as BackendUser);
 }
 
+/**
+ * Normalizes a backend user payload into the public auth client contract.
+ *
+ * @param user User payload returned by the backend.
+ * @returns Public user model used by the app.
+ */
 export function toUser(user: BackendUser): User {
   return {
     id: user.id,
@@ -45,6 +65,13 @@ export function toUser(user: BackendUser): User {
   };
 }
 
+/**
+ * Reads the current authenticated session from cookies or refresh tokens.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request.
+ * @returns JSON user payload when authenticated, otherwise a 401 response.
+ */
 export async function getSession(
   context: NextAuthRequestContext,
   request: NextRequest,
@@ -74,6 +101,14 @@ export async function getSession(
   return response;
 }
 
+/**
+ * Forwards an authenticated backend request while refreshing expired tokens when needed.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request.
+ * @param backendPath Backend path relative to the API root.
+ * @returns Response from the backend with authenticated headers and cookie refresh logic.
+ */
 export async function forwardAuthenticated(
   context: NextAuthRequestContext,
   request: NextRequest,

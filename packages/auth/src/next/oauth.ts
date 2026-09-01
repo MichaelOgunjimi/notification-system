@@ -9,6 +9,13 @@ import {
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
 import { fetchUser } from "./session";
 
+/**
+ * Creates an OAuth redirect handler for a specific provider.
+ *
+ * @param context Shared request context with the public backend base URL.
+ * @param provider OAuth provider to redirect the browser to.
+ * @returns Route handler that issues the outbound redirect.
+ */
 export function startOAuth(
   context: NextAuthRequestContext,
   provider: "github",
@@ -16,6 +23,13 @@ export function startOAuth(
   return () => NextResponse.redirect(`${context.publicBackendApiUrl}/oauth/${provider}/login`, 307);
 }
 
+/**
+ * Exchanges a provider callback code for a backend-backed session.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request containing the callback payload.
+ * @returns User payload with HTTP-only session cookies set.
+ */
 export async function exchangeOAuth(
   context: NextAuthRequestContext,
   request: NextRequest,
@@ -56,6 +70,13 @@ export async function exchangeOAuth(
   }
 }
 
+/**
+ * Signs the current user out and clears both session cookies.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request containing the active refresh token.
+ * @returns Confirmation response after session cleanup.
+ */
 export async function logout(
   context: NextAuthRequestContext,
   request: NextRequest,
@@ -74,6 +95,13 @@ export async function logout(
   return response;
 }
 
+/**
+ * Loads the user from the access token cookie without triggering a refresh flow.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request.
+ * @returns User payload when a valid access token exists, otherwise null.
+ */
 export async function sessionFromAccessToken(
   context: NextAuthRequestContext,
   request: NextRequest,

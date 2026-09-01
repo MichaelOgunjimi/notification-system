@@ -6,6 +6,13 @@ import {
 import { fetchUser } from "./session";
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
 
+/**
+ * Submits a magic-link request to the backend authentication API.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request with the email payload.
+ * @returns Backend response for the magic-link request.
+ */
 export async function requestMagicLink(
   context: NextAuthRequestContext,
   request: NextRequest,
@@ -31,6 +38,14 @@ export async function requestMagicLink(
   }
 }
 
+/**
+ * Exchanges a magic-link verification payload for authenticated session cookies.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request carrying the verification payload.
+ * @param backendPath Backend auth endpoint path.
+ * @returns User payload and cookies when verification succeeds.
+ */
 export async function exchangeForSession(
   context: NextAuthRequestContext,
   request: NextRequest,
@@ -72,6 +87,13 @@ export async function exchangeForSession(
   }
 }
 
+/**
+ * Verifies a magic-link token and creates a user session.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request containing the signed token.
+ * @returns Authenticated user payload with session cookies.
+ */
 export function verifyMagicLink(
   context: NextAuthRequestContext,
   request: NextRequest,
