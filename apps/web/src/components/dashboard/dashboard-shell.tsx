@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -282,7 +283,18 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
 
         <div className="dashboard-sidebar__identity">
           <span className="dashboard-sidebar__avatar">
-            <UserCircle size={22} />
+            {user.avatarUrl ? (
+              <Image
+                unoptimized
+                src={user.avatarUrl}
+                alt=""
+                aria-hidden="true"
+                width={36}
+                height={36}
+              />
+            ) : (
+              <UserCircle size={22} />
+            )}
           </span>
           <span className="dashboard-sidebar__user">
             <strong>{user.name}</strong>
@@ -337,14 +349,40 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
                 aria-expanded={accountMenuOpen}
                 onClick={() => setAccountMenuOpen((open) => !open)}
               >
-                <span>{userInitials}</span>
+                <span>
+                  {user.avatarUrl ? (
+                    <Image
+                      unoptimized
+                      src={user.avatarUrl}
+                      alt=""
+                      aria-hidden="true"
+                      width={28}
+                      height={28}
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </span>
                 <CaretDown size={12} />
               </button>
 
               {accountMenuOpen ? (
                 <div className="dashboard-account-menu__popover" role="menu">
                   <div className="dashboard-account-menu__identity" role="presentation">
-                    <span>{userInitials}</span>
+                    <span>
+                      {user.avatarUrl ? (
+                        <Image
+                          unoptimized
+                          src={user.avatarUrl}
+                          alt=""
+                          aria-hidden="true"
+                          width={34}
+                          height={34}
+                        />
+                      ) : (
+                        userInitials
+                      )}
+                    </span>
                     <div>
                       <strong>{user.name}</strong>
                       <small>{user.email}</small>
