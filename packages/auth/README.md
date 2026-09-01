@@ -16,12 +16,12 @@ Keychain, Keystore, or another platform security facility.
 
 ```mermaid
 flowchart LR
-  App[React application] --> ReactSDK[@beaco/auth/react]
-  ReactSDK --> Core[@beaco/auth]
-  Core --> AppRoutes[Next /api/auth routes]
-  AppRoutes --> NextAdapter[@beaco/auth/next]
-  NextAdapter --> Cookies[HTTP-only cookies]
-  NextAdapter --> Backend[FastAPI /api/v1]
+  App["React application"] --> ReactSDK["@beaco/auth/react"]
+  ReactSDK --> Core["@beaco/auth"]
+  Core --> AppRoutes["Next /api/auth routes"]
+  AppRoutes --> NextAdapter["@beaco/auth/next"]
+  NextAdapter --> Cookies["HTTP-only cookies"]
+  NextAdapter --> Backend["FastAPI /api/v1"]
 ```
 
 ## Browser security model
