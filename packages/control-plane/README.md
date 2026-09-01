@@ -36,10 +36,7 @@ create a `QueryClient`, so mount it beneath the application's existing TanStack
 
 ```tsx
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  ControlPlaneProvider,
-  useOrganizations,
-} from "@beaco/control-plane/react";
+import { ControlPlaneProvider, useOrganizations } from "@beaco/control-plane/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
   return (

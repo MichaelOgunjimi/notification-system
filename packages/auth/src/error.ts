@@ -60,7 +60,10 @@ export async function authErrorFromResponse(
   const payload = (await response.json().catch(() => ({}))) as ErrorPayload;
   const issues = Array.isArray(payload.detail) ? payload.detail : payload.error?.details;
   const detail = issues
-    ? issues.map((issue) => issue.message ?? issue.msg).filter(Boolean).join(" ")
+    ? issues
+        .map((issue) => issue.message ?? issue.msg)
+        .filter(Boolean)
+        .join(" ")
     : typeof payload.detail === "string"
       ? payload.detail
       : payload.error?.message;

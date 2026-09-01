@@ -44,9 +44,7 @@ export async function controlPlaneErrorFromResponse(
   fallback: string,
 ): Promise<ControlPlaneError> {
   const payload = (await response.json().catch(() => ({}))) as ErrorPayload;
-  const issues = Array.isArray(payload.detail)
-    ? payload.detail
-    : payload.error?.details;
+  const issues = Array.isArray(payload.detail) ? payload.detail : payload.error?.details;
   const detail = issues
     ? issues
         .map((issue) => issue.message ?? issue.msg)

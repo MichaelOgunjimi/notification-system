@@ -27,13 +27,7 @@ const LANG_LABELS: Record<string, string> = {
   plaintext: "Text",
 };
 
-export function CodeBlock({
-  language,
-  children,
-}: {
-  language: string;
-  children: string;
-}) {
+export function CodeBlock({ language, children }: { language: string; children: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {

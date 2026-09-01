@@ -48,7 +48,8 @@ export default function DocsIndexPage() {
           How can we help?
         </h1>
         <p className="mx-auto mt-5 max-w-147.5 text-[15px] leading-7 text-(--docs-muted)">
-          Learn the platform model, send your first event, or trace a delivery from ingestion through retries and final status.
+          Learn the platform model, send your first event, or trace a delivery from ingestion
+          through retries and final status.
         </p>
         <div className="mx-auto mt-8 max-w-170 text-left">
           <DocsSearchButton large />
@@ -64,14 +65,23 @@ export default function DocsIndexPage() {
 
         <main className="min-w-0">
           <div className="mb-7">
-            <h2 className="font-serif text-[30px] font-normal tracking-[-0.025em] text-(--docs-ink)">Browse by topic</h2>
-            <p className="mt-2 text-[12px] text-(--docs-muted)">Start with the job you need to complete.</p>
+            <h2 className="font-serif text-[30px] font-normal tracking-[-0.025em] text-(--docs-ink)">
+              Browse by topic
+            </h2>
+            <p className="mt-2 text-[12px] text-(--docs-muted)">
+              Start with the job you need to complete.
+            </p>
           </div>
 
           <div className="space-y-5">
             {groups.map((group) => (
-              <section key={group.label} className="rounded-2xl bg-(--docs-panel) p-5 ring-1 ring-[var(--docs-line)] sm:p-6">
-                <h3 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">{group.label}</h3>
+              <section
+                key={group.label}
+                className="rounded-2xl bg-(--docs-panel) p-5 ring-1 ring-[var(--docs-line)] sm:p-6"
+              >
+                <h3 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">
+                  {group.label}
+                </h3>
                 <div className="mt-4 grid gap-x-7 sm:grid-cols-2">
                   {group.items.map((doc) => (
                     <Link
@@ -83,10 +93,17 @@ export default function DocsIndexPage() {
                         {icons[doc.slug]}
                       </span>
                       <span>
-                        <span className="block text-[13px] font-medium text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-ink)">{doc.title}</span>
-                        <span className="mt-1 block text-[11px] leading-[1.65] text-(--docs-muted)">{doc.description}</span>
+                        <span className="block text-[13px] font-medium text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-ink)">
+                          {doc.title}
+                        </span>
+                        <span className="mt-1 block text-[11px] leading-[1.65] text-(--docs-muted)">
+                          {doc.description}
+                        </span>
                       </span>
-                      <ArrowRight size={13} className="mt-2 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-(--docs-accent)" />
+                      <ArrowRight
+                        size={13}
+                        className="mt-2 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-(--docs-accent)"
+                      />
                     </Link>
                   ))}
                 </div>
@@ -97,7 +114,9 @@ export default function DocsIndexPage() {
 
         <aside>
           <div className="sticky top-24">
-            <h2 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">Popular articles</h2>
+            <h2 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">
+              Popular articles
+            </h2>
             <ol className="mt-4">
               {popular.map((slug, index) => {
                 const doc = allDocs.find((item) => item.slug === slug);
@@ -105,10 +124,16 @@ export default function DocsIndexPage() {
                 return (
                   <li key={slug} className="border-t border-[var(--docs-line)]">
                     <Link href={`/${slug}`} className="group flex gap-3 py-4">
-                      <span className="font-mono text-[9px] leading-5 text-[var(--docs-muted-faint)]">0{index + 1}</span>
+                      <span className="font-mono text-[9px] leading-5 text-[var(--docs-muted-faint)]">
+                        0{index + 1}
+                      </span>
                       <span>
-                        <span className="block text-[12px] leading-5 text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-accent)">{doc.title}</span>
-                        <span className="mt-1 block text-[10px] leading-4 text-[var(--docs-muted)]">{doc.description}</span>
+                        <span className="block text-[12px] leading-5 text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-accent)">
+                          {doc.title}
+                        </span>
+                        <span className="mt-1 block text-[10px] leading-4 text-[var(--docs-muted)]">
+                          {doc.description}
+                        </span>
                       </span>
                     </Link>
                   </li>
@@ -118,8 +143,13 @@ export default function DocsIndexPage() {
 
             <div className="mt-8 rounded-2xl bg-[var(--docs-soft)] p-5 ring-1 ring-[var(--docs-line)]">
               <p className="font-serif text-[20px] text-[var(--docs-ink-soft)]">New to Beaco?</p>
-              <p className="mt-2 text-[11px] leading-5 text-(--docs-muted)">Send one event and inspect every delivery created from it.</p>
-              <Link href="/quickstart" className="mt-4 inline-flex items-center gap-2 text-[11px] font-medium text-(--docs-accent)">
+              <p className="mt-2 text-[11px] leading-5 text-(--docs-muted)">
+                Send one event and inspect every delivery created from it.
+              </p>
+              <Link
+                href="/quickstart"
+                className="mt-4 inline-flex items-center gap-2 text-[11px] font-medium text-(--docs-accent)"
+              >
                 Start the quickstart <ArrowRight size={12} />
               </Link>
             </div>

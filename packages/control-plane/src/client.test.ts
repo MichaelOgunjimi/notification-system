@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createControlPlaneClient } from "./client";
 import { ControlPlaneError } from "./error";
 
-function fetchAdapter(
-  handler: (input: RequestInfo | URL, init?: RequestInit) => Response,
-) {
+function fetchAdapter(handler: (input: RequestInfo | URL, init?: RequestInit) => Response) {
   return vi.fn(handler) as unknown as typeof globalThis.fetch;
 }
 

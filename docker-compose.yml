@@ -30,7 +30,7 @@ x-worker-common: &worker-common
     resources:
       limits:
         memory: 512M
-        cpus: '1.0'
+        cpus: "1.0"
 
 services:
   db:
@@ -45,7 +45,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-notification_system}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-notification_system}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5

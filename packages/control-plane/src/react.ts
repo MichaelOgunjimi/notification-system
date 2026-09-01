@@ -4,8 +4,4 @@ export {
   useControlPlaneClient,
   type ControlPlaneProviderProps,
 } from "./react/provider";
-export {
-  controlPlaneQueryKeys,
-  organizationsQuery,
-  projectsQuery,
-} from "./react/queries";
+export { controlPlaneQueryKeys, organizationsQuery, projectsQuery } from "./react/queries";

@@ -25,9 +25,7 @@ export function ControlPlaneProvider({
 export function useControlPlaneClient(): ControlPlaneClient {
   const client = useContext(ControlPlaneClientContext);
   if (!client) {
-    throw new Error(
-      "useControlPlaneClient must be used within <ControlPlaneProvider>.",
-    );
+    throw new Error("useControlPlaneClient must be used within <ControlPlaneProvider>.");
   }
   return client;
 }

@@ -17,8 +17,22 @@ function DocsBrand() {
   return (
     <span className="inline-flex items-center gap-2.5">
       <span className="relative size-6 shrink-0">
-        <Image src="/brand/beaco-mark-128.png" alt="" fill sizes="24px" priority className="brand-mark brand-mark--dark object-contain" />
-        <Image src="/brand/beaco-mark-on-light.png" alt="" fill sizes="24px" priority className="brand-mark brand-mark--light object-contain" />
+        <Image
+          src="/brand/beaco-mark-128.png"
+          alt=""
+          fill
+          sizes="24px"
+          priority
+          className="brand-mark brand-mark--dark object-contain"
+        />
+        <Image
+          src="/brand/beaco-mark-on-light.png"
+          alt=""
+          fill
+          sizes="24px"
+          priority
+          className="brand-mark brand-mark--light object-contain"
+        />
       </span>
       <span className="text-[14px] font-semibold tracking-[-0.025em]">Beaco</span>
     </span>
@@ -41,8 +55,14 @@ export function DocsSearchButton({
       onClick={openSearch}
       className={`docs-search-trigger group flex items-center text-left ${large ? "h-15 w-full px-4" : "h-10 w-full px-3.5"} ${className}`}
     >
-      <MagnifyingGlass size={large ? 20 : 17} className="shrink-0 text-(--docs-accent)" aria-hidden />
-      <span className={`${large ? "ml-4 text-[15px]" : "ml-3 text-[13px]"} flex-1 text-(--docs-muted)`}>
+      <MagnifyingGlass
+        size={large ? 20 : 17}
+        className="shrink-0 text-(--docs-accent)"
+        aria-hidden
+      />
+      <span
+        className={`${large ? "ml-4 text-[15px]" : "ml-3 text-[13px]"} flex-1 text-(--docs-muted)`}
+      >
         Search documentation
       </span>
       <kbd className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-md border border-[var(--docs-line-strong)] bg-[var(--docs-control)] px-2 text-[10px] font-semibold tracking-[0.12em] text-(--docs-ink)">
@@ -98,14 +118,20 @@ export function DocsShell({
                 <DocsBrand />
               </Link>
               <span className="h-4 w-px bg-[var(--docs-line-strong)]" />
-              <Link href="/" className="text-[11px] uppercase tracking-[0.15em] text-(--docs-muted)">
+              <Link
+                href="/"
+                className="text-[11px] uppercase tracking-[0.15em] text-(--docs-muted)"
+              >
                 Docs
               </Link>
             </div>
 
             <DocsSearchButton className="hidden max-w-155 lg:flex" />
 
-            <nav aria-label="Docs utility navigation" className="flex items-center justify-end gap-5">
+            <nav
+              aria-label="Docs utility navigation"
+              className="flex items-center justify-end gap-5"
+            >
               <button
                 type="button"
                 aria-label="Search documentation"
@@ -114,14 +140,23 @@ export function DocsShell({
               >
                 <MagnifyingGlass size={18} />
               </button>
-              <Link href={WEB_URL} className="hidden text-[12px] text-(--docs-muted) transition-colors hover:text-(--docs-ink) sm:block">
+              <Link
+                href={WEB_URL}
+                className="hidden text-[12px] text-(--docs-muted) transition-colors hover:text-(--docs-ink) sm:block"
+              >
                 Product
               </Link>
-              <Link href={`${WEB_URL}/login`} className="hidden text-[12px] text-(--docs-muted) transition-colors hover:text-(--docs-ink) sm:block">
+              <Link
+                href={`${WEB_URL}/login`}
+                className="hidden text-[12px] text-(--docs-muted) transition-colors hover:text-(--docs-ink) sm:block"
+              >
                 Sign in
               </Link>
               <ThemeToggle />
-              <Link href="/quickstart" className="hidden rounded-md bg-(--docs-accent) px-3.5 py-2 text-[11px] font-semibold text-[#1c160b] transition-colors hover:bg-[var(--docs-accent-hover)] md:block">
+              <Link
+                href="/quickstart"
+                className="hidden rounded-md bg-(--docs-accent) px-3.5 py-2 text-[11px] font-semibold text-[#1c160b] transition-colors hover:bg-[var(--docs-accent-hover)] md:block"
+              >
                 Quickstart
               </Link>
             </nav>
@@ -153,7 +188,9 @@ export function DocsShell({
           <DocsSidebar onNavigate={() => setDrawerOpen(false)} />
         </aside>
 
-        <main id="main-content" className="docs-reading-field min-h-dvh pt-16">{children}</main>
+        <main id="main-content" className="docs-reading-field min-h-dvh pt-16">
+          {children}
+        </main>
 
         <DocsSearch items={searchItems} open={searchOpen} onOpenChange={setSearchOpen} />
       </div>

@@ -64,13 +64,18 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         href="/"
         onClick={onNavigate}
-      className={`mb-7 flex items-center gap-2.5 border-l px-3 py-1.5 text-[12px] transition-colors ${
+        className={`mb-7 flex items-center gap-2.5 border-l px-3 py-1.5 text-[12px] transition-colors ${
           pathname === "/"
             ? "border-[var(--docs-accent)] text-[var(--docs-ink)]"
             : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
         }`}
       >
-        <House size={15} className={pathname === "/" ? "text-[var(--docs-accent)]" : "text-[var(--docs-muted-faint)]"} />
+        <House
+          size={15}
+          className={
+            pathname === "/" ? "text-[var(--docs-accent)]" : "text-[var(--docs-muted-faint)]"
+          }
+        />
         Documentation home
       </Link>
 
@@ -94,7 +99,13 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                         : "border-transparent text-[var(--docs-muted)] hover:text-[var(--docs-ink)]"
                     }`}
                   >
-                    <span className={active ? "text-[var(--docs-accent)]" : "text-[var(--docs-muted-faint)] group-hover:text-[var(--docs-muted)]"}>
+                    <span
+                      className={
+                        active
+                          ? "text-[var(--docs-accent)]"
+                          : "text-[var(--docs-muted-faint)] group-hover:text-[var(--docs-muted)]"
+                      }
+                    >
                       {DOC_ICONS[item.slug]}
                     </span>
                     {item.label}
@@ -105,7 +116,6 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
           </section>
         ))}
       </div>
-
     </nav>
   );
 }

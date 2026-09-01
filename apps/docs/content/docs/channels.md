@@ -199,9 +199,9 @@ Each channel has configurable operational settings.
 
 Common channel config fields:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `enabled` | boolean | Enables or disables the channel |
+| Field                   | Type    | Description                               |
+| ----------------------- | ------- | ----------------------------------------- |
+| `enabled`               | boolean | Enables or disables the channel           |
 | `rate_limit_per_minute` | integer | Max outbound sends per minute for channel |
 
 When a channel is disabled, Beaco skips new deliveries for that channel until re-enabled.
@@ -214,12 +214,12 @@ Retry behavior is configurable per channel.
 
 Policy fields:
 
-| Field | Description |
-| --- | --- |
-| `max_retries` | Maximum retry attempts before dead-letter |
-| `base_delay_seconds` | Initial backoff delay |
-| `max_backoff_seconds` | Maximum delay cap |
-| `jitter` | Randomized delay offset to spread retries |
+| Field                 | Description                               |
+| --------------------- | ----------------------------------------- |
+| `max_retries`         | Maximum retry attempts before dead-letter |
+| `base_delay_seconds`  | Initial backoff delay                     |
+| `max_backoff_seconds` | Maximum delay cap                         |
+| `jitter`              | Randomized delay offset to spread retries |
 
 Example policy profile:
 
@@ -250,11 +250,11 @@ Example policy profile:
 
 Use this quick heuristic:
 
-| Scenario | Recommended Channel |
-| --- | --- |
-| User-facing transactional updates | Email |
-| Time-sensitive short alerts | SMS |
-| Service-to-service automation | Webhook |
+| Scenario                          | Recommended Channel |
+| --------------------------------- | ------------------- |
+| User-facing transactional updates | Email               |
+| Time-sensitive short alerts       | SMS                 |
+| Service-to-service automation     | Webhook             |
 
 You can combine channels for fallback or layered delivery.
 
@@ -266,11 +266,11 @@ Example strategy:
 
 ## Validation Summary
 
-| Channel | Required Recipient Field | Format Rules |
-| --- | --- | --- |
-| Email | `email` | Valid email syntax |
-| SMS | `phone` | E.164 (`+15551234567`) |
-| Webhook | `webhook_url` | Valid external `http`/`https` URL |
+| Channel | Required Recipient Field | Format Rules                      |
+| ------- | ------------------------ | --------------------------------- |
+| Email   | `email`                  | Valid email syntax                |
+| SMS     | `phone`                  | E.164 (`+15551234567`)            |
+| Webhook | `webhook_url`            | Valid external `http`/`https` URL |
 
 ## Operational Tips
 

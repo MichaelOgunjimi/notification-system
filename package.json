@@ -14,10 +14,13 @@
     "build": "npm run build --workspaces --if-present",
     "build:web": "npm run build --workspace @beaco/web",
     "build:docs": "npm run build --workspace @beaco/docs",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2"
   }
 }

@@ -21,10 +21,7 @@ export function organizationsQuery(client: ControlPlaneClient) {
   });
 }
 
-export function projectsQuery(
-  client: ControlPlaneClient,
-  organizationId: string,
-) {
+export function projectsQuery(client: ControlPlaneClient, organizationId: string) {
   return queryOptions({
     queryKey: controlPlaneQueryKeys.projects(organizationId),
     queryFn: () => client.projects.list(organizationId),

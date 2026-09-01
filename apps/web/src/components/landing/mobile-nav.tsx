@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { List } from "@phosphor-icons/react/dist/csr/List"
-import { X } from "@phosphor-icons/react/dist/csr/X"
-import { ThemeToggle } from "@beaco/theme"
-import { useState } from "react"
-import { docsUrl } from "@/lib/urls"
+import Link from "next/link";
+import { List } from "@phosphor-icons/react/dist/csr/List";
+import { X } from "@phosphor-icons/react/dist/csr/X";
+import { ThemeToggle } from "@beaco/theme";
+import { useState } from "react";
+import { docsUrl } from "@/lib/urls";
 
 type MobileNavProps = {
-  links: Array<{ label: string; href: string }>
-}
+  links: Array<{ label: string; href: string }>;
+};
 
 export default function MobileNav({ links }: MobileNavProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="relative flex items-center gap-2 md:hidden">
@@ -67,5 +67,5 @@ export default function MobileNav({ links }: MobileNavProps) {
         </div>
       ) : null}
     </div>
-  )
+  );
 }

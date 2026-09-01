@@ -1,8 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  isSecureRequest,
-  writeSessionCookies,
-} from "./cookies";
+import { isSecureRequest, writeSessionCookies } from "./cookies";
 import { fetchUser } from "./session";
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
 
@@ -31,10 +28,7 @@ export async function requestMagicLink(
       },
     });
   } catch {
-    return NextResponse.json(
-      { detail: "The sign-in service is unavailable." },
-      { status: 502 },
-    );
+    return NextResponse.json({ detail: "The sign-in service is unavailable." }, { status: 502 });
   }
 }
 
@@ -70,20 +64,14 @@ export async function exchangeForSession(
     const tokens = (await upstream.json()) as BackendTokenSet;
     const user = await fetchUser(context, tokens.access_token);
     if (!user) {
-      return NextResponse.json(
-        { detail: "Unable to create a session." },
-        { status: 502 },
-      );
+      return NextResponse.json({ detail: "Unable to create a session." }, { status: 502 });
     }
 
     const response = NextResponse.json(user);
     writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
     return response;
   } catch {
-    return NextResponse.json(
-      { detail: "The sign-in service is unavailable." },
-      { status: 502 },
-    );
+    return NextResponse.json({ detail: "The sign-in service is unavailable." }, { status: 502 });
   }
 }
 

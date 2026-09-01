@@ -63,7 +63,10 @@ export function TableOfContents({ headings }: { headings: TocItem[] }) {
   }
 
   return (
-    <nav aria-label="Table of contents" className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto">
+    <nav
+      aria-label="Table of contents"
+      className="sticky top-24 max-h-[calc(100dvh-8rem)] overflow-y-auto"
+    >
       <p className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--docs-muted)]">
         <ListBullets size={14} className="text-[var(--docs-accent)]" />
         On this page

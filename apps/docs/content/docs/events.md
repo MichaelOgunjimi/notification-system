@@ -37,14 +37,14 @@ X-API-Key: <project API key>
 
 ### Request Fields
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `event_type` | string | yes | Logical event name, e.g. `user.welcome` |
-| `recipients` | array | yes | One or more recipient definitions |
-| `payload` | object | yes | Data for template rendering and downstream context |
-| `priority` | enum | no | `high`, `medium`, `low` (default: `medium`) |
-| `template_id` | string | no | Template reference for channel content rendering |
-| `idempotency_key` | string | no | Duplicate-prevention key for safe retries |
+| Field             | Type   | Required | Description                                        |
+| ----------------- | ------ | -------- | -------------------------------------------------- |
+| `event_type`      | string | yes      | Logical event name, e.g. `user.welcome`            |
+| `recipients`      | array  | yes      | One or more recipient definitions                  |
+| `payload`         | object | yes      | Data for template rendering and downstream context |
+| `priority`        | enum   | no       | `high`, `medium`, `low` (default: `medium`)        |
+| `template_id`     | string | no       | Template reference for channel content rendering   |
+| `idempotency_key` | string | no       | Duplicate-prevention key for safe retries          |
 
 ### Example: Single Event
 
@@ -91,13 +91,13 @@ Each recipient object defines:
 
 ### Recipient Shape
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `channels` | array<string> | yes | One or more of `email`, `sms`, `webhook` |
-| `email` | string | required for email | Must be valid email format |
-| `phone` | string | required for sms | Must be E.164 format (`+15551234567`) |
-| `webhook_url` | string | required for webhook | Must be valid external `http`/`https` URL |
-| `user_id` | string | no | Optional app-level identifier |
+| Field         | Type          | Required             | Notes                                     |
+| ------------- | ------------- | -------------------- | ----------------------------------------- |
+| `channels`    | array<string> | yes                  | One or more of `email`, `sms`, `webhook`  |
+| `email`       | string        | required for email   | Must be valid email format                |
+| `phone`       | string        | required for sms     | Must be E.164 format (`+15551234567`)     |
+| `webhook_url` | string        | required for webhook | Must be valid external `http`/`https` URL |
+| `user_id`     | string        | no                   | Optional app-level identifier             |
 
 ### Example: Multi-Recipient, Multi-Channel
 
@@ -127,13 +127,13 @@ Each recipient object defines:
 
 Events move through explicit statuses:
 
-| Status | Meaning |
-| --- | --- |
-| `accepted` | Event validated and persisted |
-| `processing` | Notifications are being created and/or delivered |
-| `completed` | All notifications reached terminal success |
+| Status             | Meaning                                                 |
+| ------------------ | ------------------------------------------------------- |
+| `accepted`         | Event validated and persisted                           |
+| `processing`       | Notifications are being created and/or delivered        |
+| `completed`        | All notifications reached terminal success              |
 | `partially_failed` | At least one notification failed while others succeeded |
-| `failed` | Event could not be processed to successful completion |
+| `failed`           | Event could not be processed to successful completion   |
 
 > Event status is aggregate state. Individual notifications have their own delivery statuses.
 
@@ -141,11 +141,11 @@ Events move through explicit statuses:
 
 Set `priority` to influence queue routing:
 
-| Priority | Behavior |
-| --- | --- |
-| `high` | Routed for fastest processing |
-| `medium` | Default processing class |
-| `low` | Deprioritized for non-urgent workloads |
+| Priority | Behavior                               |
+| -------- | -------------------------------------- |
+| `high`   | Routed for fastest processing          |
+| `medium` | Default processing class               |
+| `low`    | Deprioritized for non-urgent workloads |
 
 High priority events are processed first when queue pressure exists.
 
@@ -241,10 +241,10 @@ Beaco validates event payloads before acceptance.
 
 ### Recipient and Channel Validation
 
-| Rule | Example |
-| --- | --- |
-| Valid email required for `email` channel | `user@example.com` |
-| E.164 phone required for `sms` channel | `+15551234567` |
+| Rule                                                    | Example                    |
+| ------------------------------------------------------- | -------------------------- |
+| Valid email required for `email` channel                | `user@example.com`         |
+| E.164 phone required for `sms` channel                  | `+15551234567`             |
 | Valid `http`/`https` URL required for `webhook` channel | `https://example.com/hook` |
 
 ### SSRF Protection for Webhooks

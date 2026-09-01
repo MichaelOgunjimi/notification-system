@@ -29,13 +29,13 @@ Event accepted
 
 Notifications move through these statuses:
 
-| Status | Meaning |
-| --- | --- |
-| `pending` | Created but not yet queued |
-| `queued` | Enqueued for worker pickup |
-| `processing` | Worker actively attempting delivery |
-| `delivered` | Delivery confirmed successful |
-| `failed` | Attempt failed (may still retry) |
+| Status        | Meaning                              |
+| ------------- | ------------------------------------ |
+| `pending`     | Created but not yet queued           |
+| `queued`      | Enqueued for worker pickup           |
+| `processing`  | Worker actively attempting delivery  |
+| `delivered`   | Delivery confirmed successful        |
+| `failed`      | Attempt failed (may still retry)     |
 | `dead_letter` | Retries exhausted; moved to DLQ path |
 
 > Event status is aggregate. Notification status is per delivery unit and should be used for operational detail.
@@ -84,12 +84,12 @@ Where:
 
 ### Per-Channel Retry Policy Fields
 
-| Field | Description |
-| --- | --- |
-| `max_retries` | Maximum retry attempts before dead-letter |
-| `base_delay_seconds` | Initial retry delay |
-| `max_backoff_seconds` | Upper bound for backoff delay |
-| `jitter` | Enables random delay variance |
+| Field                 | Description                               |
+| --------------------- | ----------------------------------------- |
+| `max_retries`         | Maximum retry attempts before dead-letter |
+| `base_delay_seconds`  | Initial retry delay                       |
+| `max_backoff_seconds` | Upper bound for backoff delay             |
+| `jitter`              | Enables random delay variance             |
 
 ### Retry Decision Rules
 
@@ -153,10 +153,10 @@ POST /dead-letter/{id}/discard
 
 ### DLQ Statuses
 
-| Status | Meaning |
-| --- | --- |
-| `active` | Awaiting operator action |
-| `retried` | Re-enqueued for another attempt cycle |
+| Status      | Meaning                                                |
+| ----------- | ------------------------------------------------------ |
+| `active`    | Awaiting operator action                               |
+| `retried`   | Re-enqueued for another attempt cycle                  |
 | `discarded` | Acknowledged as terminal and intentionally not retried |
 
 ### Example: Retry a Dead-Letter Message
@@ -208,11 +208,11 @@ Suppressed notifications are skipped during delivery attempts.
 
 ### Suppression Reasons
 
-| Reason | Description |
-| --- | --- |
-| `hard_bounce` | Recipient mailbox/number is permanently unreachable |
-| `spam_complaint` | Recipient reported unwanted communication |
-| `manual` | Explicit operator suppression |
+| Reason           | Description                                         |
+| ---------------- | --------------------------------------------------- |
+| `hard_bounce`    | Recipient mailbox/number is permanently unreachable |
+| `spam_complaint` | Recipient reported unwanted communication           |
+| `manual`         | Explicit operator suppression                       |
 
 ## Idempotency in Delivery Context
 
@@ -244,12 +244,12 @@ Operational checks:
 
 ## Failure Modes and Recommended Actions
 
-| Failure Pattern | Likely Cause | Recommended Action |
-| --- | --- | --- |
-| Spikes in `failed` for one channel | Provider incident | Reduce send rate, monitor provider status, allow retries |
-| DLQ growth over time | Permanent validation/config issues | Inspect DLQ payloads and fix root cause |
-| Repeated timeout retries | Network instability | Increase timeout and tune backoff policy |
-| High 4xx retry volume | Misconfigured retry rules | Disable retry-on-4xx for permanent error classes |
+| Failure Pattern                    | Likely Cause                       | Recommended Action                                       |
+| ---------------------------------- | ---------------------------------- | -------------------------------------------------------- |
+| Spikes in `failed` for one channel | Provider incident                  | Reduce send rate, monitor provider status, allow retries |
+| DLQ growth over time               | Permanent validation/config issues | Inspect DLQ payloads and fix root cause                  |
+| Repeated timeout retries           | Network instability                | Increase timeout and tune backoff policy                 |
+| High 4xx retry volume              | Misconfigured retry rules          | Disable retry-on-4xx for permanent error classes         |
 
 ## End-to-End Example Flow
 

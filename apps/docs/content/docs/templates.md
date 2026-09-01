@@ -22,13 +22,13 @@ Benefits:
 
 Each template has a core schema:
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `name` | string | yes | Human-readable identifier |
-| `channel` | enum | yes | `email`, `sms`, or `webhook` |
-| `subject` | string | email only | Subject line for email templates |
-| `body` | string | yes | Main message content |
-| `variables` | array<string> | no | Variable names expected in render context |
+| Field       | Type          | Required   | Notes                                     |
+| ----------- | ------------- | ---------- | ----------------------------------------- |
+| `name`      | string        | yes        | Human-readable identifier                 |
+| `channel`   | enum          | yes        | `email`, `sms`, or `webhook`              |
+| `subject`   | string        | email only | Subject line for email templates          |
+| `body`      | string        | yes        | Main message content                      |
+| `variables` | array<string> | no         | Variable names expected in render context |
 
 ## Jinja2 Variable Syntax
 
@@ -197,12 +197,12 @@ Template example:
 
 ## Validation and Common Errors
 
-| Error | Typical Cause | Fix |
-| --- | --- | --- |
-| Missing variable at render | Payload key not provided | Add expected key to event payload |
-| Invalid channel-template pairing | Template channel differs from recipient channel | Use matching template/channel |
-| Unauthorized template update | Wrong API key scope | Use a project key with template write access |
-| Invalid Jinja syntax | Unclosed braces or malformed expressions | Validate template text and preview |
+| Error                            | Typical Cause                                   | Fix                                          |
+| -------------------------------- | ----------------------------------------------- | -------------------------------------------- |
+| Missing variable at render       | Payload key not provided                        | Add expected key to event payload            |
+| Invalid channel-template pairing | Template channel differs from recipient channel | Use matching template/channel                |
+| Unauthorized template update     | Wrong API key scope                             | Use a project key with template write access |
+| Invalid Jinja syntax             | Unclosed braces or malformed expressions        | Validate template text and preview           |
 
 ## Versioning Strategy
 

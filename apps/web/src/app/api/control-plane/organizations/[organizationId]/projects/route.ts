@@ -11,8 +11,5 @@ export async function GET(
   if (!UUID_PATTERN.test(organizationId)) {
     return NextResponse.json({ detail: "Invalid organization ID." }, { status: 400 });
   }
-  return beacoAuth.forwardAuthenticated(
-    request,
-    `/organizations/${organizationId}/projects`,
-  );
+  return beacoAuth.forwardAuthenticated(request, `/organizations/${organizationId}/projects`);
 }

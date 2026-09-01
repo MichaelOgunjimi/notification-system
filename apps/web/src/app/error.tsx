@@ -1,30 +1,37 @@
-"use client"
+"use client";
 
-import "@/components/landing/landing.css"
+import "@/components/landing/landing.css";
 
-import Link from "next/link"
-import { ArrowCounterClockwise } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise"
-import { House } from "@phosphor-icons/react/dist/csr/House"
-import { useEffect } from "react"
-import BrandLogo from "@/components/brand/brand-logo"
+import Link from "next/link";
+import { ArrowCounterClockwise } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
+import { House } from "@phosphor-icons/react/dist/csr/House";
+import { useEffect } from "react";
+import BrandLogo from "@/components/brand/brand-logo";
 
 export default function ErrorPage({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error)
-  }, [error])
+    console.error(error);
+  }, [error]);
 
   return (
-    <main id="main-content" className="marketing-shell grid min-h-dvh place-items-center overflow-x-clip bg-[var(--site-canvas)] px-4 py-12 text-[var(--site-ink)] sm:px-6">
+    <main
+      id="main-content"
+      className="marketing-shell grid min-h-dvh place-items-center overflow-x-clip bg-[var(--site-canvas)] px-4 py-12 text-[var(--site-ink)] sm:px-6"
+    >
       <section className="site-frame w-full max-w-[760px]">
         <div className="relative overflow-hidden rounded-[19px] bg-[var(--site-panel)] px-6 py-12 sm:px-10 sm:py-14">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--site-accent)]/35 to-transparent" />
-          <Link href="/" className="inline-flex items-center gap-2.5 text-[14px] font-semibold tracking-[-0.02em]" aria-label="Beaco home">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2.5 text-[14px] font-semibold tracking-[-0.02em]"
+            aria-label="Beaco home"
+          >
             <BrandLogo />
           </Link>
 
@@ -33,7 +40,8 @@ export default function ErrorPage({
             Something stopped unexpectedly.
           </h1>
           <p className="mt-6 max-w-[520px] text-[15px] leading-7 text-[var(--site-muted)]">
-            Your data is unchanged. Try loading this view again, or return home if the problem continues.
+            Your data is unchanged. Try loading this view again, or return home if the problem
+            continues.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -47,17 +55,22 @@ export default function ErrorPage({
                 <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />
               </span>
             </button>
-            <Link href="/" className="site-secondary-action inline-flex h-12 items-center justify-center gap-2 px-5 text-[13px] font-medium">
+            <Link
+              href="/"
+              className="site-secondary-action inline-flex h-12 items-center justify-center gap-2 px-5 text-[13px] font-medium"
+            >
               <House size={15} weight="light" aria-hidden="true" />
               Go home
             </Link>
           </div>
 
           {error.digest ? (
-            <p className="mt-10 font-mono text-[10px] text-[var(--site-muted)]">Reference: {error.digest}</p>
+            <p className="mt-10 font-mono text-[10px] text-[var(--site-muted)]">
+              Reference: {error.digest}
+            </p>
           ) : null}
         </div>
       </section>
     </main>
-  )
+  );
 }

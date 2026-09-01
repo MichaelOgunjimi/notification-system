@@ -11,10 +11,10 @@ For conceptual guides, see [Events](/events), [Templates](/templates), and [Deli
 
 Beaco has two authentication planes:
 
-| Credential | Used for | Header |
-| --- | --- | --- |
+| Credential         | Used for                                                                                       | Header                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- | ----------------------------- |
 | Human access token | Organizations, projects, members, invitations, API-key management, and platform administration | `Authorization: Bearer TOKEN` |
-| Project API key | Events, templates, notifications, delivery operations, and project observability | `X-API-Key: KEY` |
+| Project API key    | Events, templates, notifications, delivery operations, and project observability               | `X-API-Key: KEY`              |
 
 For example, a notification operation includes:
 
@@ -35,25 +35,25 @@ Create an event and enqueue notification fan-out.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `event_type` | string | Yes | Event name, e.g. `order.shipped` |
-| `recipients` | array | Yes | Recipient list |
-| `payload` | object | Yes | Event payload |
-| `priority` | enum | No | `high`, `medium`, `low` |
-| `template_id` | UUID | No | Template to render |
-| `idempotency_key` | string | No | Deduplication key |
-| `metadata` | object | No | Optional metadata |
+| Field             | Type   | Required | Description                      |
+| ----------------- | ------ | -------- | -------------------------------- |
+| `event_type`      | string | Yes      | Event name, e.g. `order.shipped` |
+| `recipients`      | array  | Yes      | Recipient list                   |
+| `payload`         | object | Yes      | Event payload                    |
+| `priority`        | enum   | No       | `high`, `medium`, `low`          |
+| `template_id`     | UUID   | No       | Template to render               |
+| `idempotency_key` | string | No       | Deduplication key                |
+| `metadata`        | object | No       | Optional metadata                |
 
 `recipients[]` object:
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `channels` | array | Yes | One or more of `email`, `sms`, `webhook` |
-| `email` | string | Conditional | Required if channel includes `email` |
-| `phone` | string | Conditional | Required if channel includes `sms` |
-| `webhook_url` | string | Conditional | Required if channel includes `webhook` |
-| `user_id` | string | No | Your internal user id |
+| Field         | Type   | Required    | Description                              |
+| ------------- | ------ | ----------- | ---------------------------------------- |
+| `channels`    | array  | Yes         | One or more of `email`, `sms`, `webhook` |
+| `email`       | string | Conditional | Required if channel includes `email`     |
+| `phone`       | string | Conditional | Required if channel includes `sms`       |
+| `webhook_url` | string | Conditional | Required if channel includes `webhook`   |
+| `user_id`     | string | No          | Your internal user id                    |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
@@ -99,9 +99,9 @@ Create multiple events atomically.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `events` | array | Yes | List of event objects (same shape as `POST /events`) |
+| Field    | Type  | Required | Description                                          |
+| -------- | ----- | -------- | ---------------------------------------------------- |
+| `events` | array | Yes      | List of event objects (same shape as `POST /events`) |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
@@ -132,15 +132,15 @@ List events.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `status` | string | Event status |
-| `priority` | string | `high`, `medium`, `low` |
-| `event_type` | string | Exact event type filter |
-| `date_from` | datetime | Lower bound |
-| `date_to` | datetime | Upper bound |
+| Param        | Type     | Description             |
+| ------------ | -------- | ----------------------- |
+| `page`       | integer  | Page number             |
+| `per_page`   | integer  | Page size               |
+| `status`     | string   | Event status            |
+| `priority`   | string   | `high`, `medium`, `low` |
+| `event_type` | string   | Exact event type filter |
+| `date_from`  | datetime | Lower bound             |
+| `date_to`    | datetime | Upper bound             |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/events?page=1&per_page=2&priority=high" \
@@ -150,8 +150,20 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/events?page=1&per_page=2&p
 ```json
 {
   "items": [
-    {"id":"3d434cf3-2f63-4a82-aae4-fbead6877445","event_type":"order.shipped","priority":"high","status":"processing","created_at":"2026-04-17T12:15:32Z"},
-    {"id":"8dc13b38-19cc-40ef-9f85-8d3f402024f1","event_type":"password.reset","priority":"high","status":"completed","created_at":"2026-04-17T11:49:02Z"}
+    {
+      "id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
+      "event_type": "order.shipped",
+      "priority": "high",
+      "status": "processing",
+      "created_at": "2026-04-17T12:15:32Z"
+    },
+    {
+      "id": "8dc13b38-19cc-40ef-9f85-8d3f402024f1",
+      "event_type": "password.reset",
+      "priority": "high",
+      "status": "completed",
+      "created_at": "2026-04-17T11:49:02Z"
+    }
   ],
   "total": 42,
   "page": 1,
@@ -177,10 +189,10 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/3d434cf3-2f63-4a82-a
   "event_type": "order.shipped",
   "status": "processing",
   "priority": "high",
-  "payload": {"order_id": "ord_991"},
+  "payload": { "order_id": "ord_991" },
   "notifications": [
-    {"id":"f8ce0a5f-9d95-4483-95d7-bda38ab718e8","channel":"email","status":"delivered"},
-    {"id":"5f2b7371-c2d2-464b-ac53-89b683b80f68","channel":"sms","status":"processing"}
+    { "id": "f8ce0a5f-9d95-4483-95d7-bda38ab718e8", "channel": "email", "status": "delivered" },
+    { "id": "5f2b7371-c2d2-464b-ac53-89b683b80f68", "channel": "sms", "status": "processing" }
   ]
 }
 ```
@@ -195,15 +207,15 @@ List notifications.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `status` | string | Notification status |
-| `channel` | string | `email`, `sms`, `webhook` |
-| `date_from` | datetime | Lower bound |
-| `date_to` | datetime | Upper bound |
-| `recipient` | string | Recipient filter |
+| Param       | Type     | Description               |
+| ----------- | -------- | ------------------------- |
+| `page`      | integer  | Page number               |
+| `per_page`  | integer  | Page size                 |
+| `status`    | string   | Notification status       |
+| `channel`   | string   | `email`, `sms`, `webhook` |
+| `date_from` | datetime | Lower bound               |
+| `date_to`   | datetime | Upper bound               |
+| `recipient` | string   | Recipient filter          |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/notifications?channel=email&status=delivered" \
@@ -213,7 +225,14 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/notifications?channel=emai
 ```json
 {
   "items": [
-    {"id":"f8ce0a5f-9d95-4483-95d7-bda38ab718e8","event_id":"3d434cf3-2f63-4a82-aae4-fbead6877445","channel":"email","status":"delivered","recipient":"alex@example.com","retry_count":0}
+    {
+      "id": "f8ce0a5f-9d95-4483-95d7-bda38ab718e8",
+      "event_id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
+      "channel": "email",
+      "status": "delivered",
+      "recipient": "alex@example.com",
+      "retry_count": 0
+    }
   ],
   "total": 1,
   "page": 1,
@@ -241,8 +260,13 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications/f8ce0a5f-9d95
   "recipient": "alex@example.com",
   "retry_count": 0,
   "notification_logs": [
-    {"attempt":1,"status":"processing","timestamp":"2026-04-17T12:15:34Z"},
-    {"attempt":1,"status":"delivered","provider_response":{"message_id":"re_2SgB..."},"timestamp":"2026-04-17T12:15:36Z"}
+    { "attempt": 1, "status": "processing", "timestamp": "2026-04-17T12:15:34Z" },
+    {
+      "attempt": 1,
+      "status": "delivered",
+      "provider_response": { "message_id": "re_2SgB..." },
+      "timestamp": "2026-04-17T12:15:36Z"
+    }
   ]
 }
 ```
@@ -259,11 +283,11 @@ List templates.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `channel` | string | Filter by channel |
+| Param      | Type    | Description       |
+| ---------- | ------- | ----------------- |
+| `page`     | integer | Page number       |
+| `per_page` | integer | Page size         |
+| `channel`  | string  | Filter by channel |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/templates?channel=email" \
@@ -273,7 +297,13 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/templates?channel=email" \
 ```json
 {
   "items": [
-    {"id":"799524b8-fdc7-4f56-8a07-3b00bbc377af","name":"order_shipped_email","channel":"email","subject":"Your order {{ order_id }} has shipped","variables":["order_id","tracking_number"]}
+    {
+      "id": "799524b8-fdc7-4f56-8a07-3b00bbc377af",
+      "name": "order_shipped_email",
+      "channel": "email",
+      "subject": "Your order {{ order_id }} has shipped",
+      "variables": ["order_id", "tracking_number"]
+    }
   ],
   "total": 1,
   "page": 1,
@@ -290,13 +320,13 @@ Create template.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `name` | string | Yes | Template name |
-| `channel` | string | Yes | `email`, `sms`, `webhook` |
-| `subject` | string | No | Subject for email templates |
-| `body` | string | Yes | Template body |
-| `variables` | array | No | Variable definitions/list |
+| Field       | Type   | Required | Description                 |
+| ----------- | ------ | -------- | --------------------------- |
+| `name`      | string | Yes      | Template name               |
+| `channel`   | string | Yes      | `email`, `sms`, `webhook`   |
+| `subject`   | string | No       | Subject for email templates |
+| `body`      | string | Yes      | Template body               |
+| `variables` | array  | No       | Variable definitions/list   |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
@@ -327,12 +357,12 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f5
 
 ```json
 {
-  "id":"799524b8-fdc7-4f56-8a07-3b00bbc377af",
-  "name":"order_shipped_email",
-  "channel":"email",
-  "subject":"Order {{ order_id }} is on the way",
-  "body":"Hi {{ customer_name }}, track: {{ tracking_number }}",
-  "variables":["order_id","customer_name","tracking_number"]
+  "id": "799524b8-fdc7-4f56-8a07-3b00bbc377af",
+  "name": "order_shipped_email",
+  "channel": "email",
+  "subject": "Order {{ order_id }} is on the way",
+  "body": "Hi {{ customer_name }}, track: {{ tracking_number }}",
+  "variables": ["order_id", "customer_name", "tracking_number"]
 }
 ```
 
@@ -344,12 +374,12 @@ Update template (partial payload allowed).
 
 #### Request body
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | string | Updated name |
-| `subject` | string | Updated subject |
-| `body` | string | Updated body |
-| `variables` | array | Updated variable list |
+| Field       | Type   | Description           |
+| ----------- | ------ | --------------------- |
+| `name`      | string | Updated name          |
+| `subject`   | string | Updated subject       |
+| `body`      | string | Updated body          |
+| `variables` | array  | Updated variable list |
 
 ```bash
 curl -X PUT https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af \
@@ -388,9 +418,9 @@ Render template using variables.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `variables` | object | Yes | Runtime variable values |
+| Field       | Type   | Required | Description             |
+| ----------- | ------ | -------- | ----------------------- |
+| `variables` | object | Yes      | Runtime variable values |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f56-8a07-3b00bbc377af/preview \
@@ -416,14 +446,14 @@ Schedule future event delivery.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `event_type` | string | Yes | Event name |
-| `recipients` | array | Yes | Recipient array |
-| `payload` | object | Yes | Event payload |
-| `scheduled_for` | datetime | Yes | Future UTC datetime |
-| `priority` | string | No | `high`, `medium`, `low` |
-| `template_id` | UUID | No | Optional template |
+| Field           | Type     | Required | Description             |
+| --------------- | -------- | -------- | ----------------------- |
+| `event_type`    | string   | Yes      | Event name              |
+| `recipients`    | array    | Yes      | Recipient array         |
+| `payload`       | object   | Yes      | Event payload           |
+| `scheduled_for` | datetime | Yes      | Future UTC datetime     |
+| `priority`      | string   | No       | `high`, `medium`, `low` |
+| `template_id`   | UUID     | No       | Optional template       |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
@@ -448,11 +478,11 @@ List scheduled events.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `status` | string | `scheduled`, `dispatched`, `cancelled` |
+| Param      | Type    | Description                            |
+| ---------- | ------- | -------------------------------------- |
+| `page`     | integer | Page number                            |
+| `per_page` | integer | Page size                              |
+| `status`   | string  | `scheduled`, `dispatched`, `cancelled` |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=scheduled" \
@@ -461,7 +491,14 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=sc
 
 ```json
 {
-  "items": [{"id":"39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d","event_type":"renewal.reminder","status":"scheduled","scheduled_for":"2026-04-19T09:00:00Z"}],
+  "items": [
+    {
+      "id": "39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d",
+      "event_type": "renewal.reminder",
+      "status": "scheduled",
+      "scheduled_for": "2026-04-19T09:00:00Z"
+    }
+  ],
   "total": 1,
   "page": 1,
   "per_page": 25,
@@ -491,11 +528,11 @@ List suppressions.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `channel` | string | Channel filter |
+| Param      | Type    | Description    |
+| ---------- | ------- | -------------- |
+| `page`     | integer | Page number    |
+| `per_page` | integer | Page size      |
+| `channel`  | string  | Channel filter |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/suppressions?channel=email" \
@@ -504,7 +541,15 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/suppressions?channel=email
 
 ```json
 {
-  "items": [{"id":"90763e0e-e417-44a5-b0d4-ec9793fdf52f","channel":"email","recipient":"alex@example.com","reason":"hard_bounce","source":"system"}],
+  "items": [
+    {
+      "id": "90763e0e-e417-44a5-b0d4-ec9793fdf52f",
+      "channel": "email",
+      "recipient": "alex@example.com",
+      "reason": "hard_bounce",
+      "source": "system"
+    }
+  ],
   "total": 1,
   "page": 1,
   "per_page": 25,
@@ -520,12 +565,12 @@ Create suppression.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `channel` | enum | Yes | `email`, `sms`, `webhook` |
-| `recipient` | string | Yes | Recipient address/number/url |
-| `reason` | enum | No | `hard_bounce`, `spam_complaint`, `manual` |
-| `source` | enum | No | `system`, `client` |
+| Field       | Type   | Required | Description                               |
+| ----------- | ------ | -------- | ----------------------------------------- |
+| `channel`   | enum   | Yes      | `email`, `sms`, `webhook`                 |
+| `recipient` | string | Yes      | Recipient address/number/url              |
+| `reason`    | enum   | No       | `hard_bounce`, `spam_complaint`, `manual` |
+| `source`    | enum   | No       | `system`, `client`                        |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/suppressions \
@@ -566,12 +611,12 @@ List dead-letter messages.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `status` | string | `active`, `retried`, `discarded` |
-| `channel` | string | Channel filter |
+| Param      | Type    | Description                      |
+| ---------- | ------- | -------------------------------- |
+| `page`     | integer | Page number                      |
+| `per_page` | integer | Page size                        |
+| `status`   | string  | `active`, `retried`, `discarded` |
+| `channel`  | string  | Channel filter                   |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/dead-letter?status=active&channel=sms" \
@@ -580,7 +625,15 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/dead-letter?status=active&
 
 ```json
 {
-  "items": [{"id":"588d499e-0f53-4ac4-b7ec-a6ce77861d2e","notification_id":"5f2b7371-c2d2-464b-ac53-89b683b80f68","channel":"sms","status":"active","error_type":"provider_timeout"}],
+  "items": [
+    {
+      "id": "588d499e-0f53-4ac4-b7ec-a6ce77861d2e",
+      "notification_id": "5f2b7371-c2d2-464b-ac53-89b683b80f68",
+      "channel": "sms",
+      "status": "active",
+      "error_type": "provider_timeout"
+    }
+  ],
   "total": 1,
   "page": 1,
   "per_page": 25,
@@ -601,13 +654,13 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-4
 
 ```json
 {
-  "id":"588d499e-0f53-4ac4-b7ec-a6ce77861d2e",
-  "notification_id":"5f2b7371-c2d2-464b-ac53-89b683b80f68",
-  "channel":"sms",
-  "recipient":"+15551234567",
-  "retry_count":5,
-  "status":"active",
-  "error_message":"Twilio timeout after 30s"
+  "id": "588d499e-0f53-4ac4-b7ec-a6ce77861d2e",
+  "notification_id": "5f2b7371-c2d2-464b-ac53-89b683b80f68",
+  "channel": "sms",
+  "recipient": "+15551234567",
+  "retry_count": 5,
+  "status": "active",
+  "error_message": "Twilio timeout after 30s"
 }
 ```
 
@@ -623,7 +676,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-
 ```
 
 ```json
-{"id":"588d499e-0f53-4ac4-b7ec-a6ce77861d2e","status":"retried","requeued":true}
+{ "id": "588d499e-0f53-4ac4-b7ec-a6ce77861d2e", "status": "retried", "requeued": true }
 ```
 
 ### `POST /dead-letter/{id}/discard`
@@ -638,7 +691,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/dead-letter/588d499e-0f53-
 ```
 
 ```json
-{"id":"588d499e-0f53-4ac4-b7ec-a6ce77861d2e","status":"discarded"}
+{ "id": "588d499e-0f53-4ac4-b7ec-a6ce77861d2e", "status": "discarded" }
 ```
 
 ## Alerts
@@ -656,7 +709,14 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/alerts \
 
 ```json
 [
-  {"id":"7186d35b-137f-4a44-8583-6f0f8f35913b","name":"High email failure rate","metric":"failure_rate","threshold":0.05,"window_minutes":15,"is_active":true}
+  {
+    "id": "7186d35b-137f-4a44-8583-6f0f8f35913b",
+    "name": "High email failure rate",
+    "metric": "failure_rate",
+    "threshold": 0.05,
+    "window_minutes": 15,
+    "is_active": true
+  }
 ]
 ```
 
@@ -668,14 +728,14 @@ Create alert rule.
 
 #### Request body
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `name` | string | Yes | Alert name |
-| `metric` | enum | Yes | `failure_rate`, `queue_depth`, `delivery_latency` |
-| `threshold` | number | Yes | Trigger threshold |
-| `window_minutes` | integer | No | Evaluation window |
-| `notify_email` | string | No | Email destination |
-| `is_active` | boolean | No | Defaults `true` |
+| Field            | Type    | Required | Description                                       |
+| ---------------- | ------- | -------- | ------------------------------------------------- |
+| `name`           | string  | Yes      | Alert name                                        |
+| `metric`         | enum    | Yes      | `failure_rate`, `queue_depth`, `delivery_latency` |
+| `threshold`      | number  | Yes      | Trigger threshold                                 |
+| `window_minutes` | integer | No       | Evaluation window                                 |
+| `notify_email`   | string  | No       | Email destination                                 |
+| `is_active`      | boolean | No       | Defaults `true`                                   |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/alerts \
@@ -685,7 +745,12 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/alerts \
 ```
 
 ```json
-{"id":"03f80ee5-09d8-4f88-aee1-50b70b538795","name":"Webhook queue too deep","metric":"queue_depth","threshold":1000}
+{
+  "id": "03f80ee5-09d8-4f88-aee1-50b70b538795",
+  "name": "Webhook queue too deep",
+  "metric": "queue_depth",
+  "threshold": 1000
+}
 ```
 
 ### `PUT /alerts/{id}`
@@ -702,7 +767,7 @@ curl -X PUT https://beaco.michaelogunjimi.com/api/v1/alerts/03f80ee5-09d8-4f88-a
 ```
 
 ```json
-{"id":"03f80ee5-09d8-4f88-aee1-50b70b538795","threshold":1500,"is_active":false}
+{ "id": "03f80ee5-09d8-4f88-aee1-50b70b538795", "threshold": 1500, "is_active": false }
 ```
 
 ### `DELETE /alerts/{id}`
@@ -727,10 +792,10 @@ Get aggregate delivery metrics.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
+| Param       | Type     | Description |
+| ----------- | -------- | ----------- |
 | `date_from` | datetime | Range start |
-| `date_to` | datetime | Range end |
+| `date_to`   | datetime | Range end   |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics?date_from=2026-04-01T00:00:00Z&date_to=2026-04-17T23:59:59Z" \
@@ -743,9 +808,9 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics?date_from=2026-0
   "total_notifications": 2941,
   "delivery_rate": 0.984,
   "channel_breakdown": {
-    "email": {"sent": 1500, "delivered": 1480, "failed": 20},
-    "sms": {"sent": 900, "delivered": 880, "failed": 20},
-    "webhook": {"sent": 541, "delivered": 534, "failed": 7}
+    "email": { "sent": 1500, "delivered": 1480, "failed": 20 },
+    "sms": { "sent": 900, "delivered": 880, "failed": 20 },
+    "webhook": { "sent": 541, "delivered": 534, "failed": 7 }
   }
 }
 ```
@@ -758,11 +823,11 @@ Get time-bucketed notification counts.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `date_from` | datetime | Range start |
-| `date_to` | datetime | Range end |
-| `granularity` | enum | `hour` or `day` |
+| Param         | Type     | Description     |
+| ------------- | -------- | --------------- |
+| `date_from`   | datetime | Range start     |
+| `date_to`     | datetime | Range end       |
+| `granularity` | enum     | `hour` or `day` |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics/trends?date_from=2026-04-15T00:00:00Z&date_to=2026-04-17T23:59:59Z&granularity=day" \
@@ -773,9 +838,9 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/analytics/trends?date_from
 {
   "granularity": "day",
   "series": [
-    {"bucket": "2026-04-15", "notifications": 870},
-    {"bucket": "2026-04-16", "notifications": 1011},
-    {"bucket": "2026-04-17", "notifications": 1060}
+    { "bucket": "2026-04-15", "notifications": 870 },
+    { "bucket": "2026-04-16", "notifications": 1011 },
+    { "bucket": "2026-04-17", "notifications": 1060 }
   ]
 }
 ```
@@ -790,12 +855,12 @@ List audit entries.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `action` | string | Action filter |
-| `from` | datetime | Inclusive start datetime |
+| Param      | Type     | Description              |
+| ---------- | -------- | ------------------------ |
+| `page`     | integer  | Page number              |
+| `per_page` | integer  | Page size                |
+| `action`   | string   | Action filter            |
+| `from`     | datetime | Inclusive start datetime |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/audit-log?action=api_key.created&page=1" \
@@ -804,7 +869,14 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/audit-log?action=api_key.c
 
 ```json
 {
-  "items": [{"id":"9484f7f8-2c7e-4f20-9ca8-2ae3d6c7527f","action":"api_key.created","actor_api_key_id":"1f2721ab-9e73-4dfb-b60e-ea0ef8f2dc17","metadata":{"new_key_name":"billing-service"}}],
+  "items": [
+    {
+      "id": "9484f7f8-2c7e-4f20-9ca8-2ae3d6c7527f",
+      "action": "api_key.created",
+      "actor_api_key_id": "1f2721ab-9e73-4dfb-b60e-ea0ef8f2dc17",
+      "metadata": { "new_key_name": "billing-service" }
+    }
+  ],
   "total": 1,
   "page": 1,
   "per_page": 25,
@@ -822,13 +894,13 @@ Get API usage per endpoint per hour.
 
 #### Query parameters
 
-| Param | Type | Description |
-| --- | --- | --- |
-| `page` | integer | Page number |
-| `per_page` | integer | Page size |
-| `from` | datetime | Start |
-| `to` | datetime | End |
-| `endpoint` | string | Endpoint filter |
+| Param      | Type     | Description     |
+| ---------- | -------- | --------------- |
+| `page`     | integer  | Page number     |
+| `per_page` | integer  | Page size       |
+| `from`     | datetime | Start           |
+| `to`       | datetime | End             |
+| `endpoint` | string   | Endpoint filter |
 
 ```bash
 curl -X GET "https://beaco.michaelogunjimi.com/api/v1/usage?endpoint=/events&from=2026-04-17T00:00:00Z" \
@@ -837,7 +909,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/usage?endpoint=/events&fro
 
 ```json
 {
-  "items": [{"hour":"2026-04-17T12:00:00Z","endpoint":"/events","request_count":481}],
+  "items": [{ "hour": "2026-04-17T12:00:00Z", "endpoint": "/events", "request_count": 481 }],
   "total": 1,
   "page": 1,
   "per_page": 25,
@@ -887,7 +959,7 @@ curl -X GET https://beaco.michaelogunjimi.com/api/v1/health \
 ```
 
 ```json
-{"status":"healthy"}
+{ "status": "healthy" }
 ```
 
 ## Pagination
@@ -909,19 +981,19 @@ All paginated endpoints return:
 ### 401 Unauthorized
 
 ```json
-{"detail":"Invalid or missing API key"}
+{ "detail": "Invalid or missing API key" }
 ```
 
 ### 403 Forbidden
 
 ```json
-{"detail":"Insufficient permissions for this endpoint"}
+{ "detail": "Insufficient permissions for this endpoint" }
 ```
 
 ### 404 Not Found
 
 ```json
-{"detail":"Resource not found"}
+{ "detail": "Resource not found" }
 ```
 
 ### 422 Validation Error

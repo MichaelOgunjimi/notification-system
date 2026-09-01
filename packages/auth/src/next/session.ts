@@ -120,22 +120,24 @@ export async function forwardAuthenticated(
 
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
-  const requestBody = request.method === "GET" || request.method === "HEAD"
-    ? undefined
-    : await request.arrayBuffer();
+  const requestBody =
+    request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
 
-  const callBackend = (token: string) => context.fetcher(`${context.backendApiUrl}${backendPath}`, {
-    method: request.method,
-    headers: {
-      Accept: request.headers.get("accept") ?? "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(requestBody
-        ? { "Content-Type": request.headers.get("content-type") ?? "application/json" }
-        : {}),
-    },
-    body: requestBody,
-    cache: "no-store",
-  });
+  const callBackend = (token: string) =>
+    context.fetcher(`${context.backendApiUrl}${backendPath}`, {
+      method: request.method,
+      headers: {
+        Accept: request.headers.get("accept") ?? "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(requestBody
+          ? {
+              "Content-Type": request.headers.get("content-type") ?? "application/json",
+            }
+          : {}),
+      },
+      body: requestBody,
+      cache: "no-store",
+    });
 
   try {
     let tokens: BackendTokenSet | null = null;
@@ -147,10 +149,7 @@ export async function forwardAuthenticated(
     }
 
     if (!upstream) {
-      const response = NextResponse.json(
-        { detail: "Not authenticated." },
-        { status: 401 },
-      );
+      const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
       deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
       return response;
     }

@@ -31,30 +31,30 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 
 ## Key Concepts Demonstrated
 
-| Concept | Implementation |
-| --- | --- |
-| Async message processing | Celery workers consuming from Redis-backed queues |
-| Priority queues | Multiple Celery queues with priority routing (`high`, `medium`, `low`) |
-| At-least-once delivery | `acks_late` with idempotent workers — tasks survive crashes |
-| Exactly-once semantics | Idempotency keys with Redis `SET NX` deduplication |
+| Concept                      | Implementation                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| Async message processing     | Celery workers consuming from Redis-backed queues                               |
+| Priority queues              | Multiple Celery queues with priority routing (`high`, `medium`, `low`)          |
+| At-least-once delivery       | `acks_late` with idempotent workers — tasks survive crashes                     |
+| Exactly-once semantics       | Idempotency keys with Redis `SET NX` deduplication                              |
 | Exponential backoff + jitter | Configurable retry policies per channel (`delay = random(0, base * 2^attempt)`) |
-| Dead-letter queues | Failed tasks routed to PostgreSQL-backed DLQ after max retries |
-| Fan-out pattern | Batch events decomposed into individual channel tasks |
-| Rate limiting | Sliding window counters in Redis (Lua scripts for atomicity) |
-| Real-time streaming | WebSocket push for live notification status updates |
-| Horizontal scalability | Stateless workers, independently scalable per channel |
-| Circuit breakers | Graceful degradation with health checks and fallback behavior |
+| Dead-letter queues           | Failed tasks routed to PostgreSQL-backed DLQ after max retries                  |
+| Fan-out pattern              | Batch events decomposed into individual channel tasks                           |
+| Rate limiting                | Sliding window counters in Redis (Lua scripts for atomicity)                    |
+| Real-time streaming          | WebSocket push for live notification status updates                             |
+| Horizontal scalability       | Stateless workers, independently scalable per channel                           |
+| Circuit breakers             | Graceful degradation with health checks and fallback behavior                   |
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| **API** | FastAPI, Pydantic v2, SQLModel, Alembic |
-| **Task Queue** | Celery, Redis (broker + result backend) |
-| **Database** | PostgreSQL |
-| **Delivery** | SMTP/Mailpit or Resend (email), Twilio (SMS), HMAC-signed webhooks |
-| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS v4 |
-| **Infrastructure** | Docker Compose, uv (package manager) |
+| Layer              | Technology                                                         |
+| ------------------ | ------------------------------------------------------------------ |
+| **API**            | FastAPI, Pydantic v2, SQLModel, Alembic                            |
+| **Task Queue**     | Celery, Redis (broker + result backend)                            |
+| **Database**       | PostgreSQL                                                         |
+| **Delivery**       | SMTP/Mailpit or Resend (email), Twilio (SMS), HMAC-signed webhooks |
+| **Frontend**       | Next.js 16, React 19, TypeScript, Tailwind CSS v4                  |
+| **Infrastructure** | Docker Compose, uv (package manager)                               |
 
 ## Features
 

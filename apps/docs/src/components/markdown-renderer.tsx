@@ -30,10 +30,7 @@ const components: Partial<Components> = {
     </h3>
   ),
   p: ({ children, ...props }) => (
-    <p
-      className="mb-5 text-[15px] leading-[1.85] text-[var(--docs-muted)]"
-      {...props}
-    >
+    <p className="mb-5 text-[15px] leading-[1.85] text-[var(--docs-muted)]" {...props}>
       {children}
     </p>
   ),
@@ -100,10 +97,7 @@ const components: Partial<Components> = {
   pre: ({ children }) => <>{children}</>,
   table: ({ children, ...props }) => (
     <div className="my-7 overflow-x-auto rounded-lg border border-[var(--docs-line)]">
-      <table
-        className="min-w-full border-collapse text-[13px] text-[var(--docs-muted)]"
-        {...props}
-      >
+      <table className="min-w-full border-collapse text-[13px] text-[var(--docs-muted)]" {...props}>
         {children}
       </table>
     </div>
@@ -122,10 +116,7 @@ const components: Partial<Components> = {
     </th>
   ),
   td: ({ children, ...props }) => (
-    <td
-      className="border-b border-[var(--docs-line)] px-4 py-3"
-      {...props}
-    >
+    <td className="border-b border-[var(--docs-line)] px-4 py-3" {...props}>
       {children}
     </td>
   ),
@@ -149,11 +140,7 @@ const components: Partial<Components> = {
 
 export function MarkdownRenderer({ content }: { content: string }) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeSlug]}
-      components={components}
-    >
+    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]} components={components}>
       {content}
     </ReactMarkdown>
   );

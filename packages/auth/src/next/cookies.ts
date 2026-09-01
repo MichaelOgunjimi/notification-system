@@ -28,9 +28,7 @@ export const cookieOptions = {
  */
 export function isSecureRequest(request: NextRequest): boolean {
   const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  return forwardedProtocol
-    ? forwardedProtocol === "https"
-    : request.nextUrl.protocol === "https:";
+  return forwardedProtocol ? forwardedProtocol === "https" : request.nextUrl.protocol === "https:";
 }
 
 /**

@@ -1,8 +1,5 @@
 export { controlPlaneClient, createControlPlaneClient } from "./client";
-export {
-  ControlPlaneError,
-  type ControlPlaneErrorCode,
-} from "./error";
+export { ControlPlaneError, type ControlPlaneErrorCode } from "./error";
 export type {
   ControlPlaneClient,
   ControlPlaneClientOptions,

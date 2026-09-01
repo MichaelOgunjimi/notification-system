@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react";
 
 type AnimateOnScrollProps = {
-  children: ReactNode
-  className?: string
-  delay?: number
+  children: ReactNode;
+  className?: string;
+  delay?: number;
   /** Animation variant */
-  variant?: "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale-in"
+  variant?: "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale-in";
   /** Run animation once or every time element enters viewport */
-  once?: boolean
-}
+  once?: boolean;
+};
 
 export default function AnimateOnScroll({
   children,
@@ -19,20 +19,18 @@ export default function AnimateOnScroll({
   variant = "fade-up",
   once = true,
 }: AnimateOnScrollProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    let revealTimer: ReturnType<typeof setTimeout> | undefined
+    const el = ref.current;
+    if (!el) return;
+    let revealTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (prefersReducedMotion) {
-      el.classList.add("aos-visible")
-      return
+      el.classList.add("aos-visible");
+      return;
     }
 
     const observer = new IntersectionObserver(
@@ -40,86 +38,78 @@ export default function AnimateOnScroll({
         if (entry.isIntersecting) {
           // Apply delay then reveal
           revealTimer = setTimeout(() => {
-            el.classList.add("aos-visible")
-          }, delay)
-          if (once) observer.unobserve(el)
+            el.classList.add("aos-visible");
+          }, delay);
+          if (once) observer.unobserve(el);
         } else if (!once) {
-          el.classList.remove("aos-visible")
+          el.classList.remove("aos-visible");
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
-    )
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" },
+    );
 
-    observer.observe(el)
+    observer.observe(el);
     return () => {
-      observer.disconnect()
-      if (revealTimer) clearTimeout(revealTimer)
-    }
-  }, [delay, once])
+      observer.disconnect();
+      if (revealTimer) clearTimeout(revealTimer);
+    };
+  }, [delay, once]);
 
   return (
     <div ref={ref} className={`aos-init aos-${variant} ${className}`}>
       {children}
     </div>
-  )
+  );
 }
 
 /** Wrapper that staggers children animations */
 type StaggerProps = {
-  children: ReactNode
-  className?: string
-  staggerMs?: number
-}
+  children: ReactNode;
+  className?: string;
+  staggerMs?: number;
+};
 
-export function StaggerGroup({
-  children,
-  className = "",
-  staggerMs = 80,
-}: StaggerProps) {
-  const ref = useRef<HTMLDivElement>(null)
+export function StaggerGroup({ children, className = "", staggerMs = 80 }: StaggerProps) {
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const container = ref.current
-    if (!container) return
-    const revealTimers: Array<ReturnType<typeof setTimeout>> = []
+    const container = ref.current;
+    if (!container) return;
+    const revealTimers: Array<ReturnType<typeof setTimeout>> = [];
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const items = container.querySelectorAll<HTMLElement>(".aos-stagger-item")
+    const items = container.querySelectorAll<HTMLElement>(".aos-stagger-item");
 
     if (prefersReducedMotion) {
-      items.forEach((el) => el.classList.add("aos-visible"))
-      return
+      items.forEach((el) => el.classList.add("aos-visible"));
+      return;
     }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           items.forEach((el, i) => {
-            revealTimers.push(
-              setTimeout(() => el.classList.add("aos-visible"), i * staggerMs)
-            )
-          })
-          observer.unobserve(container)
+            revealTimers.push(setTimeout(() => el.classList.add("aos-visible"), i * staggerMs));
+          });
+          observer.unobserve(container);
         }
       },
-      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" }
-    )
+      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" },
+    );
 
-    observer.observe(container)
+    observer.observe(container);
     return () => {
-      observer.disconnect()
-      revealTimers.forEach(clearTimeout)
-    }
-  }, [staggerMs])
+      observer.disconnect();
+      revealTimers.forEach(clearTimeout);
+    };
+  }, [staggerMs]);
 
   return (
     <div ref={ref} className={className}>
       {children}
     </div>
-  )
+  );
 }
 
 /** Individual item inside a StaggerGroup */
@@ -128,13 +118,9 @@ export function StaggerItem({
   className = "",
   variant = "fade-up",
 }: {
-  children: ReactNode
-  className?: string
-  variant?: AnimateOnScrollProps["variant"]
+  children: ReactNode;
+  className?: string;
+  variant?: AnimateOnScrollProps["variant"];
 }) {
-  return (
-    <div className={`aos-init aos-stagger-item aos-${variant} ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`aos-init aos-stagger-item aos-${variant} ${className}`}>{children}</div>;
 }

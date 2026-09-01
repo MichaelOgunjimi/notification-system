@@ -77,7 +77,10 @@
   gap: 12px;
   min-height: 64px;
   padding: 10px 12px;
-  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
   width: 100%;
 }
 

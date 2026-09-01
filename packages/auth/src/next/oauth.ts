@@ -53,20 +53,14 @@ export async function exchangeOAuth(
     const tokens = (await upstream.json()) as BackendTokenSet;
     const user = await fetchUser(context, tokens.access_token);
     if (!user) {
-      return NextResponse.json(
-        { detail: "Unable to create a session." },
-        { status: 502 },
-      );
+      return NextResponse.json({ detail: "Unable to create a session." }, { status: 502 });
     }
 
     const response = NextResponse.json(user);
     writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
     return response;
   } catch {
-    return NextResponse.json(
-      { detail: "The sign-in service is unavailable." },
-      { status: 502 },
-    );
+    return NextResponse.json({ detail: "The sign-in service is unavailable." }, { status: 502 });
   }
 }
 
@@ -83,12 +77,14 @@ export async function logout(
 ): Promise<Response> {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   if (refreshToken) {
-    await context.fetcher(`${context.backendApiUrl}/auth/logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-      cache: "no-store",
-    }).catch(() => undefined);
+    await context
+      .fetcher(`${context.backendApiUrl}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        cache: "no-store",
+      })
+      .catch(() => undefined);
   }
   const response = NextResponse.json({ ok: true });
   deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);

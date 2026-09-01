@@ -51,7 +51,12 @@
 }
 
 .auth-story::after {
-  background: linear-gradient(118deg, transparent 38%, rgba(233, 170, 49, 0.12) 49.8%, transparent 50.4%);
+  background: linear-gradient(
+    118deg,
+    transparent 38%,
+    rgba(233, 170, 49, 0.12) 49.8%,
+    transparent 50.4%
+  );
   content: "";
   inset: 0;
   opacity: 0.45;
@@ -64,7 +69,10 @@
   border: 1px solid var(--site-line-strong);
   border-radius: 10px;
   color: var(--site-ink);
-  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 }
 
 .auth-input::placeholder {
@@ -88,7 +96,10 @@
   justify-content: center;
   min-height: 52px;
   padding: 0 18px;
-  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
 .auth-primary-action {

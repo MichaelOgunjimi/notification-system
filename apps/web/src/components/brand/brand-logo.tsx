@@ -1,13 +1,13 @@
-import Image from "next/image"
-import "./brand-logo.css"
+import Image from "next/image";
+import "./brand-logo.css";
 
 type BrandLogoProps = {
-  className?: string
-  markClassName?: string
-  labelClassName?: string
-  showLabel?: boolean
-  priority?: boolean
-}
+  className?: string;
+  markClassName?: string;
+  labelClassName?: string;
+  showLabel?: boolean;
+  priority?: boolean;
+};
 
 export default function BrandLogo({
   className = "",
@@ -38,5 +38,5 @@ export default function BrandLogo({
       </span>
       {showLabel ? <span className={labelClassName}>Beaco</span> : null}
     </span>
-  )
+  );
 }

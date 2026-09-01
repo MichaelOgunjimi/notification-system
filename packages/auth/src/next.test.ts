@@ -72,16 +72,11 @@ describe("createNextAuthAdapter", () => {
     });
 
     const response = await auth.session(
-      request(
-        "/api/auth/session",
-        "beaco_access_token=expired; beaco_refresh_token=refresh-token",
-      ),
+      request("/api/auth/session", "beaco_access_token=expired; beaco_refresh_token=refresh-token"),
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_access_token=new-access-token",
-    );
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=new-access-token");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect(fetcher).toHaveBeenCalledWith(
       "http://api:8000/api/v1/auth/refresh",
@@ -98,9 +93,7 @@ describe("createNextAuthAdapter", () => {
       publicBackendApiUrl: "https://api.example.com/api/v1/",
     });
 
-    const response = await auth.startOAuth("github")(
-      request("/api/auth/oauth/github"),
-    );
+    const response = await auth.startOAuth("github")(request("/api/auth/oauth/github"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -125,9 +118,7 @@ describe("createNextAuthAdapter", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
-    await expect(response.json()).resolves.toEqual([
-      { id: "organization-1", name: "Northstar" },
-    ]);
+    await expect(response.json()).resolves.toEqual([{ id: "organization-1", name: "Northstar" }]);
     expect(fetcher).toHaveBeenCalledWith(
       "http://api:8000/api/v1/organizations",
       expect.objectContaining({
@@ -170,9 +161,7 @@ describe("createNextAuthAdapter", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_access_token=renewed-access",
-    );
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=renewed-access");
     expect(fetcher).toHaveBeenLastCalledWith(
       "http://api:8000/api/v1/organizations",
       expect.objectContaining({
@@ -199,25 +188,18 @@ describe("createNextAuthAdapter", () => {
       publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
-    const exchangeRequest = new NextRequest(
-      "https://app.example.com/api/auth/oauth/exchange",
-      {
-        method: "POST",
-        body: JSON.stringify({ code: "one-time-code" }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    const exchangeRequest = new NextRequest("https://app.example.com/api/auth/oauth/exchange", {
+      method: "POST",
+      body: JSON.stringify({ code: "one-time-code" }),
+      headers: { "Content-Type": "application/json" },
+    });
 
     const response = await auth.exchangeOAuth(exchangeRequest);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ id: "user-1" });
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_access_token=oauth-access",
-    );
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_refresh_token=oauth-refresh",
-    );
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=oauth-access");
+    expect(response.headers.get("set-cookie")).toContain("beaco_refresh_token=oauth-refresh");
     expect(fetcher).toHaveBeenCalledWith(
       "http://api:8000/api/v1/auth/oauth/exchange",
       expect.objectContaining({
@@ -276,22 +258,17 @@ describe("createNextAuthAdapter", () => {
       publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
-    const verifyRequest = new NextRequest(
-      "https://app.example.com/api/auth/magic-link/verify",
-      {
-        method: "POST",
-        body: JSON.stringify({ token: "magic-link-token" }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    const verifyRequest = new NextRequest("https://app.example.com/api/auth/magic-link/verify", {
+      method: "POST",
+      body: JSON.stringify({ token: "magic-link-token" }),
+      headers: { "Content-Type": "application/json" },
+    });
 
     const response = await auth.verifyMagicLink(verifyRequest);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ id: "user-1" });
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_access_token=magic-access",
-    );
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=magic-access");
     expect(fetcher).toHaveBeenCalledWith(
       "http://api:8000/api/v1/auth/magic-link/verify",
       expect.objectContaining({
@@ -315,9 +292,7 @@ describe("createNextAuthAdapter", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("set-cookie")).toContain(
-      "beaco_access_token=; Path=/; Max-Age=0",
-    );
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=; Path=/; Max-Age=0");
     expect(response.headers.get("set-cookie")).toContain(
       "beaco_refresh_token=; Path=/identity; Max-Age=0",
     );

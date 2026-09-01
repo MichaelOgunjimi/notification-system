@@ -1,20 +1,17 @@
-import { readFile } from "node:fs/promises"
-import path from "node:path"
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
-import { ImageResponse } from "next/og"
+import { ImageResponse } from "next/og";
 
-export const alt = "Beaco"
-export const size = { width: 1200, height: 630 }
-export const contentType = "image/png"
+export const alt = "Beaco";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
 
 export default async function OpenGraphImage() {
   const lockup = await readFile(
-    path.join(
-      process.cwd(),
-      "public/brand/png/beaco-lockup-horizontal-dark.png"
-    )
-  )
-  const lockupSource = `data:image/png;base64,${lockup.toString("base64")}`
+    path.join(process.cwd(), "public/brand/png/beaco-lockup-horizontal-dark.png"),
+  );
+  const lockupSource = `data:image/png;base64,${lockup.toString("base64")}`;
 
   return new ImageResponse(
     <div
@@ -83,6 +80,6 @@ export default async function OpenGraphImage() {
         }}
       />
     </div>,
-    size
-  )
+    size,
+  );
 }

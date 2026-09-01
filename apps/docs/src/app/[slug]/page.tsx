@@ -2,12 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
-import {
-  DOC_SLUGS,
-  getDocContent,
-  getDocNeighbors,
-  DOC_DEFINITIONS,
-} from "@/lib/docs";
+import { DOC_SLUGS, getDocContent, getDocNeighbors, DOC_DEFINITIONS } from "@/lib/docs";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { DocsSidebar } from "@/components/docs-sidebar";
 import { TableOfContents } from "@/components/table-of-contents";
@@ -35,11 +30,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function DocSlugPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function DocSlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!DOC_SLUGS.includes(slug as (typeof DOC_SLUGS)[number])) {
     notFound();
@@ -70,7 +61,9 @@ export default async function DocSlugPage({
                   <ArrowLeft size={14} />
                   Previous
                 </p>
-                <p className="text-[13px] text-[#cfcdc4] transition-colors group-hover:text-[var(--docs-accent)]">{previous.title}</p>
+                <p className="text-[13px] text-[#cfcdc4] transition-colors group-hover:text-[var(--docs-accent)]">
+                  {previous.title}
+                </p>
               </Link>
             ) : (
               <div />
@@ -85,7 +78,9 @@ export default async function DocSlugPage({
                   Next
                   <ArrowRight size={14} />
                 </p>
-                <p className="text-[13px] text-[#cfcdc4] transition-colors group-hover:text-[var(--docs-accent)]">{next.title}</p>
+                <p className="text-[13px] text-[#cfcdc4] transition-colors group-hover:text-[var(--docs-accent)]">
+                  {next.title}
+                </p>
               </Link>
             ) : (
               <div />

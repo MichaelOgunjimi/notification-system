@@ -30,7 +30,10 @@ export function useSession() {
       : user
         ? "authenticated"
         : "anonymous";
-  const session: Session = { user, isAuthenticated: status === "authenticated" };
+  const session: Session = {
+    user,
+    isAuthenticated: status === "authenticated",
+  };
 
   return {
     ...session,

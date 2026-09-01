@@ -13,9 +13,7 @@ function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestC
   };
 }
 
-export function createNextAuthAdapter(
-  options: NextAuthAdapterOptions,
-): NextAuthAdapter {
+export function createNextAuthAdapter(options: NextAuthAdapterOptions): NextAuthAdapter {
   const context = createRequestContext(options);
 
   return {

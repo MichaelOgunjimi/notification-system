@@ -28,7 +28,10 @@
   --theme-toggle-focus: var(--site-accent);
   --site-ease: cubic-bezier(0.16, 1, 0.3, 1);
   color-scheme: dark;
-  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  font-feature-settings:
+    "rlig" 1,
+    "calt" 1,
+    "ss01" 1;
   isolation: isolate;
   position: relative;
 }
@@ -65,11 +68,27 @@
     linear-gradient(90deg, var(--site-grid) 1px, transparent 1px),
     linear-gradient(var(--site-grid-fine) 1px, transparent 1px),
     linear-gradient(90deg, var(--site-grid-fine) 1px, transparent 1px);
-  background-size: auto, auto, 56px 56px, 56px 56px, 14px 14px, 14px 14px;
+  background-size:
+    auto,
+    auto,
+    56px 56px,
+    56px 56px,
+    14px 14px,
+    14px 14px;
   content: "";
   inset: 0;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.82) 58%, rgba(0, 0, 0, 0.38) 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.82) 58%, rgba(0, 0, 0, 0.38) 100%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.82) 58%,
+    rgba(0, 0, 0, 0.38) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.82) 58%,
+    rgba(0, 0, 0, 0.38) 100%
+  );
   opacity: 0.72;
   pointer-events: none;
   position: absolute;
@@ -121,9 +140,24 @@
 
 .site-page-grid {
   background-image:
-    linear-gradient(90deg, transparent calc(25% - 0.5px), var(--site-grid) 25%, transparent calc(25% + 0.5px)),
-    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--site-line) 50%, transparent calc(50% + 0.5px)),
-    linear-gradient(90deg, transparent calc(75% - 0.5px), var(--site-grid) 75%, transparent calc(75% + 0.5px));
+    linear-gradient(
+      90deg,
+      transparent calc(25% - 0.5px),
+      var(--site-grid) 25%,
+      transparent calc(25% + 0.5px)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.5px),
+      var(--site-line) 50%,
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(75% - 0.5px),
+      var(--site-grid) 75%,
+      transparent calc(75% + 0.5px)
+    );
   border-left: 1px solid var(--site-line);
   border-right: 1px solid var(--site-line);
   border-bottom: 1px solid var(--site-line);
@@ -139,12 +173,21 @@
   --signal-y: 20%;
   background-color: var(--site-panel);
   background-image:
-    radial-gradient(ellipse 38% 28% at var(--signal-x) var(--signal-y), rgba(233, 170, 49, 0.075), transparent 72%),
+    radial-gradient(
+      ellipse 38% 28% at var(--signal-x) var(--signal-y),
+      rgba(233, 170, 49, 0.075),
+      transparent 72%
+    ),
     linear-gradient(var(--site-grid-fine) 1px, transparent 1px),
     linear-gradient(90deg, var(--site-grid-fine) 1px, transparent 1px),
     linear-gradient(var(--site-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--site-grid) 1px, transparent 1px);
-  background-size: auto, 12px 12px, 12px 12px, 48px 48px, 48px 48px;
+  background-size:
+    auto,
+    12px 12px,
+    12px 12px,
+    48px 48px,
+    48px 48px;
   overflow: hidden;
   position: relative;
 }
@@ -160,7 +203,13 @@
   );
   content: "";
   inset: 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 4%, #000 26%, #000 74%, transparent 96%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 4%,
+    #000 26%,
+    #000 74%,
+    transparent 96%
+  );
   mask-image: linear-gradient(to bottom, transparent 4%, #000 26%, #000 74%, transparent 96%);
   pointer-events: none;
   position: absolute;
@@ -264,7 +313,12 @@ a:hover .site-primary-action-icon {
   }
 
   .site-grid-field {
-    background-size: auto, 10px 10px, 10px 10px, 40px 40px, 40px 40px;
+    background-size:
+      auto,
+      10px 10px,
+      10px 10px,
+      40px 40px,
+      40px 40px;
   }
 
   .site-grid-field::after {
@@ -283,7 +337,12 @@ a:hover .site-primary-action-icon {
 
 .site-footer {
   background-image:
-    linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(255, 255, 255, 0.025) 50%, transparent calc(50% + 0.5px)),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.5px),
+      rgba(255, 255, 255, 0.025) 50%,
+      transparent calc(50% + 0.5px)
+    ),
     radial-gradient(circle at 12% 28%, rgba(233, 170, 49, 0.045), transparent 26%);
 }
 
@@ -307,7 +366,8 @@ a:hover .site-primary-action-icon {
 .aos-fade-up {
   opacity: 0;
   transform: translateY(18px);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .aos-fade-in {
@@ -317,19 +377,22 @@ a:hover .site-primary-action-icon {
 .aos-fade-left {
   opacity: 0;
   transform: translateX(18px);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .aos-fade-right {
   opacity: 0;
   transform: translateX(-18px);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .aos-scale-in {
   opacity: 0;
   transform: scale(0.98);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

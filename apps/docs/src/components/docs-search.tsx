@@ -16,7 +16,11 @@ function scoreResult(item: DocSearchItem, terms: string[]) {
   const description = item.description.toLowerCase();
   const content = item.content.toLowerCase();
 
-  if (!terms.every((term) => title.includes(term) || description.includes(term) || content.includes(term))) {
+  if (
+    !terms.every(
+      (term) => title.includes(term) || description.includes(term) || content.includes(term),
+    )
+  ) {
     return 0;
   }
 
@@ -118,10 +122,7 @@ export function DocsSearch({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const terms = useMemo(
-    () => query.trim().toLowerCase().split(/\s+/).filter(Boolean),
-    [query],
-  );
+  const terms = useMemo(() => query.trim().toLowerCase().split(/\s+/).filter(Boolean), [query]);
 
   const results = useMemo(() => {
     if (terms.length === 0) {
@@ -228,14 +229,22 @@ export function DocsSearch({
                       {highlightMatchedTerms(resultExcerpt(item, query), terms)}
                     </span>
                   </span>
-                  <ArrowRight size={16} className="mt-1 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--docs-accent)]" aria-hidden />
+                  <ArrowRight
+                    size={16}
+                    className="mt-1 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--docs-accent)]"
+                    aria-hidden
+                  />
                 </Link>
               ))}
             </div>
           ) : (
             <div className="px-4 py-12 text-center">
-              <p className="text-[14px] text-[var(--docs-ink-soft)]">No documentation matched “{query}”.</p>
-              <p className="mt-2 text-[12px] text-[var(--docs-muted)]">Try events, retries, channels, or API.</p>
+              <p className="text-[14px] text-[var(--docs-ink-soft)]">
+                No documentation matched “{query}”.
+              </p>
+              <p className="mt-2 text-[12px] text-[var(--docs-muted)]">
+                Try events, retries, channels, or API.
+              </p>
             </div>
           )}
         </div>

@@ -6,10 +6,7 @@ import type {
   Organization,
   Project,
 } from "./types";
-import {
-  controlPlaneErrorFromResponse,
-  controlPlaneNetworkError,
-} from "./error";
+import { controlPlaneErrorFromResponse, controlPlaneNetworkError } from "./error";
 
 const DEFAULT_CONTROL_PLANE_PATH = "/api/control-plane";
 
@@ -54,9 +51,10 @@ class HttpControlPlaneClient implements ControlPlaneClient {
   };
 
   constructor(options: ControlPlaneClientOptions = {}) {
-    this.appControlPlanePath = (
-      options.appControlPlanePath ?? DEFAULT_CONTROL_PLANE_PATH
-    ).replace(/\/$/, "");
+    this.appControlPlanePath = (options.appControlPlanePath ?? DEFAULT_CONTROL_PLANE_PATH).replace(
+      /\/$/,
+      "",
+    );
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -73,10 +71,7 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       throw controlPlaneNetworkError(error);
     }
     if (!response.ok) {
-      throw await controlPlaneErrorFromResponse(
-        response,
-        "The workspace service is unavailable.",
-      );
+      throw await controlPlaneErrorFromResponse(response, "The workspace service is unavailable.");
     }
     return (await response.json()) as T;
   }

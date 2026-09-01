@@ -167,15 +167,15 @@ Beaco emphasizes auditability and operator visibility:
 
 ## Core Concepts at a Glance
 
-| Concept | What it means in Beaco |
-| --- | --- |
-| Event | A trigger payload that describes what happened |
-| Recipient | A destination definition with one or more channels |
-| Notification | A single delivery unit for one recipient-channel pair |
-| Template | Reusable content with variable substitution |
-| Retry policy | Rules for how failed delivery attempts are retried |
-| Dead letter | Terminal failure state after retries are exhausted |
-| Idempotency key | Duplicate-prevention token for event creation |
+| Concept         | What it means in Beaco                                |
+| --------------- | ----------------------------------------------------- |
+| Event           | A trigger payload that describes what happened        |
+| Recipient       | A destination definition with one or more channels    |
+| Notification    | A single delivery unit for one recipient-channel pair |
+| Template        | Reusable content with variable substitution           |
+| Retry policy    | Rules for how failed delivery attempts are retried    |
+| Dead letter     | Terminal failure state after retries are exhausted    |
+| Idempotency key | Duplicate-prevention token for event creation         |
 
 ## Minimal Event Example
 

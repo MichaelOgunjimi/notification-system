@@ -110,8 +110,7 @@
 
 .workspace-shell__aside {
   background:
-    linear-gradient(145deg, rgba(233, 170, 49, 0.065), transparent 46%),
-    var(--workspace-elevated);
+    linear-gradient(145deg, rgba(233, 170, 49, 0.065), transparent 46%), var(--workspace-elevated);
   border-right: 1px solid var(--workspace-line);
   display: flex;
   flex-direction: column;
