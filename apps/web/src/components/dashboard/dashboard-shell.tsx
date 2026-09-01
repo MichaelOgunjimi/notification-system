@@ -35,6 +35,10 @@ import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
+import {
+  readSidebarCollapsedPreference,
+  rememberSidebarCollapsedPreference,
+} from "@/lib/sidebar-preference";
 import "./dashboard-shell.css";
 
 type DashboardShellProps = Readonly<{
@@ -68,7 +72,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
   const sidebarId = useId();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const signOut = useSignOut();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsedPreference);
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -135,6 +139,11 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
     setSwitcherOpen(false);
   }
 
+  function updateSidebarCollapsed(collapsed: boolean) {
+    setSidebarCollapsed(collapsed);
+    rememberSidebarCollapsedPreference(collapsed);
+  }
+
   return (
     <main
       id="main-content"
@@ -174,7 +183,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={sidebarCollapsed}
             onClick={() => {
-              setSidebarCollapsed((collapsed) => !collapsed);
+              updateSidebarCollapsed(!sidebarCollapsed);
               setSidebarPeeking(false);
               setSwitcherOpen(false);
             }}
@@ -310,7 +319,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
           aria-label="Preview sidebar"
           onMouseEnter={() => setSidebarPeeking(true)}
           onFocus={() => setSidebarPeeking(true)}
-          onClick={() => setSidebarCollapsed(false)}
+          onClick={() => updateSidebarCollapsed(false)}
         >
           <CaretRight size={13} />
         </button>
