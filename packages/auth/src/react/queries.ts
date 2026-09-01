@@ -8,6 +8,7 @@ import type { AuthClient } from "../types";
 export const authQueryKeys = {
   all: ["auth"] as const,
   session: ["auth", "session"] as const,
+  connections: ["auth", "connections"] as const,
 };
 
 /**
@@ -18,6 +19,7 @@ export const authMutationKeys = {
   verifyMagicLink: ["auth", "magic-link", "verify"] as const,
   completeOAuthSignIn: ["auth", "oauth", "complete"] as const,
   updateProfile: ["auth", "profile", "update"] as const,
+  disconnectOAuth: ["auth", "oauth", "disconnect"] as const,
   signOut: ["auth", "sign-out"] as const,
 };
 
@@ -34,6 +36,20 @@ export function sessionQuery(client: AuthClient) {
     retry: (failureCount, error) =>
       error instanceof AuthError && error.retryable && failureCount < 2,
     retryDelay: (attempt) => Math.min(400 * 2 ** attempt, 2_000),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Builds the cached query for the authenticated user's linked providers.
+ *
+ * @param client Auth client used to load provider connections.
+ * @returns TanStack Query options for OAuth connection state.
+ */
+export function oauthConnectionsQuery(client: AuthClient) {
+  return queryOptions({
+    queryKey: authQueryKeys.connections,
+    queryFn: () => client.getOAuthConnections(),
     staleTime: 30 * 1000,
   });
 }

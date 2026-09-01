@@ -12,6 +12,15 @@ const backendUser = {
   created_at: "2026-08-31T09:00:00Z",
 };
 
+const backendConnection = {
+  provider: "github",
+  provider_email: "person@github.example.com",
+  provider_name: "Person",
+  provider_username: "person",
+  avatar_url: "https://avatars.example/person",
+  created_at: "2026-09-01T10:00:00Z",
+};
+
 function request(path: string, cookie?: string): NextRequest {
   return new NextRequest(`https://app.example.com${path}`, {
     headers: cookie ? { cookie } : undefined,
@@ -124,6 +133,76 @@ describe("createNextAuthAdapter", () => {
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
       "https://api.example.com/api/v1/oauth/github/login",
+    );
+  });
+
+  it("starts authenticated GitHub connection and preserves the provider redirect", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 307,
+          headers: { Location: "https://github.com/login/oauth/authorize?state=secure" },
+        }),
+      ),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+
+    const response = await auth.startOAuthConnection("github")(
+      request("/api/auth/oauth/github/connect", "beaco_access_token=access-token"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://github.com/login/oauth/authorize?state=secure",
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api:8000/api/v1/oauth/github/connect",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer access-token" }),
+        redirect: "manual",
+      }),
+    );
+  });
+
+  it("normalizes and disconnects authenticated OAuth connections", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "DELETE"
+        ? Promise.resolve(new Response(null, { status: 204 }))
+        : Promise.resolve(Response.json([backendConnection])),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const connectionsResponse = await auth.connections(
+      request("/api/auth/connections", "beaco_access_token=access-token"),
+    );
+    const disconnectRequest = new NextRequest(
+      "https://app.example.com/api/auth/connections/github",
+      { method: "DELETE", headers: { cookie: "beaco_access_token=access-token" } },
+    );
+    const disconnectResponse = await auth.disconnectOAuth(disconnectRequest, "github");
+
+    await expect(connectionsResponse.json()).resolves.toEqual([
+      {
+        provider: "github",
+        providerEmail: "person@github.example.com",
+        providerName: "Person",
+        providerUsername: "person",
+        avatarUrl: "https://avatars.example/person",
+        connectedAt: "2026-09-01T10:00:00Z",
+      },
+    ]);
+    expect(disconnectResponse.status).toBe(204);
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "http://api:8000/api/v1/auth/me/connections/github",
+      expect.objectContaining({ method: "DELETE" }),
     );
   });
 

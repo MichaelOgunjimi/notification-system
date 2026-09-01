@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthError } from "../error";
 import { useAuthClient } from "./provider";
-import { authMutationKeys, authQueryKeys, sessionQuery } from "./queries";
+import { authMutationKeys, authQueryKeys, oauthConnectionsQuery, sessionQuery } from "./queries";
 import type {
   Session,
   SessionStatus,
@@ -11,6 +11,7 @@ import type {
   MagicLinkRequest,
   MagicLinkVerification,
   OAuthCodeExchange,
+  OAuthProvider,
   UpdateProfileInput,
   User,
 } from "../types";
@@ -101,6 +102,33 @@ export function useUpdateProfile() {
     mutationKey: authMutationKeys.updateProfile,
     mutationFn: (input) => client.updateProfile(input),
     onSuccess: (user) => queryClient.setQueryData(authQueryKeys.session, user),
+  });
+}
+
+/**
+ * Loads OAuth providers connected to the authenticated account.
+ *
+ * @returns Query hook containing provider connection state.
+ */
+export function useOAuthConnections() {
+  const client = useAuthClient();
+  return useQuery(oauthConnectionsQuery(client));
+}
+
+/**
+ * Disconnects one OAuth provider and refreshes the connection cache.
+ *
+ * @returns Mutation hook for removing a linked provider identity.
+ */
+export function useDisconnectOAuth() {
+  const client = useAuthClient();
+  const queryClient = useQueryClient();
+  return useMutation<void, AuthError, OAuthProvider>({
+    mutationKey: authMutationKeys.disconnectOAuth,
+    mutationFn: (provider) => client.disconnectOAuth(provider),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.connections });
+    },
   });
 }
 

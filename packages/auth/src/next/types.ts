@@ -35,6 +35,16 @@ export type BackendTokenSet = {
   token_type: "bearer";
 };
 
+/** Backend payload for one external identity linked to a user. */
+export type BackendOAuthConnection = {
+  provider: OAuthProvider;
+  provider_email: string | null;
+  provider_name: string | null;
+  provider_username: string | null;
+  avatar_url: string | null;
+  created_at: string;
+};
+
 /**
  * Configuration used to create the Next.js auth adapter.
  *
@@ -71,12 +81,37 @@ export type NextAuthAdapter = Readonly<{
   updateProfile(request: NextRequest): Promise<Response>;
 
   /**
+   * Lists provider identities through the authenticated cookie boundary.
+   *
+   * @param request Incoming Next.js request.
+   * @returns Normalized provider connections or an authentication error.
+   */
+  connections(request: NextRequest): Promise<Response>;
+
+  /**
+   * Disconnects one provider through the authenticated cookie boundary.
+   *
+   * @param request Incoming Next.js request.
+   * @param provider Provider to disconnect.
+   * @returns Empty success response or an upstream error.
+   */
+  disconnectOAuth(request: NextRequest, provider: OAuthProvider): Promise<Response>;
+
+  /**
    * Creates a route handler that redirects the browser to the backend OAuth login URL.
    *
    * @param provider OAuth provider to begin login with.
    * @returns Route handler that issues the redirect response.
    */
   startOAuth(provider: OAuthProvider): (request: NextRequest) => Response;
+
+  /**
+   * Creates an authenticated route handler that starts provider connection.
+   *
+   * @param provider OAuth provider to connect.
+   * @returns Route handler that authenticates and forwards the provider redirect.
+   */
+  startOAuthConnection(provider: OAuthProvider): (request: NextRequest) => Promise<Response>;
 
   /**
    * Exchanges an OAuth callback payload for a backend-backed session.

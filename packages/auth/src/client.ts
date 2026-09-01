@@ -6,6 +6,7 @@ import type {
   MagicLinkRequest,
   MagicLinkVerification,
   OAuthCodeExchange,
+  OAuthConnection,
   OAuthProvider,
   UpdateProfileInput,
   User,
@@ -110,6 +111,31 @@ class HttpAuthClient implements AuthClient {
   }
 
   /**
+   * Lists OAuth identities linked to the authenticated user.
+   *
+   * @returns Connected provider records.
+   */
+  async getOAuthConnections(): Promise<OAuthConnection[]> {
+    return this.request<OAuthConnection[]>(
+      "/connections",
+      { method: "GET" },
+      "We could not load your connected accounts.",
+    );
+  }
+
+  /**
+   * Disconnects an OAuth identity from the authenticated user.
+   *
+   * @param provider Provider to disconnect.
+   */
+  async disconnectOAuth(provider: OAuthProvider): Promise<void> {
+    const response = await this.fetch(`/connections/${provider}`, { method: "DELETE" });
+    if (!response.ok) {
+      throw await authErrorFromResponse(response, `We could not disconnect ${provider}.`);
+    }
+  }
+
+  /**
    * Signs the current user out of the backend session.
    */
   async signOut(): Promise<void> {
@@ -125,6 +151,16 @@ class HttpAuthClient implements AuthClient {
    */
   getOAuthSignInUrl(provider: OAuthProvider): string {
     return `${this.appAuthPath}/oauth/${provider}`;
+  }
+
+  /**
+   * Builds the authenticated connection URL for a supported OAuth provider.
+   *
+   * @param provider Provider to connect.
+   * @returns URL that begins the provider connection flow.
+   */
+  getOAuthConnectUrl(provider: OAuthProvider): string {
+    return `${this.appAuthPath}/oauth/${provider}/connect`;
   }
 
   /**

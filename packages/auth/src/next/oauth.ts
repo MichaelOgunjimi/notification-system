@@ -7,7 +7,7 @@ import {
   writeSessionCookies,
 } from "./cookies";
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
-import { fetchUser } from "./session";
+import { fetchUser, forwardAuthenticated } from "./session";
 
 /**
  * Creates an OAuth redirect handler for a specific provider.
@@ -21,6 +21,20 @@ export function startOAuth(
   provider: "github",
 ): (request: NextRequest) => Response {
   return () => NextResponse.redirect(`${context.publicBackendApiUrl}/oauth/${provider}/login`, 307);
+}
+
+/**
+ * Creates an authenticated OAuth provider connection handler.
+ *
+ * @param context Shared request context with session cookies and backend location.
+ * @param provider OAuth provider to connect to the signed-in user.
+ * @returns Route handler that forwards the authenticated provider redirect.
+ */
+export function startOAuthConnection(
+  context: NextAuthRequestContext,
+  provider: "github",
+): (request: NextRequest) => Promise<Response> {
+  return (request) => forwardAuthenticated(context, request, `/oauth/${provider}/connect`);
 }
 
 /**

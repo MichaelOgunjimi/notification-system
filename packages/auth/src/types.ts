@@ -73,6 +73,25 @@ export type MagicLinkVerification = Readonly<{ token: string }>;
 export type OAuthProvider = "github";
 
 /**
+ * External identity linked to the authenticated application user.
+ *
+ * @property provider Stable provider key.
+ * @property providerEmail Email reported by the provider, when available.
+ * @property providerName Display name reported by the provider, when available.
+ * @property providerUsername Provider-specific username, when available.
+ * @property avatarUrl Provider profile image URL, when available.
+ * @property connectedAt ISO timestamp for the original connection.
+ */
+export type OAuthConnection = Readonly<{
+  provider: OAuthProvider;
+  providerEmail: string | null;
+  providerName: string | null;
+  providerUsername: string | null;
+  avatarUrl: string | null;
+  connectedAt: string;
+}>;
+
+/**
  * OAuth code exchange payload returned from the frontend callback.
  *
  * @property code Authorization code issued by the provider.
@@ -136,6 +155,20 @@ export interface AuthClient {
   updateProfile(input: UpdateProfileInput): Promise<User>;
 
   /**
+   * Lists external identities linked to the authenticated account.
+   *
+   * @returns Connected OAuth provider records.
+   */
+  getOAuthConnections(): Promise<OAuthConnection[]>;
+
+  /**
+   * Disconnects one external identity from the authenticated account.
+   *
+   * @param provider Provider to disconnect.
+   */
+  disconnectOAuth(provider: OAuthProvider): Promise<void>;
+
+  /**
    * Signs the current user out and clears the active session.
    */
   signOut(): Promise<void>;
@@ -147,4 +180,12 @@ export interface AuthClient {
    * @returns Relative or absolute app route used to initiate OAuth.
    */
   getOAuthSignInUrl(provider: OAuthProvider): string;
+
+  /**
+   * Builds the authenticated provider connection URL for the app auth route.
+   *
+   * @param provider OAuth provider to connect.
+   * @returns App route that begins an authenticated provider connection.
+   */
+  getOAuthConnectUrl(provider: OAuthProvider): string;
 }

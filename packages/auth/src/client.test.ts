@@ -79,6 +79,38 @@ describe("createAuthClient", () => {
     );
   });
 
+  it("lists and disconnects OAuth connections through the app boundary", async () => {
+    const connection = {
+      provider: "github" as const,
+      providerEmail: "person@github.example",
+      providerName: "Person",
+      providerUsername: "person",
+      avatarUrl: "https://avatars.example/person",
+      connectedAt: "2026-09-01T10:00:00Z",
+    };
+    const fetcher = fetchAdapter((input) =>
+      String(input).endsWith("/connections")
+        ? Response.json([connection])
+        : new Response(null, { status: 204 }),
+    );
+    const client = createAuthClient({ fetch: fetcher });
+
+    await expect(client.getOAuthConnections()).resolves.toEqual([connection]);
+    await expect(client.disconnectOAuth("github")).resolves.toBeUndefined();
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/auth/connections",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/auth/connections/github",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(client.getOAuthConnectUrl("github")).toBe("/api/auth/oauth/github/connect");
+  });
+
   it("returns structured, retry-aware errors", async () => {
     const client = createAuthClient({
       fetch: fetchAdapter(() =>

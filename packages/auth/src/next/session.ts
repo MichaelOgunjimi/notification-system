@@ -174,6 +174,7 @@ export async function forwardAuthenticated(
       },
       body: requestBody,
       cache: "no-store",
+      redirect: "manual",
     });
 
   try {
@@ -191,12 +192,16 @@ export async function forwardAuthenticated(
       return response;
     }
 
+    const responseHeaders: Record<string, string> = {
+      "Cache-Control": "private, no-store",
+      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+    };
+    const location = upstream.headers.get("location");
+    if (location) responseHeaders.Location = location;
+
     const response = new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
-      },
+      headers: responseHeaders,
     });
     if (tokens) {
       writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);

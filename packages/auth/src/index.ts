@@ -7,6 +7,7 @@ export type {
   MagicLinkRequest,
   MagicLinkVerification,
   OAuthCodeExchange,
+  OAuthConnection,
   OAuthProvider,
   Session,
   SessionStatus,
