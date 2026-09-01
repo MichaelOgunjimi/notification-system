@@ -79,6 +79,27 @@ def role_has_capability(
     return capability in _ROLE_CAPABILITIES[role]
 
 
+def capabilities_for_role(
+    role: OrganizationRole,
+) -> tuple[OrganizationCapability, ...]:
+    """Return the ordered capabilities granted to an organization role.
+
+    Args:
+        role: Organization membership role whose effective capabilities are requested.
+
+    Returns:
+        The role's capabilities in the stable order defined by
+        :class:`OrganizationCapability`.
+
+    Security:
+        This function exposes the same policy used by the authorization guards. It
+        does not grant access by itself; protected operations must continue to call
+        ``authorize_organization`` or ``authorize_project``.
+    """
+    granted = _ROLE_CAPABILITIES[role]
+    return tuple(capability for capability in OrganizationCapability if capability in granted)
+
+
 async def authorize_organization(
     db: AsyncSession,
     *,

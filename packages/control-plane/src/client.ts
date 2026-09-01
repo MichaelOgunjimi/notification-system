@@ -17,6 +17,7 @@ function mapOrganization(organization: ApiOrganization): Organization {
     slug: organization.slug,
     description: organization.description,
     role: organization.role,
+    capabilities: [...organization.capabilities],
   };
 }
 

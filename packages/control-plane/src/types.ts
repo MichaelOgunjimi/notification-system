@@ -1,6 +1,21 @@
 /** Membership role that determines a user's organization-level capabilities. */
 export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
 
+/** Backend-derived operation that the current user may perform in an organization. */
+export type OrganizationCapability =
+  | "organization:read"
+  | "organization:manage"
+  | "organization:members:manage"
+  | "project:create"
+  | "project:manage"
+  | "api_key:manage"
+  | "project:usage:read"
+  | "project:audit:read"
+  | "organization:usage:read"
+  | "organization:audit:read"
+  | "organization:billing:manage"
+  | "organization:delete";
+
 /**
  * Organization visible to the authenticated user.
  *
@@ -9,6 +24,7 @@ export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
  * @property slug URL-safe organization identifier.
  * @property description Optional organization summary.
  * @property role Current user's membership role in the organization.
+ * @property capabilities Backend-derived operations available to the current user.
  */
 export type Organization = Readonly<{
   id: string;
@@ -16,6 +32,7 @@ export type Organization = Readonly<{
   slug: string;
   description: string | null;
   role: OrganizationRole;
+  capabilities: readonly OrganizationCapability[];
 }>;
 
 /**
@@ -78,6 +95,7 @@ export type ApiOrganization = {
   slug: string;
   description: string | null;
   role: OrganizationRole;
+  capabilities: OrganizationCapability[];
   created_at: string;
   updated_at: string;
   archived_at: string | null;

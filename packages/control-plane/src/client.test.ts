@@ -16,6 +16,7 @@ describe("createControlPlaneClient", () => {
           slug: "northstar",
           description: "Primary organization",
           role: "owner",
+          capabilities: ["organization:read", "project:create"],
           created_at: "2026-09-01T09:00:00Z",
           updated_at: "2026-09-01T09:00:00Z",
           archived_at: null,
@@ -34,6 +35,7 @@ describe("createControlPlaneClient", () => {
         slug: "northstar",
         description: "Primary organization",
         role: "owner",
+        capabilities: ["organization:read", "project:create"],
       },
     ]);
     expect(fetcher).toHaveBeenCalledWith(

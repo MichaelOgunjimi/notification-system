@@ -4,6 +4,7 @@ export type {
   ControlPlaneClient,
   ControlPlaneClientOptions,
   Organization,
+  OrganizationCapability,
   OrganizationRole,
   Project,
 } from "./types";

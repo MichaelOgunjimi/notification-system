@@ -5,6 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.modules.tenancy.authorization import OrganizationCapability
 from app.modules.tenancy.models.organization import OrganizationRole
 
 
@@ -27,6 +28,7 @@ class OrganizationResponse(BaseModel):
     slug: str
     description: str | None
     role: OrganizationRole
+    capabilities: tuple[OrganizationCapability, ...]
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

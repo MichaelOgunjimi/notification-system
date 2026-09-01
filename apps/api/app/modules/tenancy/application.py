@@ -14,6 +14,7 @@ from app.modules.tenancy.authorization import (
     OrganizationCapability,
     authorize_organization,
     authorize_project,
+    capabilities_for_role,
 )
 from app.modules.tenancy.errors import SlugConflictError
 from app.modules.tenancy.lifecycle import create_organization, create_project
@@ -36,6 +37,7 @@ def _organization_view(
         slug=organization.slug,
         description=organization.description,
         role=role,
+        capabilities=capabilities_for_role(role),
         created_at=organization.created_at,
         updated_at=organization.updated_at,
         archived_at=organization.archived_at,

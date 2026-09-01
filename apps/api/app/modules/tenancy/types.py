@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.modules.tenancy.authorization import OrganizationCapability
 from app.modules.tenancy.models.organization import OrganizationRole
 
 
@@ -14,6 +15,7 @@ class OrganizationView:
     slug: str
     description: str | None
     role: OrganizationRole
+    capabilities: tuple[OrganizationCapability, ...]
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None
