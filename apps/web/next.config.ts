@@ -5,7 +5,7 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
-  transpilePackages: ["@beaco/auth", "@beaco/theme"],
+  transpilePackages: ["@beaco/auth", "@beaco/control-plane", "@beaco/theme"],
   async rewrites() {
     return [
       {

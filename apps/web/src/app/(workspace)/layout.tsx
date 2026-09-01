@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@beaco/auth/react";
+import { ControlPlaneProvider } from "@beaco/control-plane/react";
 
 export const metadata: Metadata = {
   title: "Workspace | Beaco",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>;
+  return (
+    <AuthProvider>
+      <ControlPlaneProvider>{children}</ControlPlaneProvider>
+    </AuthProvider>
+  );
 }

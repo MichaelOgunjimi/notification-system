@@ -2,17 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Buildings, Check, FolderSimple, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { useSession } from "@beaco/auth/react";
-import { listOrganizations, listProjects, type Organization, type Project } from "@/lib/control-plane";
+import {
+  useOrganizations,
+  useProjects,
+} from "@beaco/control-plane/react";
+import type { Organization, Project } from "@beaco/control-plane";
 import { WorkspaceShell } from "./workspace-shell";
 import "./workspace-selector.css";
-
-const workspaceKeys = {
-  organizations: ["control-plane", "organizations"] as const,
-  projects: (organizationId: string) => ["control-plane", "organizations", organizationId, "projects"] as const,
-};
 
 function WorkspaceError({ message, retry }: { message: string; retry: () => void }) {
   return (
@@ -31,19 +29,11 @@ export function WorkspaceSelector() {
   const session = useSession();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const organizations = useQuery({
-    queryKey: workspaceKeys.organizations,
-    queryFn: listOrganizations,
-    enabled: session.status === "authenticated",
-  });
+  const organizations = useOrganizations(session.status === "authenticated");
   const activeOrganizationId = organizations.data?.some((organization) => organization.id === organizationId)
     ? organizationId
     : organizations.data?.[0]?.id ?? null;
-  const projects = useQuery({
-    queryKey: workspaceKeys.projects(activeOrganizationId ?? "pending"),
-    queryFn: () => listProjects(activeOrganizationId as string),
-    enabled: Boolean(activeOrganizationId),
-  });
+  const projects = useProjects(activeOrganizationId);
   const activeProjectId = projects.data?.some((project) => project.id === projectId)
     ? projectId
     : projects.data?.[0]?.id ?? null;
