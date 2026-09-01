@@ -1001,10 +1001,7 @@
 
   .dashboard-account-menu__popover {
     min-width: 0;
-    position: fixed;
-    right: 12px;
-    top: 70px;
-    width: calc(100vw - 24px);
+    width: min(286px, calc(100vw - 32px));
   }
 
   .dashboard-overview {
