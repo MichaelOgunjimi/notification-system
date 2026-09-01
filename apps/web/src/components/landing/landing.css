@@ -89,6 +89,22 @@
   backdrop-filter: blur(18px);
 }
 
+.hero-routing-image--light {
+  display: block;
+}
+
+.hero-routing-image--dark {
+  display: none;
+}
+
+.dark .hero-routing-image--light {
+  display: none;
+}
+
+.dark .hero-routing-image--dark {
+  display: block;
+}
+
 .site-frame {
   background: var(--site-overlay);
   border: 1px solid var(--site-line);

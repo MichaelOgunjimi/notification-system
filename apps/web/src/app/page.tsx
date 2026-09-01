@@ -200,7 +200,15 @@ export default function Home() {
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 44vw"
-                  className="object-cover object-center"
+                  className="hero-routing-image hero-routing-image--dark object-cover object-center"
+                />
+                <Image
+                  src="/beaco-routing-light.webp"
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 44vw"
+                  className="hero-routing-image hero-routing-image--light object-cover object-center"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10" />
               </div>
