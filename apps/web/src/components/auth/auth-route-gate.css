@@ -1,0 +1,21 @@
+.auth-route-gate {
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(233, 170, 49, 0.08), transparent 18rem),
+    var(--background);
+  color: var(--muted-foreground);
+  display: flex;
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  gap: 10px;
+  justify-content: center;
+  letter-spacing: 0.1em;
+  min-height: 100dvh;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-route-gate svg {
+    animation: none;
+  }
+}

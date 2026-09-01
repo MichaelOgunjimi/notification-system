@@ -20,6 +20,7 @@ import type { User } from "@beaco/auth";
 import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
+import { dashboardPath } from "@/lib/dashboard-route";
 import "./dashboard-shell.css";
 
 type DashboardShellProps = Readonly<{
@@ -79,7 +80,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
             {projects.map((candidate) => (
               <Link
                 key={candidate.id}
-                href={`/app/${organization.slug}/${candidate.slug}`}
+                href={dashboardPath(organization.slug, candidate.slug)}
                 data-active={candidate.id === project.id}
               >
                 <span>{candidate.name}</span>

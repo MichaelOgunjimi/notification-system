@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { useSession } from "@beaco/auth/react";
 import { useOrganizations, useProjects } from "@beaco/control-plane/react";
 import { DashboardShell } from "./dashboard-shell";
+import { dashboardPath, rememberDashboardPath } from "@/lib/dashboard-route";
 import "./dashboard-context.css";
 
 type DashboardContextProps = Readonly<{
@@ -51,6 +53,14 @@ export function DashboardContext({ organizationSlug, projectSlug }: DashboardCon
   const organization = organizations.data?.find((item) => item.slug === organizationSlug);
   const projects = useProjects(organization?.id ?? null);
   const project = projects.data?.find((item) => item.slug === projectSlug);
+  const userId = session.user?.id;
+  const validatedPath =
+    organization && project ? dashboardPath(organization.slug, project.slug) : null;
+
+  useEffect(() => {
+    if (!userId || !validatedPath) return;
+    rememberDashboardPath(userId, validatedPath);
+  }, [userId, validatedPath]);
 
   if (session.status === "loading") {
     return (

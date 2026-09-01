@@ -5,7 +5,13 @@ import Link from "next/link";
 import { ArrowRight, GithubLogo, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { AuthShell } from "./auth-shell";
 import { useCompleteOAuthSignIn } from "@beaco/auth/react";
+import { postAuthDestination } from "@/lib/dashboard-route";
 
+/**
+ * Exchanges a GitHub callback code for the application's cookie-backed session.
+ *
+ * @returns OAuth progress or retry UI until navigation completes.
+ */
 export function OAuthCallback() {
   const completion = useCompleteOAuthSignIn();
   const completeSignIn = completion.mutate;
@@ -20,7 +26,7 @@ export function OAuthCallback() {
     completeSignIn(
       { code },
       {
-        onSuccess: () => window.location.replace("/workspace"),
+        onSuccess: (user) => window.location.replace(postAuthDestination(user.id)),
       },
     );
   }, [completeSignIn]);

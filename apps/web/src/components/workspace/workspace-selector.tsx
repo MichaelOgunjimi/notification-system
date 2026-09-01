@@ -13,6 +13,7 @@ import {
 import { useSession } from "@beaco/auth/react";
 import { useOrganizations, useProjects } from "@beaco/control-plane/react";
 import type { Organization, Project } from "@beaco/control-plane";
+import { dashboardPath } from "@/lib/dashboard-route";
 import { WorkspaceShell } from "./workspace-shell";
 import "./workspace-selector.css";
 
@@ -219,7 +220,7 @@ export function WorkspaceSelector() {
           </div>
           {selectedOrganization && selectedProject ? (
             <Link
-              href={`/app/${selectedOrganization.slug}/${selectedProject.slug}`}
+              href={dashboardPath(selectedOrganization.slug, selectedProject.slug)}
               className="workspace-selector__enter"
             >
               Open project <ArrowRight size={16} />
