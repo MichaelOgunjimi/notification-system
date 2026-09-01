@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +14,8 @@ import {
   CirclesFour,
   Code,
   EnvelopeSimple,
+  GearSix,
+  House,
   Key,
   List,
   ListBullets,
@@ -63,13 +65,21 @@ const projectNavigation = [
 export function DashboardShell({ user, organization, project, projects }: DashboardShellProps) {
   const router = useRouter();
   const sidebarId = useId();
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const signOut = useSignOut();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
+  const userInitials = (user.name || user.email)
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1))
+    .join("")
+    .toUpperCase();
 
   useEffect(() => {
     if (!mobileSidebarOpen) return;
@@ -87,6 +97,27 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function closeAccountMenu(event: PointerEvent) {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function closeAccountMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeAccountMenu);
+    window.addEventListener("keydown", closeAccountMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeAccountMenu);
+      window.removeEventListener("keydown", closeAccountMenuOnEscape);
+    };
+  }, [accountMenuOpen]);
 
   async function handleSignOut() {
     try {
@@ -257,15 +288,6 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
             <strong>{user.name}</strong>
             <small>{user.email}</small>
           </span>
-          <button
-            type="button"
-            aria-label="Sign out"
-            title="Sign out"
-            disabled={signOut.isPending}
-            onClick={() => setSignOutDialogOpen(true)}
-          >
-            <SignOut size={17} />
-          </button>
         </div>
       </aside>
 
@@ -300,7 +322,79 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
               <strong>Overview</strong>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="dashboard-stage__actions">
+            <ThemeToggle />
+            <div
+              ref={accountMenuRef}
+              className="dashboard-account-menu"
+              data-open={accountMenuOpen || undefined}
+            >
+              <button
+                type="button"
+                className="dashboard-account-menu__trigger"
+                aria-label="Open account menu"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                onClick={() => setAccountMenuOpen((open) => !open)}
+              >
+                <span>{userInitials}</span>
+                <CaretDown size={12} />
+              </button>
+
+              {accountMenuOpen ? (
+                <div className="dashboard-account-menu__popover" role="menu">
+                  <div className="dashboard-account-menu__identity" role="presentation">
+                    <span>{userInitials}</span>
+                    <div>
+                      <strong>{user.name}</strong>
+                      <small>{user.email}</small>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-account-menu__items">
+                    <button type="button" role="menuitem" disabled>
+                      <GearSix size={16} />
+                      <span>
+                        <strong>Account settings</strong>
+                        <small>Coming next</small>
+                      </span>
+                    </button>
+                    <Link
+                      href="/workspace"
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <Buildings size={16} />
+                      <span>
+                        <strong>Switch workspace</strong>
+                        <small>Organizations and projects</small>
+                      </span>
+                    </Link>
+                    <Link href="/" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+                      <House size={16} />
+                      <span>
+                        <strong>Visit public site</strong>
+                        <small>Return to Beaco</small>
+                      </span>
+                    </Link>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="dashboard-account-menu__signout"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      setSignOutDialogOpen(true);
+                    }}
+                  >
+                    <SignOut size={16} />
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </header>
 
         <div className="dashboard-overview">

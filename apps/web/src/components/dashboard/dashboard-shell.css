@@ -105,8 +105,7 @@
 
 .dashboard-sidebar__collapse,
 .dashboard-sidebar__mobile-close,
-.dashboard-stage__menu,
-.dashboard-sidebar__identity > button {
+.dashboard-stage__menu {
   align-items: center;
   background: transparent;
   border: 1px solid transparent;
@@ -135,8 +134,7 @@
 
 .dashboard-sidebar__collapse:hover,
 .dashboard-sidebar__mobile-close:hover,
-.dashboard-stage__menu:hover,
-.dashboard-sidebar__identity > button:hover {
+.dashboard-stage__menu:hover {
   background: var(--dashboard-overlay-hover);
   border-color: var(--dashboard-line);
   color: var(--dashboard-ink);
@@ -144,15 +142,13 @@
 
 .dashboard-sidebar__collapse:active,
 .dashboard-sidebar__mobile-close:active,
-.dashboard-stage__menu:active,
-.dashboard-sidebar__identity > button:active {
+.dashboard-stage__menu:active {
   transform: translateY(1px);
 }
 
 .dashboard-sidebar__collapse:focus-visible,
 .dashboard-sidebar__mobile-close:focus-visible,
 .dashboard-stage__menu:focus-visible,
-.dashboard-sidebar__identity > button:focus-visible,
 .dashboard-sidebar__edge-peek:focus-visible,
 .dashboard-switcher__trigger:focus-visible,
 .dashboard-nav a:focus-visible {
@@ -461,11 +457,6 @@
   margin-top: 3px;
 }
 
-.dashboard-sidebar__identity > button:disabled {
-  cursor: wait;
-  opacity: 0.45;
-}
-
 .dashboard-sidebar__edge-peek {
   align-items: center;
   background: transparent;
@@ -522,9 +513,6 @@
   .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
     .dashboard-sidebar__user,
   .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
-    .dashboard-sidebar__identity
-    > button,
-  .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
     .dashboard-sidebar__collapse {
     display: none;
   }
@@ -580,12 +568,191 @@
   gap: 12px;
 }
 
-.dashboard-stage__header span,
-.dashboard-stage__header strong {
+.dashboard-stage__actions {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+}
+
+.dashboard-account-menu {
+  position: relative;
+}
+
+.dashboard-account-menu__trigger {
+  align-items: center;
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 10px;
+  color: var(--dashboard-muted);
+  display: flex;
+  gap: 6px;
+  height: 40px;
+  padding: 0 8px 0 5px;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.dashboard-account-menu__trigger > span,
+.dashboard-account-menu__identity > span {
+  align-items: center;
+  background: rgba(233, 170, 49, 0.12);
+  border: 1px solid rgba(233, 170, 49, 0.24);
+  border-radius: 7px;
+  color: var(--dashboard-accent);
+  display: inline-flex;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  height: 28px;
+  justify-content: center;
+  letter-spacing: -0.03em;
+  width: 28px;
+}
+
+.dashboard-account-menu__trigger:hover,
+.dashboard-account-menu[data-open="true"] .dashboard-account-menu__trigger {
+  background: var(--dashboard-overlay-hover);
+  border-color: var(--dashboard-accent);
+  color: var(--dashboard-ink);
+}
+
+.dashboard-account-menu__trigger:focus-visible,
+.dashboard-account-menu__items a:focus-visible,
+.dashboard-account-menu__items button:focus-visible,
+.dashboard-account-menu__signout:focus-visible {
+  outline: 2px solid var(--dashboard-accent);
+  outline-offset: 2px;
+}
+
+.dashboard-account-menu[data-open="true"] .dashboard-account-menu__trigger > svg {
+  transform: rotate(180deg);
+}
+
+.dashboard-account-menu__trigger > svg {
+  transition: transform 180ms ease;
+}
+
+.dashboard-account-menu__popover {
+  background: var(--dashboard-elevated);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 12px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+  min-width: 286px;
+  padding: 9px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 9px);
+  z-index: 6;
+}
+
+.dashboard-account-menu__identity {
+  align-items: center;
+  border-bottom: 1px solid var(--dashboard-line);
+  display: flex;
+  gap: 10px;
+  margin: 0 5px 7px;
+  padding: 7px 2px 14px;
+}
+
+.dashboard-account-menu__identity > span {
+  height: 34px;
+  width: 34px;
+}
+
+.dashboard-account-menu__identity > div {
+  min-width: 0;
+}
+
+.dashboard-account-menu__identity strong,
+.dashboard-account-menu__identity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-account-menu__identity strong {
+  font-size: 11px;
+}
+
+.dashboard-account-menu__identity small {
+  color: var(--dashboard-muted);
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.dashboard-account-menu__items {
+  display: grid;
+  gap: 2px;
+}
+
+.dashboard-account-menu__items a,
+.dashboard-account-menu__items button,
+.dashboard-account-menu__signout {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--dashboard-muted-bright);
+  display: flex;
+  gap: 10px;
+  min-height: 46px;
+  padding: 7px 9px;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+  width: 100%;
+}
+
+.dashboard-account-menu__items a:hover,
+.dashboard-account-menu__items button:hover:not(:disabled),
+.dashboard-account-menu__signout:hover {
+  background: var(--dashboard-overlay-hover);
+  color: var(--dashboard-ink);
+}
+
+.dashboard-account-menu__items button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.dashboard-account-menu__items span {
+  min-width: 0;
+}
+
+.dashboard-account-menu__items strong,
+.dashboard-account-menu__items small {
   display: block;
 }
 
-.dashboard-stage__header span {
+.dashboard-account-menu__items strong {
+  font-size: 10px;
+  font-weight: 560;
+}
+
+.dashboard-account-menu__items small {
+  color: var(--dashboard-muted);
+  font-size: 8px;
+  margin-top: 3px;
+}
+
+.dashboard-account-menu__signout {
+  border-top: 1px solid var(--dashboard-line);
+  border-radius: 0 0 7px 7px;
+  color: #d88274;
+  font-size: 10px;
+  margin-top: 7px;
+  padding-top: 11px;
+}
+
+.dashboard-stage__context > div > span,
+.dashboard-stage__context > div > strong {
+  display: block;
+}
+
+.dashboard-stage__context > div > span {
   color: var(--dashboard-muted);
   font-family: var(--font-geist-mono);
   font-size: 8px;
@@ -593,7 +760,7 @@
   text-transform: uppercase;
 }
 
-.dashboard-stage__header strong {
+.dashboard-stage__context > div > strong {
   font-size: 12px;
   margin-top: 5px;
 }
@@ -832,6 +999,14 @@
     height: 62px;
   }
 
+  .dashboard-account-menu__popover {
+    min-width: 0;
+    position: fixed;
+    right: 12px;
+    top: 70px;
+    width: calc(100vw - 24px);
+  }
+
   .dashboard-overview {
     padding: 32px 18px 48px;
   }
@@ -869,7 +1044,12 @@
   .dashboard-sidebar,
   .dashboard-sidebar__backdrop,
   .dashboard-sidebar__edge-peek,
-  .dashboard-switcher__trigger > svg {
+  .dashboard-switcher__trigger > svg,
+  .dashboard-account-menu__trigger,
+  .dashboard-account-menu__trigger > svg,
+  .dashboard-account-menu__items a,
+  .dashboard-account-menu__items button,
+  .dashboard-account-menu__signout {
     transition: none;
   }
 }
