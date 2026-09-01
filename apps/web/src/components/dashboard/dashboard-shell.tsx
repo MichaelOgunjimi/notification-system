@@ -1,22 +1,32 @@
+"use client";
+
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BellRinging,
   Buildings,
   CaretDown,
+  CaretRight,
   ChartLineUp,
   Check,
   CirclesFour,
   Code,
   EnvelopeSimple,
   Key,
+  List,
   ListBullets,
   PaperPlaneTilt,
   Pulse,
+  SidebarSimple,
+  SignOut,
   SquaresFour,
   UserCircle,
+  X,
 } from "@phosphor-icons/react";
 import type { User } from "@beaco/auth";
+import { useSignOut } from "@beaco/auth/react";
 import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
@@ -50,84 +60,247 @@ const projectNavigation = [
  * @returns Dashboard navigation shell and context-aware overview surface.
  */
 export function DashboardShell({ user, organization, project, projects }: DashboardShellProps) {
+  const router = useRouter();
+  const sidebarId = useId();
+  const signOut = useSignOut();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPeeking, setSidebarPeeking] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const currentDashboardPath = dashboardPath(organization.slug, project.slug);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileSidebarOpen(false);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileSidebarOpen]);
+
+  async function handleSignOut() {
+    try {
+      await signOut.mutateAsync();
+      router.replace("/login");
+    } catch {
+      // The mutation exposes the recoverable error beside the account controls.
+    }
+  }
+
+  function closeMobileSidebar() {
+    setMobileSidebarOpen(false);
+    setSwitcherOpen(false);
+  }
+
   return (
-    <main id="main-content" className="dashboard-shell">
-      <aside className="dashboard-sidebar">
+    <main
+      id="main-content"
+      className="dashboard-shell"
+      data-sidebar-collapsed={sidebarCollapsed || undefined}
+      data-sidebar-peeking={sidebarPeeking || switcherOpen || undefined}
+      data-mobile-sidebar-open={mobileSidebarOpen || undefined}
+    >
+      {mobileSidebarOpen ? (
+        <button
+          type="button"
+          className="dashboard-sidebar__backdrop"
+          aria-label="Close navigation"
+          onClick={closeMobileSidebar}
+        />
+      ) : null}
+
+      <aside
+        id={sidebarId}
+        className="dashboard-sidebar"
+        aria-label="Dashboard navigation"
+        onMouseLeave={() => setSidebarPeeking(false)}
+      >
         <div className="dashboard-sidebar__brand">
-          <Link href="/" aria-label="Beaco home">
+          <Link href={currentDashboardPath} aria-label={`${project.name} dashboard overview`}>
             <BrandLogo
               priority
+              className="dashboard-sidebar__logo"
               markClassName="size-8"
               labelClassName="text-[15px] font-semibold tracking-[-0.03em]"
             />
           </Link>
           <span>Control plane</span>
+          <button
+            type="button"
+            className="dashboard-sidebar__collapse"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-pressed={sidebarCollapsed}
+            onClick={() => {
+              setSidebarCollapsed((collapsed) => !collapsed);
+              setSidebarPeeking(false);
+              setSwitcherOpen(false);
+            }}
+          >
+            <SidebarSimple size={17} />
+          </button>
+          <button
+            type="button"
+            className="dashboard-sidebar__mobile-close"
+            aria-label="Close navigation"
+            onClick={closeMobileSidebar}
+          >
+            <X size={17} />
+          </button>
         </div>
 
-        <details className="dashboard-switcher">
-          <summary>
+        <div className="dashboard-switcher" data-open={switcherOpen || undefined}>
+          <button
+            type="button"
+            className="dashboard-switcher__trigger"
+            aria-label={`Switch project. Current project: ${project.name}`}
+            aria-expanded={switcherOpen}
+            aria-controls={`${sidebarId}-switcher`}
+            onClick={() => setSwitcherOpen((open) => !open)}
+          >
             <span className="dashboard-switcher__icon">
               <Buildings size={16} />
             </span>
-            <span>
+            <span className="dashboard-switcher__selection">
               <small>{organization.name}</small>
               <strong>{project.name}</strong>
             </span>
             <CaretDown size={14} />
-          </summary>
-          <div className="dashboard-switcher__menu">
-            <p>Projects in {organization.name}</p>
-            {projects.map((candidate) => (
+          </button>
+          {switcherOpen ? (
+            <div id={`${sidebarId}-switcher`} className="dashboard-switcher__menu">
+              <div className="dashboard-switcher__heading">
+                <span>Projects</span>
+                <strong>{organization.name}</strong>
+              </div>
+              <div className="dashboard-switcher__projects">
+                {projects.map((candidate) => (
+                  <Link
+                    key={candidate.id}
+                    href={dashboardPath(organization.slug, candidate.slug)}
+                    data-active={candidate.id === project.id}
+                    onClick={closeMobileSidebar}
+                  >
+                    <span className="dashboard-switcher__project-mark">
+                      {candidate.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span>
+                      <strong>{candidate.name}</strong>
+                      <small>{candidate.slug}</small>
+                    </span>
+                    {candidate.id === project.id ? <Check size={13} /> : <ArrowRight size={13} />}
+                  </Link>
+                ))}
+              </div>
               <Link
-                key={candidate.id}
-                href={dashboardPath(organization.slug, candidate.slug)}
-                data-active={candidate.id === project.id}
+                href="/workspace"
+                className="dashboard-switcher__all"
+                onClick={closeMobileSidebar}
               >
-                <span>{candidate.name}</span>
-                {candidate.id === project.id ? <Check size={13} /> : <ArrowRight size={13} />}
+                <CirclesFour size={15} />
+                <span>
+                  <strong>Change workspace</strong>
+                  <small>Organizations and projects</small>
+                </span>
+                <ArrowRight size={13} />
               </Link>
-            ))}
-            <Link href="/workspace" className="dashboard-switcher__all">
-              <CirclesFour size={14} /> Change organization
-            </Link>
-          </div>
-        </details>
+            </div>
+          ) : null}
+        </div>
 
         <nav className="dashboard-nav" aria-label="Project navigation">
           <p>Operate</p>
           {primaryNavigation.map(({ label, icon: Icon, active }) => (
-            <span
+            <Link
               key={label}
+              href={active ? currentDashboardPath : currentDashboardPath}
+              title={label}
               data-active={active || undefined}
               aria-current={active ? "page" : undefined}
+              aria-disabled={!active}
+              tabIndex={active ? undefined : -1}
+              onClick={(event) => {
+                if (!active) event.preventDefault();
+                closeMobileSidebar();
+              }}
             >
-              <Icon size={16} /> {label}
+              <Icon size={17} />
+              <span>{label}</span>
               {!active ? <small>soon</small> : null}
-            </span>
+            </Link>
           ))}
           <p>Configure</p>
           {projectNavigation.map(({ label, icon: Icon }) => (
-            <span key={label}>
-              <Icon size={16} /> {label}
+            <span key={label} aria-disabled="true">
+              <Icon size={17} />
+              <span>{label}</span>
               <small>soon</small>
             </span>
           ))}
         </nav>
 
         <div className="dashboard-sidebar__identity">
-          <UserCircle size={24} />
-          <span>
+          <span className="dashboard-sidebar__avatar">
+            <UserCircle size={22} />
+          </span>
+          <span className="dashboard-sidebar__user">
             <strong>{user.name}</strong>
             <small>{user.email}</small>
           </span>
+          <button
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            disabled={signOut.isPending}
+            onClick={handleSignOut}
+          >
+            <SignOut size={17} />
+          </button>
         </div>
+        {signOut.isError ? (
+          <p className="dashboard-sidebar__signout-error" role="alert">
+            {signOut.error.message}
+          </p>
+        ) : null}
       </aside>
+
+      {sidebarCollapsed ? (
+        <button
+          type="button"
+          className="dashboard-sidebar__edge-peek"
+          aria-label="Preview sidebar"
+          onMouseEnter={() => setSidebarPeeking(true)}
+          onFocus={() => setSidebarPeeking(true)}
+          onClick={() => setSidebarCollapsed(false)}
+        >
+          <CaretRight size={13} />
+        </button>
+      ) : null}
 
       <section className="dashboard-stage">
         <header className="dashboard-stage__header">
-          <div>
-            <span>Project / {project.slug}</span>
-            <strong>Overview</strong>
+          <div className="dashboard-stage__context">
+            <button
+              type="button"
+              className="dashboard-stage__menu"
+              aria-label="Open navigation"
+              aria-controls={sidebarId}
+              aria-expanded={mobileSidebarOpen}
+              onClick={() => setMobileSidebarOpen(true)}
+            >
+              <List size={19} />
+            </button>
+            <div>
+              <span>Project / {project.slug}</span>
+              <strong>Overview</strong>
+            </div>
           </div>
           <ThemeToggle />
         </header>
