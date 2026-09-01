@@ -30,6 +30,7 @@ function mapProject(project: ApiProject): Project {
   };
 }
 
+/** HTTP implementation that communicates through an application's same-origin boundary. */
 class HttpControlPlaneClient implements ControlPlaneClient {
   private readonly appControlPlanePath: string;
   private readonly fetcher: typeof globalThis.fetch;
@@ -50,6 +51,11 @@ class HttpControlPlaneClient implements ControlPlaneClient {
     },
   };
 
+  /**
+   * Creates an HTTP control-plane client without taking custody of auth tokens.
+   *
+   * @param options Route and transport configuration supplied by the host application.
+   */
   constructor(options: ControlPlaneClientOptions = {}) {
     this.appControlPlanePath = (options.appControlPlanePath ?? DEFAULT_CONTROL_PLANE_PATH).replace(
       /\/$/,
@@ -77,10 +83,20 @@ class HttpControlPlaneClient implements ControlPlaneClient {
   }
 }
 
+/**
+ * Creates a browser-safe client for organization and project operations.
+ *
+ * Requests use same-origin credentials so the host application's HTTP-only
+ * session cookies remain inaccessible to this package.
+ *
+ * @param options Optional application route and fetch transport overrides.
+ * @returns Configured control-plane client.
+ */
 export function createControlPlaneClient(
   options: ControlPlaneClientOptions = {},
 ): ControlPlaneClient {
   return new HttpControlPlaneClient(options);
 }
 
+/** Shared client bound to the default `/api/control-plane` application route. */
 export const controlPlaneClient = createControlPlaneClient();

@@ -4,6 +4,7 @@ type ErrorPayload = {
   error?: { message?: string; details?: ValidationIssue[] };
 };
 
+/** Stable error categories exposed to control-plane package consumers. */
 export type ControlPlaneErrorCode =
   | "invalid_request"
   | "unauthenticated"
@@ -25,11 +26,27 @@ function codeForStatus(status: number): ControlPlaneErrorCode {
   return "unexpected_error";
 }
 
+/**
+ * Structured failure returned by the control-plane client.
+ *
+ * The error preserves an HTTP status, a stable application code, and whether a
+ * retry is reasonable so UI and query layers do not parse backend messages.
+ */
 export class ControlPlaneError extends Error {
+  /** Stable category derived from the response status. */
   readonly code: ControlPlaneErrorCode;
+  /** HTTP status returned by the application boundary, or 503 for network failures. */
   readonly status: number;
+  /** Whether retrying may succeed without changing the request. */
   readonly retryable: boolean;
 
+  /**
+   * Creates a structured control-plane failure.
+   *
+   * @param message Human-readable failure reason suitable for application UI.
+   * @param status HTTP status associated with the failure.
+   * @param options Optional native error options, including an underlying cause.
+   */
   constructor(message: string, status: number, options?: ErrorOptions) {
     super(message, options);
     this.name = "ControlPlaneError";
@@ -39,6 +56,13 @@ export class ControlPlaneError extends Error {
   }
 }
 
+/**
+ * Converts a failed HTTP response into a normalized control-plane error.
+ *
+ * @param response Failed response returned by the application boundary.
+ * @param fallback Message used when the response has no readable error payload.
+ * @returns Structured error retaining the response status and retry semantics.
+ */
 export async function controlPlaneErrorFromResponse(
   response: Response,
   fallback: string,
@@ -56,6 +80,12 @@ export async function controlPlaneErrorFromResponse(
   return new ControlPlaneError(detail || fallback, response.status);
 }
 
+/**
+ * Wraps a transport exception as a retryable service-unavailable error.
+ *
+ * @param cause Original exception raised by the configured fetch transport.
+ * @returns Structured 503 error with the original exception as its cause.
+ */
 export function controlPlaneNetworkError(cause: unknown): ControlPlaneError {
   return new ControlPlaneError("The workspace service is unavailable.", 503, {
     cause,
