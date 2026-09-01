@@ -15,7 +15,8 @@ export default function MobileNav({ links }: MobileNavProps) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="relative md:hidden">
+    <div className="relative flex items-center gap-2 md:hidden">
+      <ThemeToggle />
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -55,10 +56,6 @@ export default function MobileNav({ links }: MobileNavProps) {
             >
               Sign in
             </Link>
-            <div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2 text-sm text-[var(--site-muted)]">
-              <span>Appearance</span>
-              <ThemeToggle />
-            </div>
             <Link
               href={docsUrl("/quickstart")}
               onClick={() => setOpen(false)}
