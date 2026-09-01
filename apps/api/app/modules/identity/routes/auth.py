@@ -12,6 +12,7 @@ from app.modules.identity.schemas import (
     OAuthCodeExchangeRequest,
     RefreshRequest,
     TokenResponse,
+    UserProfileUpdate,
     UserResponse,
 )
 from app.modules.identity.service import (
@@ -19,6 +20,7 @@ from app.modules.identity.service import (
     refresh_access_token,
     request_magic_link,
     revoke_refresh_token,
+    update_user_profile,
     verify_magic_link,
 )
 
@@ -83,4 +85,20 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: CurrentUserDep) -> User:
+    """Return the profile for the authenticated human user."""
     return user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UserProfileUpdate,
+    *,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> User:
+    """Update user-owned profile fields without changing login identity."""
+    return await update_user_profile(
+        db,
+        user=user,
+        changes=body.model_dump(exclude_unset=True),
+    )

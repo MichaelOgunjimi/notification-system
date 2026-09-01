@@ -61,11 +61,13 @@ async def _create_user_with_workspace(
     *,
     email: str,
     name: str,
+    avatar_url: str | None = None,
 ) -> tuple[User, EmailAddress]:
     verified_at = utc_now()
     user = User(
         email=email,
         name=name,
+        avatar_url=avatar_url,
         email_verified_at=verified_at,
     )
     db.add(user)
@@ -267,6 +269,7 @@ async def get_or_create_oauth_user(
         db,
         email=email,
         name=str(identity.get("name") or identity["login"]),
+        avatar_url=identity.get("avatar_url"),
     )
 
     db.add(
@@ -280,6 +283,34 @@ async def get_or_create_oauth_user(
             avatar_url=identity.get("avatar_url"),
         )
     )
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def update_user_profile(
+    db: AsyncSession,
+    *,
+    user: User,
+    changes: dict[str, object],
+) -> User:
+    """Persist authenticated user-owned profile fields.
+
+    Args:
+        db: Active identity database session.
+        user: Authenticated user resolved from the bearer access token.
+        changes: Validated partial profile fields from the HTTP schema.
+
+    Returns:
+        The refreshed user record after committing the profile update.
+
+    Side Effects:
+        Commits the active database transaction and advances ``updated_at``.
+    """
+    for field, value in changes.items():
+        setattr(user, field, value)
+    user.updated_at = utc_now()
+    db.add(user)
     await db.commit()
     await db.refresh(user)
     return user
@@ -339,6 +370,9 @@ async def connect_oauth_account(
             provider=provider,
             provider_account_id=provider_account_id,
         )
+        if user.avatar_url is None:
+            user.avatar_url = identity.get("avatar_url")
+            db.add(user)
     existing_account.provider_email = email
     existing_account.provider_name = identity.get("name")
     existing_account.provider_username = str(identity["login"])

@@ -99,6 +99,7 @@ async def test_github_callback_registers_user_and_default_tenant(
     assert oauth_account.provider == "github"
     assert oauth_account.provider_account_id == "12345"
     assert oauth_account.provider_email == "octocat@github.example"
+    assert user.avatar_url == "https://avatars.example/octocat"
     assert email_address.email == "octocat@github.example"
     assert email_address.is_primary is True
     assert email_address.verified_at is not None
@@ -228,7 +229,11 @@ async def test_existing_github_login_adds_changed_email_without_removing_old_mag
 ) -> None:
     monkeypatch.setattr(settings, "GITHUB_CLIENT_ID", "github-client")
     monkeypatch.setattr(settings, "GITHUB_CLIENT_SECRET", "github-secret")
-    user = User(email="old@example.com", name="Existing User")
+    user = User(
+        email="old@example.com",
+        name="Existing User",
+        avatar_url="https://images.example.com/custom-avatar.png",
+    )
     db.add(user)
     await db.flush()
     db.add_all(
@@ -259,7 +264,7 @@ async def test_existing_github_login_adds_changed_email_without_removing_old_mag
                 "login": "existing-user",
                 "name": "Existing User",
                 "email": "new@example.com",
-                "avatar_url": None,
+                "avatar_url": "https://avatars.example/provider-refresh",
             }
         ),
     )
@@ -277,6 +282,8 @@ async def test_existing_github_login_adds_changed_email_without_removing_old_mag
     }
     account = (await db.execute(select(OAuthAccount))).scalar_one()
     assert account.provider_email == "new@example.com"
+    await db.refresh(user)
+    assert user.avatar_url == "https://images.example.com/custom-avatar.png"
 
     mock_redis.getdel.return_value = json.dumps({"email": "old@example.com"})
     magic_response = await client.post(
@@ -332,7 +339,7 @@ async def test_signed_in_user_can_connect_github_and_add_its_verified_email(
                 "login": "connected-user",
                 "name": "Connected User",
                 "email": "github-secondary@example.com",
-                "avatar_url": None,
+                "avatar_url": "https://avatars.example/connected-user",
             }
         ),
     )
@@ -346,6 +353,8 @@ async def test_signed_in_user_can_connect_github_and_add_its_verified_email(
     account = (await db.execute(select(OAuthAccount))).scalar_one()
     assert account.user_id == user.id
     assert account.provider == "github"
+    await db.refresh(user)
+    assert user.avatar_url == "https://avatars.example/connected-user"
     emails = (await db.execute(select(EmailAddress))).scalars().all()
     assert {email.email for email in emails} == {
         "magic@example.com",
