@@ -25,10 +25,6 @@
   transition: grid-template-columns 240ms cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
-.dashboard-shell[data-sidebar-collapsed="true"] {
-  grid-template-columns: 76px minmax(0, 1fr);
-}
-
 .light .dashboard-shell {
   --dashboard-canvas: #f4f0e7;
   --dashboard-panel: #fffdf8;
@@ -493,6 +489,10 @@
 }
 
 @media (min-width: 901px) {
+  .dashboard-shell[data-sidebar-collapsed="true"] {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
   .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
     .dashboard-sidebar__brand
     > span,
