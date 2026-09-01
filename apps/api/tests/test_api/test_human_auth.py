@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.refresh_token import RefreshToken
 from app.modules.identity.models.user import User
 from app.modules.identity.service import create_user_tokens
@@ -167,6 +168,85 @@ async def test_profile_update_rejects_invalid_or_empty_changes(
     assert invalid_url.status_code == 422
     assert blank_name.status_code == 422
     assert empty_patch.status_code == 422
+
+
+async def test_authenticated_user_can_list_and_disconnect_oauth_connections(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    """Connection management is scoped to the access-token user."""
+    user = User(email="connections@example.com", name="Connection Owner")
+    other_user = User(email="other-connections@example.com", name="Other Owner")
+    db.add_all([user, other_user])
+    await db.flush()
+    db.add_all(
+        [
+            OAuthAccount(
+                user_id=user.id,
+                provider="github",
+                provider_account_id="github-owner",
+                provider_email="owner@github.example",
+                provider_name="Connection Owner",
+                provider_username="connection-owner",
+                avatar_url="https://avatars.example/connection-owner",
+            ),
+            OAuthAccount(
+                user_id=other_user.id,
+                provider="github",
+                provider_account_id="github-other",
+                provider_email="other@github.example",
+                provider_username="other-owner",
+            ),
+        ]
+    )
+    await db.commit()
+    tokens = await create_user_tokens(user, db, mock_redis)
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+
+    list_response = await client.get("/api/v1/auth/me/connections", headers=headers)
+
+    assert list_response.status_code == 200
+    assert list_response.json() == [
+        {
+            "provider": "github",
+            "provider_email": "owner@github.example",
+            "provider_name": "Connection Owner",
+            "provider_username": "connection-owner",
+            "avatar_url": "https://avatars.example/connection-owner",
+            "created_at": list_response.json()[0]["created_at"],
+        }
+    ]
+
+    delete_response = await client.delete(
+        "/api/v1/auth/me/connections/github",
+        headers=headers,
+    )
+
+    assert delete_response.status_code == 204
+    remaining = (await db.execute(select(OAuthAccount))).scalars().all()
+    assert len(remaining) == 1
+    assert remaining[0].user_id == other_user.id
+
+
+async def test_disconnecting_missing_oauth_connection_returns_not_found(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    """A missing provider produces a stable not-found response."""
+    user = User(email="missing-connection@example.com", name="Missing Connection")
+    db.add(user)
+    await db.commit()
+    tokens = await create_user_tokens(user, db, mock_redis)
+
+    response = await client.delete(
+        "/api/v1/auth/me/connections/github",
+        headers={"Authorization": f"Bearer {tokens.access_token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["message"] == "No github account is connected"
 
 
 async def test_refresh_token_cannot_authenticate_current_user(

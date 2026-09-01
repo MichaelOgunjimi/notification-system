@@ -10,13 +10,16 @@ from app.modules.identity.schemas import (
     MagicLinkVerifyRequest,
     MessageResponse,
     OAuthCodeExchangeRequest,
+    OAuthConnectionResponse,
     RefreshRequest,
     TokenResponse,
     UserProfileUpdate,
     UserResponse,
 )
 from app.modules.identity.service import (
+    disconnect_oauth_account,
     exchange_oauth_authorization_code,
+    list_oauth_connections,
     refresh_access_token,
     request_magic_link,
     revoke_refresh_token,
@@ -102,3 +105,24 @@ async def update_me(
         user=user,
         changes=body.model_dump(exclude_unset=True),
     )
+
+
+@router.get("/me/connections", response_model=list[OAuthConnectionResponse])
+async def get_my_oauth_connections(
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> list[OAuthConnectionResponse]:
+    """Return external identities linked to the authenticated user."""
+    connections = await list_oauth_connections(db, user_id=user.id)
+    return [OAuthConnectionResponse.model_validate(connection) for connection in connections]
+
+
+@router.delete("/me/connections/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_oauth_connection(
+    provider: str,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> Response:
+    """Disconnect one provider from the authenticated user account."""
+    await disconnect_oauth_account(db, user_id=user.id, provider=provider)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

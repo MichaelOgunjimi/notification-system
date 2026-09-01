@@ -56,6 +56,19 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
+class OAuthConnectionResponse(BaseModel):
+    """Provider identity currently linked to an authenticated user account."""
+
+    model_config = {"from_attributes": True}
+
+    provider: str
+    provider_email: str | None
+    provider_name: str | None
+    provider_username: str | None
+    avatar_url: str | None
+    created_at: datetime
+
+
 class UserProfileUpdate(BaseModel):
     """Partial profile fields an authenticated user may update directly.
 

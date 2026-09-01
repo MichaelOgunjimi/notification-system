@@ -316,6 +316,69 @@ async def update_user_profile(
     return user
 
 
+async def list_oauth_connections(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+) -> list[OAuthAccount]:
+    """List external identities linked to one authenticated user.
+
+    Args:
+        db: Active identity database session.
+        user_id: Authenticated user's stable application identifier.
+
+    Returns:
+        Connected provider accounts ordered by their original connection time.
+
+    Security:
+        Callers must supply the user identifier resolved from the access token;
+        provider records are never queried by a browser-provided user ID.
+    """
+    result = await db.execute(
+        select(OAuthAccount)
+        .where(col(OAuthAccount.user_id) == user_id)
+        .order_by(col(OAuthAccount.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def disconnect_oauth_account(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    provider: str,
+) -> None:
+    """Remove one provider connection from an authenticated user.
+
+    Args:
+        db: Active identity database session.
+        user_id: Authenticated user's stable application identifier.
+        provider: Provider key to disconnect.
+
+    Raises:
+        HTTPException: When the requested provider is not connected to the user.
+
+    Side Effects:
+        Deletes the OAuth account and commits the transaction. Verified email
+        addresses already attached to the user are intentionally retained.
+    """
+    result = await db.execute(
+        select(OAuthAccount).where(
+            col(OAuthAccount.user_id) == user_id,
+            col(OAuthAccount.provider) == provider,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No {provider} account is connected",
+        )
+
+    await db.delete(account)
+    await db.commit()
+
+
 async def connect_oauth_account(
     db: AsyncSession,
     user_id: uuid.UUID,
