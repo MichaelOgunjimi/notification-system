@@ -1,0 +1,13 @@
+.dashboard-route-loading {
+  align-items: center;
+  background: var(--background);
+  color: var(--foreground);
+  display: flex;
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+  justify-content: center;
+  letter-spacing: 0.08em;
+  min-height: 100dvh;
+  padding: 24px;
+  text-transform: uppercase;
+}

@@ -34,6 +34,12 @@ function WorkspaceError({ message, retry }: { message: string; retry: () => void
   );
 }
 
+/**
+ * Loads the authenticated user's organizations and projects and routes a valid
+ * selection into the canonical dashboard URL.
+ *
+ * @returns Workspace selection interface with authenticated loading and error states.
+ */
 export function WorkspaceSelector() {
   const session = useSession();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
@@ -204,11 +210,21 @@ export function WorkspaceSelector() {
         </section>
 
         <div className="workspace-selector__context">
-          <span>Active context</span>
-          <strong>
-            {selectedOrganization?.name ?? "—"} / {selectedProject?.name ?? "—"}
-          </strong>
-          <p>This becomes the workspace switcher when the dashboard navigation is added.</p>
+          <div>
+            <span>Ready to enter</span>
+            <strong>
+              {selectedOrganization?.name ?? "—"} / {selectedProject?.name ?? "—"}
+            </strong>
+            <p>The selected project becomes the scope for every dashboard operation.</p>
+          </div>
+          {selectedOrganization && selectedProject ? (
+            <Link
+              href={`/app/${selectedOrganization.slug}/${selectedProject.slug}`}
+              className="workspace-selector__enter"
+            >
+              Open project <ArrowRight size={16} />
+            </Link>
+          ) : null}
         </div>
       </div>
     </WorkspaceShell>
