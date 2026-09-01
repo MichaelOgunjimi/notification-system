@@ -13,6 +13,7 @@ import {
 import { useSession } from "@beaco/auth/react";
 import { useOrganizations, useProjects } from "@beaco/control-plane/react";
 import type { Organization, Project } from "@beaco/control-plane";
+import { SessionRecovery } from "@/components/auth/session-recovery";
 import { dashboardPath } from "@/lib/dashboard-route";
 import { WorkspaceShell } from "./workspace-shell";
 import "./workspace-selector.css";
@@ -65,7 +66,14 @@ export function WorkspaceSelector() {
       </WorkspaceShell>
     );
   }
-  if (!session.user) {
+  if (session.status === "error") {
+    return (
+      <WorkspaceShell>
+        <SessionRecovery onRetry={() => void session.refresh()} />
+      </WorkspaceShell>
+    );
+  }
+  if (session.status === "anonymous" || !session.user) {
     return (
       <WorkspaceShell>
         <div className="workspace-selector workspace-selector--message">

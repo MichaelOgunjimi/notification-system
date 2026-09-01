@@ -1,0 +1,81 @@
+.session-recovery {
+  color: var(--foreground);
+  width: 100%;
+}
+
+.session-recovery[data-full-page="true"] {
+  align-items: center;
+  background: var(--background);
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.session-recovery__panel {
+  border: 1px solid var(--border);
+  max-width: 540px;
+  padding: clamp(28px, 5vw, 48px);
+  width: 100%;
+}
+
+.session-recovery__panel > svg,
+.session-recovery__kicker {
+  color: #d99416;
+}
+
+.session-recovery__kicker {
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  margin-top: 22px;
+  text-transform: uppercase;
+}
+
+.session-recovery h1 {
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  font-weight: 620;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin-top: 14px;
+  text-wrap: balance;
+}
+
+.session-recovery h1 + p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 18px;
+  max-width: 52ch;
+}
+
+.session-recovery button {
+  align-items: center;
+  background: #e9aa31;
+  border: 0;
+  border-radius: 8px;
+  color: #1c160b;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 9px;
+  margin-top: 25px;
+  min-height: 44px;
+  padding: 0 15px;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.session-recovery button:hover {
+  background: #f0b74b;
+}
+
+.session-recovery button:active {
+  transform: translateY(1px);
+}
+
+.session-recovery button:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}

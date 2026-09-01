@@ -32,7 +32,8 @@ export function sessionQuery(client: AuthClient) {
     queryKey: authQueryKeys.session,
     queryFn: () => client.getCurrentUser(),
     retry: (failureCount, error) =>
-      error instanceof AuthError && error.retryable && failureCount < 1,
+      error instanceof AuthError && error.retryable && failureCount < 2,
+    retryDelay: (attempt) => Math.min(400 * 2 ** attempt, 2_000),
     staleTime: 30 * 1000,
   });
 }

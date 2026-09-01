@@ -17,6 +17,7 @@ import type {
 
 /**
  * Reads the current authenticated session and exposes it in the app state shape.
+ * Cached user data remains authenticated during a failed background refresh.
  *
  * @returns Session metadata with status, error state, and a refetch helper.
  */
@@ -26,10 +27,10 @@ export function useSession() {
   const user = query.data ?? null;
   const status: SessionStatus = query.isPending
     ? "loading"
-    : query.isError
-      ? "error"
-      : user
-        ? "authenticated"
+    : user
+      ? "authenticated"
+      : query.isError
+        ? "error"
         : "anonymous";
   const session: Session = {
     user,

@@ -89,6 +89,30 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("preserves session cookies when backend recovery is temporarily unavailable", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).endsWith("/auth/refresh")) {
+        return Promise.resolve(Response.json({ detail: "Unavailable" }, { status: 503 }));
+      }
+      return Promise.resolve(Response.json({ detail: "Expired" }, { status: 401 }));
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.session(
+      request("/api/auth/session", "beaco_access_token=expired; beaco_refresh_token=still-valid"),
+    );
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    await expect(response.json()).resolves.toEqual({
+      detail: "The session service is temporarily unavailable.",
+    });
+  });
+
   it("starts GitHub OAuth at the backend login endpoint", async () => {
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",

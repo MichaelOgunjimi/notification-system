@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { useSession } from "@beaco/auth/react";
 import { useOrganizations, useProjects } from "@beaco/control-plane/react";
+import { SessionRecovery } from "@/components/auth/session-recovery";
 import { DashboardShell } from "./dashboard-shell";
 import { dashboardPath, rememberDashboardPath } from "@/lib/dashboard-route";
 import "./dashboard-context.css";
@@ -70,7 +71,11 @@ export function DashboardContext({ organizationSlug, projectSlug }: DashboardCon
     );
   }
 
-  if (!session.user) {
+  if (session.status === "error") {
+    return <SessionRecovery fullPage onRetry={() => void session.refresh()} />;
+  }
+
+  if (session.status === "anonymous" || !session.user) {
     return (
       <DashboardContextMessage
         title="Your session has ended."

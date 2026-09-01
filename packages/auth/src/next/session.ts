@@ -15,6 +15,7 @@ import type { BackendTokenSet, BackendUser, NextAuthRequestContext } from "./typ
  * @param context Shared request context for the app and backend.
  * @param refreshToken Refresh token stored in the browser cookie.
  * @returns New access/refresh token pair or null when refresh fails.
+ * @throws Error when the backend cannot determine token validity because it is unavailable.
  */
 export async function refreshSession(
   context: NextAuthRequestContext,
@@ -26,7 +27,9 @@ export async function refreshSession(
     body: JSON.stringify({ refresh_token: refreshToken }),
     cache: "no-store",
   });
-  return response.ok ? ((await response.json()) as BackendTokenSet) : null;
+  if (response.ok) return (await response.json()) as BackendTokenSet;
+  if (response.status === 401) return null;
+  throw new Error(`Backend session refresh failed with status ${response.status}.`);
 }
 
 /**
@@ -35,6 +38,7 @@ export async function refreshSession(
  * @param context Shared request context for the app and backend.
  * @param accessToken Bearer token attached to the authenticated request.
  * @returns Public user record or null when not authenticated.
+ * @throws Error when the backend cannot determine authentication because it is unavailable.
  */
 export async function fetchUser(
   context: NextAuthRequestContext,
@@ -44,7 +48,10 @@ export async function fetchUser(
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-  if (!response.ok) return null;
+  if (response.status === 401) return null;
+  if (!response.ok) {
+    throw new Error(`Backend user request failed with status ${response.status}.`);
+  }
   return toUser((await response.json()) as BackendUser);
 }
 
@@ -93,35 +100,42 @@ export async function updateProfile(
  *
  * @param context Shared request context for the app and backend.
  * @param request Incoming Next.js request.
- * @returns JSON user payload when authenticated, otherwise a 401 response.
+ * @returns JSON user payload, a confirmed 401, or a retryable 502 without clearing cookies.
  */
 export async function getSession(
   context: NextAuthRequestContext,
   request: NextRequest,
 ): Promise<Response> {
-  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  try {
+    const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
+    const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
 
-  if (accessToken) {
-    const user = await fetchUser(context, accessToken);
-    if (user) return NextResponse.json(user);
-  }
+    if (accessToken) {
+      const user = await fetchUser(context, accessToken);
+      if (user) return NextResponse.json(user);
+    }
 
-  if (refreshToken) {
-    const tokens = await refreshSession(context, refreshToken);
-    if (tokens) {
-      const user = await fetchUser(context, tokens.access_token);
-      if (user) {
-        const response = NextResponse.json(user);
-        writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
-        return response;
+    if (refreshToken) {
+      const tokens = await refreshSession(context, refreshToken);
+      if (tokens) {
+        const user = await fetchUser(context, tokens.access_token);
+        if (user) {
+          const response = NextResponse.json(user);
+          writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
+          return response;
+        }
       }
     }
-  }
 
-  const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
-  deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
-  return response;
+    const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
+    deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
+    return response;
+  } catch {
+    return NextResponse.json(
+      { detail: "The session service is temporarily unavailable." },
+      { status: 502, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
 }
 
 /**

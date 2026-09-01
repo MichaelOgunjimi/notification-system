@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SpinnerGap } from "@phosphor-icons/react";
 import { useSession } from "@beaco/auth/react";
+import { SessionRecovery } from "./session-recovery";
 import { postAuthDestination } from "@/lib/dashboard-route";
 import "./auth-route-gate.css";
 
@@ -29,6 +30,10 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
         <SpinnerGap size={16} className="animate-spin" /> Restoring your workspace
       </main>
     );
+  }
+
+  if (session.status === "error") {
+    return <SessionRecovery fullPage onRetry={() => void session.refresh()} />;
   }
 
   return children;
