@@ -33,6 +33,7 @@ import { useSignOut } from "@beaco/auth/react";
 import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
+import { AccountSettings } from "@/components/settings/account-settings";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
 import {
@@ -46,6 +47,7 @@ type DashboardShellProps = Readonly<{
   organization: Organization;
   project: Project;
   projects: Project[];
+  surface?: "overview" | "account-settings";
 }>;
 
 const primaryNavigation = [
@@ -67,7 +69,13 @@ const projectNavigation = [
  * @param props Validated user, organization, active project, and sibling projects.
  * @returns Dashboard navigation shell and context-aware overview surface.
  */
-export function DashboardShell({ user, organization, project, projects }: DashboardShellProps) {
+export function DashboardShell({
+  user,
+  organization,
+  project,
+  projects,
+  surface = "overview",
+}: DashboardShellProps) {
   const router = useRouter();
   const sidebarId = useId();
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -79,6 +87,8 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
+  const accountSettingsPath = `${currentDashboardPath}/settings/account`;
+  const stageTitle = surface === "account-settings" ? "Account settings" : "Overview";
   const userInitials = (user.name || user.email)
     .split(/\s+/)
     .slice(0, 2)
@@ -261,25 +271,28 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
 
         <nav className="dashboard-nav" aria-label="Project navigation">
           <p>Operate</p>
-          {primaryNavigation.map(({ label, icon: Icon, active }) => (
-            <Link
-              key={label}
-              href={active ? currentDashboardPath : currentDashboardPath}
-              title={label}
-              data-active={active || undefined}
-              aria-current={active ? "page" : undefined}
-              aria-disabled={!active}
-              tabIndex={active ? undefined : -1}
-              onClick={(event) => {
-                if (!active) event.preventDefault();
-                closeMobileSidebar();
-              }}
-            >
-              <Icon size={17} />
-              <span>{label}</span>
-              {!active ? <small>soon</small> : null}
-            </Link>
-          ))}
+          {primaryNavigation.map(({ label, icon: Icon, active }) => {
+            const isActive = active && surface === "overview";
+            return (
+              <Link
+                key={label}
+                href={active ? currentDashboardPath : currentDashboardPath}
+                title={label}
+                data-active={isActive || undefined}
+                aria-current={isActive ? "page" : undefined}
+                aria-disabled={!active}
+                tabIndex={active ? undefined : -1}
+                onClick={(event) => {
+                  if (!active) event.preventDefault();
+                  closeMobileSidebar();
+                }}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+                {!active ? <small>soon</small> : null}
+              </Link>
+            );
+          })}
           <p>Configure</p>
           {projectNavigation.map(({ label, icon: Icon }) => (
             <span key={label} aria-disabled="true">
@@ -340,7 +353,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
             </button>
             <div>
               <span>Project / {project.slug}</span>
-              <strong>Overview</strong>
+              <strong>{stageTitle}</strong>
             </div>
           </div>
           <div className="dashboard-stage__actions">
@@ -399,13 +412,17 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
                   </div>
 
                   <div className="dashboard-account-menu__items">
-                    <button type="button" role="menuitem" disabled>
+                    <Link
+                      href={accountSettingsPath}
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
                       <GearSix size={16} />
                       <span>
                         <strong>Account settings</strong>
-                        <small>Coming next</small>
+                        <small>Profile and connections</small>
                       </span>
-                    </button>
+                    </Link>
                     <Link
                       href="/workspace"
                       role="menuitem"
@@ -444,68 +461,72 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
           </div>
         </header>
 
-        <div className="dashboard-overview">
-          <div className="dashboard-overview__heading">
-            <div>
-              <p>Operational workspace</p>
-              <h1>{project.name}</h1>
+        {surface === "account-settings" ? (
+          <AccountSettings user={user} returnPath={accountSettingsPath} />
+        ) : (
+          <div className="dashboard-overview">
+            <div className="dashboard-overview__heading">
+              <div>
+                <p>Operational workspace</p>
+                <h1>{project.name}</h1>
+              </div>
+              <span className="dashboard-overview__status">
+                <i /> Context verified
+              </span>
             </div>
-            <span className="dashboard-overview__status">
-              <i /> Context verified
-            </span>
-          </div>
 
-          <section className="dashboard-overview__intro">
-            <div>
-              <span className="dashboard-overview__index">01 / Foundation</span>
-              <h2>Your delivery surface starts here.</h2>
-              <p>
-                This shell is now scoped to {organization.name} / {project.name}. The next dashboard
-                modules can consume this canonical context without relying on temporary selection
-                state.
-              </p>
-            </div>
-            <div className="dashboard-overview__route" aria-label="Notification delivery path">
-              <span>
-                <Code size={17} /> Event
-              </span>
-              <i />
-              <span>
-                <BellRinging size={17} /> Beaco
-              </span>
-              <i />
-              <span>
-                <EnvelopeSimple size={17} /> Channel
-              </span>
-            </div>
-          </section>
+            <section className="dashboard-overview__intro">
+              <div>
+                <span className="dashboard-overview__index">01 / Foundation</span>
+                <h2>Your delivery surface starts here.</h2>
+                <p>
+                  This shell is now scoped to {organization.name} / {project.name}. The next
+                  dashboard modules can consume this canonical context without relying on temporary
+                  selection state.
+                </p>
+              </div>
+              <div className="dashboard-overview__route" aria-label="Notification delivery path">
+                <span>
+                  <Code size={17} /> Event
+                </span>
+                <i />
+                <span>
+                  <BellRinging size={17} /> Beaco
+                </span>
+                <i />
+                <span>
+                  <EnvelopeSimple size={17} /> Channel
+                </span>
+              </div>
+            </section>
 
-          <div className="dashboard-overview__grid">
-            <article>
-              <span>
-                <Pulse size={18} /> Live context
-              </span>
-              <strong>URL-backed scope</strong>
-              <p>
-                Organization and project slugs can now survive reloads, links, and browser tabs.
-              </p>
-            </article>
-            <article>
-              <span>
-                <Key size={18} /> Session boundary
-              </span>
-              <strong>Credentials stay server-side</strong>
-              <p>The dashboard continues through the cookie-backed application boundary.</p>
-            </article>
-            <article>
-              <span>
-                <ChartLineUp size={18} /> Next module
-              </span>
-              <strong>Real delivery data</strong>
-              <p>Events and delivery status will replace this foundation panel next.</p>
-            </article>
+            <div className="dashboard-overview__grid">
+              <article>
+                <span>
+                  <Pulse size={18} /> Live context
+                </span>
+                <strong>URL-backed scope</strong>
+                <p>
+                  Organization and project slugs can now survive reloads, links, and browser tabs.
+                </p>
+              </article>
+              <article>
+                <span>
+                  <Key size={18} /> Session boundary
+                </span>
+                <strong>Credentials stay server-side</strong>
+                <p>The dashboard continues through the cookie-backed application boundary.</p>
+              </article>
+              <article>
+                <span>
+                  <ChartLineUp size={18} /> Next module
+                </span>
+                <strong>Real delivery data</strong>
+                <p>Events and delivery status will replace this foundation panel next.</p>
+              </article>
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       <AppDialog

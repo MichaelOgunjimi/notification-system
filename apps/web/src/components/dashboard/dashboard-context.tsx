@@ -13,6 +13,7 @@ import "./dashboard-context.css";
 type DashboardContextProps = Readonly<{
   organizationSlug: string;
   projectSlug: string;
+  surface?: "overview" | "account-settings";
 }>;
 
 function DashboardContextMessage({
@@ -45,10 +46,14 @@ function DashboardContextMessage({
  * Validates URL slugs against the authenticated user's live memberships before
  * rendering the dashboard shell.
  *
- * @param props Organization and project slugs carried by the canonical route.
+ * @param props Organization/project slugs and the requested dashboard surface.
  * @returns Loading, recovery, or validated dashboard UI.
  */
-export function DashboardContext({ organizationSlug, projectSlug }: DashboardContextProps) {
+export function DashboardContext({
+  organizationSlug,
+  projectSlug,
+  surface = "overview",
+}: DashboardContextProps) {
   const session = useSession();
   const organizations = useOrganizations(session.status === "authenticated");
   const organization = organizations.data?.find((item) => item.slug === organizationSlug);
@@ -145,6 +150,7 @@ export function DashboardContext({ organizationSlug, projectSlug }: DashboardCon
       organization={organization}
       project={project}
       projects={projects.data}
+      surface={surface}
     />
   );
 }

@@ -6,6 +6,7 @@ import { ArrowRight, GithubLogo, SpinnerGap, WarningCircle } from "@phosphor-ico
 import { AuthShell } from "./auth-shell";
 import { useCompleteOAuthSignIn } from "@beaco/auth/react";
 import { postAuthDestination } from "@/lib/dashboard-route";
+import { consumeOAuthReturnPath } from "@/lib/oauth-return";
 
 /**
  * Exchanges a GitHub callback code for the application's cookie-backed session.
@@ -26,7 +27,8 @@ export function OAuthCallback() {
     completeSignIn(
       { code },
       {
-        onSuccess: (user) => window.location.replace(postAuthDestination(user.id)),
+        onSuccess: (user) =>
+          window.location.replace(consumeOAuthReturnPath() ?? postAuthDestination(user.id)),
       },
     );
   }, [completeSignIn]);
