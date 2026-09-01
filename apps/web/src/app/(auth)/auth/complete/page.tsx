@@ -1,5 +1,5 @@
-import { SessionReady } from "@/components/auth/session-ready";
+import { redirect } from "next/navigation";
 
 export default function AuthCompletePage() {
-  return <SessionReady />;
+  redirect("/workspace");
 }

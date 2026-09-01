@@ -18,7 +18,7 @@ export function OAuthCallback() {
     const code = params.get("code") ?? "";
     window.history.replaceState(null, "", window.location.pathname);
     completeSignIn({ code }, {
-      onSuccess: () => window.location.replace("/auth/complete"),
+      onSuccess: () => window.location.replace("/workspace"),
     });
   }, [completeSignIn]);
 
