@@ -30,6 +30,7 @@ import { useSignOut } from "@beaco/auth/react";
 import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
+import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
 import "./dashboard-shell.css";
 
@@ -67,6 +68,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
   async function handleSignOut() {
     try {
       await signOut.mutateAsync();
+      setSignOutDialogOpen(false);
       router.replace("/login");
     } catch {
       // The mutation exposes the recoverable error beside the account controls.
@@ -259,16 +262,11 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
             aria-label="Sign out"
             title="Sign out"
             disabled={signOut.isPending}
-            onClick={handleSignOut}
+            onClick={() => setSignOutDialogOpen(true)}
           >
             <SignOut size={17} />
           </button>
         </div>
-        {signOut.isError ? (
-          <p className="dashboard-sidebar__signout-error" role="alert">
-            {signOut.error.message}
-          </p>
-        ) : null}
       </aside>
 
       {sidebarCollapsed ? (
@@ -368,6 +366,36 @@ export function DashboardShell({ user, organization, project, projects }: Dashbo
           </div>
         </div>
       </section>
+
+      <AppDialog
+        open={signOutDialogOpen}
+        onOpenChange={(open) => {
+          if (signOut.isPending) return;
+          setSignOutDialogOpen(open);
+          if (!open) signOut.reset();
+        }}
+        eyebrow="Session control"
+        title="Sign out of Beaco?"
+        description="You’ll need another magic link or GitHub sign-in to return to this dashboard. Your projects and delivery data will remain unchanged."
+        busy={signOut.isPending}
+        footer={
+          <>
+            <DialogAction disabled={signOut.isPending} onClick={() => setSignOutDialogOpen(false)}>
+              Stay signed in
+            </DialogAction>
+            <DialogAction tone="danger" disabled={signOut.isPending} onClick={handleSignOut}>
+              <SignOut size={16} />
+              {signOut.isPending ? "Signing out" : "Sign out"}
+            </DialogAction>
+          </>
+        }
+      >
+        {signOut.isError ? (
+          <p className="app-dialog__error" role="alert">
+            {signOut.error.message}
+          </p>
+        ) : null}
+      </AppDialog>
     </main>
   );
 }

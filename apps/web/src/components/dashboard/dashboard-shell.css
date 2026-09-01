@@ -466,15 +466,6 @@
   opacity: 0.45;
 }
 
-.dashboard-sidebar__signout-error {
-  color: #e48f82;
-  font-size: 9px;
-  line-height: 1.5;
-  padding: 8px 4px 0 48px;
-  position: relative;
-  z-index: 1;
-}
-
 .dashboard-sidebar__edge-peek {
   align-items: center;
   background: transparent;
