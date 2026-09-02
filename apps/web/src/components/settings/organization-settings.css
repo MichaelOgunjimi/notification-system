@@ -170,8 +170,8 @@
 }
 
 .organization-settings__actions button,
-.organization-settings__invite button,
-.organization-settings__project-create button {
+.organization-settings__invite > button,
+.organization-settings__project-create > button {
   align-items: center;
   background: var(--dashboard-accent);
   border: 1px solid var(--dashboard-accent);
@@ -187,8 +187,8 @@
 }
 
 .organization-settings__actions button:disabled,
-.organization-settings__invite button:disabled,
-.organization-settings__project-create button:disabled {
+.organization-settings__invite > button:disabled,
+.organization-settings__project-create > button:disabled {
   opacity: 0.45;
 }
 
@@ -406,8 +406,8 @@
     display: none;
   }
 
-  .organization-settings__invite button,
-  .organization-settings__project-create button {
+  .organization-settings__invite > button,
+  .organization-settings__project-create > button {
     grid-column: 1 / -1;
   }
 
