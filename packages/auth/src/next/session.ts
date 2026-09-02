@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "../types";
 import {
   ACCESS_COOKIE,
-  REFRESH_COOKIE,
   deleteSessionCookies,
   isSecureRequest,
+  readRefreshTokenCandidates,
   writeSessionCookies,
 } from "./cookies";
 import type { BackendTokenSet, BackendUser, NextAuthRequestContext } from "./types";
@@ -108,27 +108,32 @@ export async function getSession(
 ): Promise<Response> {
   try {
     const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-    const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+    const refreshTokens = readRefreshTokenCandidates(request);
 
     if (accessToken) {
       const user = await fetchUser(context, accessToken);
       if (user) return NextResponse.json(user);
     }
 
-    if (refreshToken) {
+    for (const refreshToken of refreshTokens) {
       const tokens = await refreshSession(context, refreshToken);
       if (tokens) {
         const user = await fetchUser(context, tokens.access_token);
         if (user) {
           const response = NextResponse.json(user);
-          writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
+          writeSessionCookies(
+            response,
+            tokens,
+            isSecureRequest(request),
+            context.refreshCookiePath,
+          );
           return response;
         }
       }
     }
 
     const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
-    deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
+    deleteSessionCookies(response, isSecureRequest(request), context.refreshCookiePath);
     return response;
   } catch {
     return NextResponse.json(
@@ -156,7 +161,7 @@ export async function forwardAuthenticated(
   }
 
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  const refreshTokens = readRefreshTokenCandidates(request);
   const requestBody =
     request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
 
@@ -179,16 +184,27 @@ export async function forwardAuthenticated(
 
   try {
     let tokens: BackendTokenSet | null = null;
+    let refreshRejected = false;
     let upstream = accessToken ? await callBackend(accessToken) : null;
 
-    if ((!upstream || upstream.status === 401) && refreshToken) {
-      tokens = await refreshSession(context, refreshToken);
+    if ((!upstream || upstream.status === 401) && refreshTokens.length > 0) {
+      for (const refreshToken of refreshTokens) {
+        tokens = await refreshSession(context, refreshToken);
+        if (tokens) break;
+      }
+      refreshRejected = tokens === null;
       upstream = tokens ? await callBackend(tokens.access_token) : null;
     }
 
     if (!upstream) {
       const response = NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
-      deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
+      // Only clear the session when a refresh token was actually presented and
+      // rejected. If no refresh token reached this route (wrong cookie path,
+      // a not-yet-established session), a 401 means "cannot refresh from here",
+      // not "session is dead" — /api/auth/session still recovers it.
+      if (refreshRejected) {
+        deleteSessionCookies(response, isSecureRequest(request), context.refreshCookiePath);
+      }
       return response;
     }
 
@@ -204,10 +220,11 @@ export async function forwardAuthenticated(
       headers: responseHeaders,
     });
     if (tokens) {
-      writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
-    } else if (upstream.status === 401) {
-      deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
+      writeSessionCookies(response, tokens, isSecureRequest(request), context.refreshCookiePath);
     }
+    // A bare 401 here means the access token was rejected and no refresh token
+    // was available to retry with: leave the session cookies alone (see above).
+    // A presented-but-rejected refresh token already returned via `!upstream`.
     return response;
   } catch {
     return NextResponse.json(

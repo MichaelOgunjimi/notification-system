@@ -8,6 +8,7 @@ import type { NextAuthAdapter, NextAuthAdapterOptions, NextAuthRequestContext } 
 function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestContext {
   return {
     appAuthPath: (options.appAuthPath ?? "/api/auth").replace(/\/$/, ""),
+    refreshCookiePath: (options.refreshCookiePath ?? "/api").replace(/\/$/, ""),
     backendApiUrl: options.backendApiUrl.replace(/\/$/, ""),
     publicBackendApiUrl: options.publicBackendApiUrl.replace(/\/$/, ""),
     fetcher: options.fetch ?? globalThis.fetch.bind(globalThis),

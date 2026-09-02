@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   ACCESS_COOKIE,
-  REFRESH_COOKIE,
   deleteSessionCookies,
   isSecureRequest,
+  readRefreshTokenCandidates,
   writeSessionCookies,
 } from "./cookies";
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
@@ -71,7 +71,7 @@ export async function exchangeOAuth(
     }
 
     const response = NextResponse.json(user);
-    writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
+    writeSessionCookies(response, tokens, isSecureRequest(request), context.refreshCookiePath);
     return response;
   } catch {
     return NextResponse.json({ detail: "The sign-in service is unavailable." }, { status: 502 });
@@ -79,29 +79,30 @@ export async function exchangeOAuth(
 }
 
 /**
- * Signs the current user out and clears both session cookies.
+ * Signs the current user out, revokes all presented refresh credentials, and
+ * clears current and superseded session-cookie paths.
  *
  * @param context Shared request context for the app and backend.
- * @param request Incoming Next.js request containing the active refresh token.
+ * @param request Incoming Next.js request containing current or legacy refresh tokens.
  * @returns Confirmation response after session cleanup.
  */
 export async function logout(
   context: NextAuthRequestContext,
   request: NextRequest,
 ): Promise<Response> {
-  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
-  if (refreshToken) {
-    await context
-      .fetcher(`${context.backendApiUrl}/auth/logout`, {
+  const refreshTokens = readRefreshTokenCandidates(request);
+  await Promise.allSettled(
+    refreshTokens.map((refreshToken) =>
+      context.fetcher(`${context.backendApiUrl}/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
         cache: "no-store",
-      })
-      .catch(() => undefined);
-  }
+      }),
+    ),
+  );
   const response = NextResponse.json({ ok: true });
-  deleteSessionCookies(response, isSecureRequest(request), context.appAuthPath);
+  deleteSessionCookies(response, isSecureRequest(request), context.refreshCookiePath);
   return response;
 }
 

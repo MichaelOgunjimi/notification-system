@@ -32,6 +32,74 @@ export function isSecureRequest(request: NextRequest): boolean {
 }
 
 /**
+ * Reads every distinct refresh-token cookie presented by the browser in header order.
+ *
+ * During a cookie-path migration, browsers can send several cookies with the
+ * same name. Next.js exposes only one of those duplicates through
+ * `request.cookies.get`, so the adapter must retain every candidate and allow
+ * the backend to identify the valid session. Values are never returned to the
+ * browser or written to logs.
+ *
+ * @param request Incoming request that may contain current and legacy cookies.
+ * @returns Ordered, de-duplicated refresh-token candidates.
+ * @security Returned credentials must remain inside server-only auth handlers.
+ */
+export function readRefreshTokenCandidates(request: NextRequest): string[] {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return [];
+
+  const prefix = `${REFRESH_COOKIE}=`;
+  const candidates = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith(prefix))
+    .map((part) => part.slice(prefix.length))
+    .filter(Boolean);
+
+  // One current path plus the two known legacy paths is the largest valid set.
+  // The cap prevents a crafted Cookie header from amplifying backend refresh calls.
+  return [...new Set(candidates)].slice(0, 3);
+}
+
+/**
+ * Path scopes the refresh cookie previously used. Browsers that authenticated
+ * under an earlier release still hold a `beaco_refresh_token` at one of these
+ * paths; because the `Cookie` request header carries no path, a stale duplicate
+ * can shadow the current cookie. Expiring these on every session write and clear
+ * converges such browsers to a single cookie.
+ *
+ * Transitional — safe to remove once every refresh token issued before the
+ * `/api` migration has aged out (30-day refresh lifetime).
+ */
+const SUPERSEDED_REFRESH_COOKIE_PATHS = ["/", "/api/auth"];
+
+/**
+ * Expires refresh cookies left at a superseded path scope.
+ *
+ * Appended as raw headers because `response.cookies` is keyed by cookie name
+ * alone and would collapse these into the current-scope write. Must run after
+ * every `response.cookies.set` on this response.
+ *
+ * @param response Response object being returned to the browser.
+ * @param secure Whether the cookie should be marked secure.
+ * @param currentPath Path scope in use now, which is left untouched.
+ */
+function expireSupersededRefreshCookies(
+  response: NextResponse,
+  secure: boolean,
+  currentPath: string,
+): void {
+  for (const path of SUPERSEDED_REFRESH_COOKIE_PATHS) {
+    if (path === currentPath) continue;
+    // Cookie deletion matches on name + domain + path only; the remaining
+    // attributes mirror how the cookie was originally written.
+    const attributes = [`Path=${path}`, "Max-Age=0", "HttpOnly", "SameSite=lax", "Priority=high"];
+    if (secure) attributes.push("Secure");
+    response.headers.append("set-cookie", `${REFRESH_COOKIE}=; ${attributes.join("; ")}`);
+  }
+}
+
+/**
  * Writes the access and refresh tokens to the response cookies.
  *
  * @param response Response object being returned to the browser.
@@ -57,6 +125,7 @@ export function writeSessionCookies(
     path: refreshCookiePath,
     secure,
   });
+  expireSupersededRefreshCookies(response, secure, refreshCookiePath);
 }
 
 /**
@@ -83,4 +152,5 @@ export function deleteSessionCookies(
     path: refreshCookiePath,
     secure,
   });
+  expireSupersededRefreshCookies(response, secure, refreshCookiePath);
 }

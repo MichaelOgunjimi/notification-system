@@ -68,7 +68,7 @@ export async function exchangeForSession(
     }
 
     const response = NextResponse.json(user);
-    writeSessionCookies(response, tokens, isSecureRequest(request), context.appAuthPath);
+    writeSessionCookies(response, tokens, isSecureRequest(request), context.refreshCookiePath);
     return response;
   } catch {
     return NextResponse.json({ detail: "The sign-in service is unavailable." }, { status: 502 });

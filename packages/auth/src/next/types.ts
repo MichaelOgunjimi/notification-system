@@ -49,12 +49,17 @@ export type BackendOAuthConnection = {
  * Configuration used to create the Next.js auth adapter.
  *
  * @property appAuthPath Route prefix that serves the app auth handlers.
+ * @property refreshCookiePath Path scope for the refresh-token cookie. Must be a
+ *   prefix of every route that calls {@link NextAuthAdapter.forwardAuthenticated}
+ *   so those routes can renew an expired access token. Defaults to `/api`, which
+ *   covers both the auth handlers and same-origin API proxies.
  * @property backendApiUrl Internal backend API base URL.
  * @property publicBackendApiUrl Public backend URL used for OAuth redirects.
  * @property fetch Optional fetch implementation for testing or custom transports.
  */
 export type NextAuthAdapterOptions = Readonly<{
   appAuthPath?: string;
+  refreshCookiePath?: string;
   backendApiUrl: string;
   publicBackendApiUrl: string;
   fetch?: typeof globalThis.fetch;
@@ -159,12 +164,14 @@ export type NextAuthAdapter = Readonly<{
  * Internal runtime context used by the Next auth adapter.
  *
  * @property appAuthPath Sanitized app auth route prefix.
+ * @property refreshCookiePath Sanitized path scope for the refresh-token cookie.
  * @property backendApiUrl Sanitized internal backend base URL.
  * @property publicBackendApiUrl Sanitized public backend base URL.
  * @property fetcher Fetch implementation used for all auth calls.
  */
 export type NextAuthRequestContext = {
   appAuthPath: string;
+  refreshCookiePath: string;
   backendApiUrl: string;
   publicBackendApiUrl: string;
   fetcher: typeof globalThis.fetch;

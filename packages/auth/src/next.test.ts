@@ -89,6 +89,11 @@ describe("createNextAuthAdapter", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("beaco_access_token=new-access-token");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    // Refresh cookie is scoped to /api so same-origin API proxies outside
+    // /api/auth (e.g. /api/control-plane/*) can renew an expired access token.
+    expect(response.headers.getSetCookie()).toContainEqual(
+      expect.stringContaining("beaco_refresh_token=refresh-token; Path=/api;"),
+    );
     expect(fetcher).toHaveBeenCalledWith(
       "http://api:8000/api/v1/auth/refresh",
       expect.objectContaining({
@@ -308,6 +313,168 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("keeps session cookies when an application request cannot see the refresh token", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(Response.json({ detail: "Invalid or expired token" }, { status: 401 })),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request("/api/control-plane/organizations", "beaco_access_token=expired"),
+      "/organizations",
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(fetcher).not.toHaveBeenCalledWith(
+      "http://api:8000/api/v1/auth/refresh",
+      expect.anything(),
+    );
+  });
+
+  it("keeps session cookies when an application request has no credentials at all", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(Response.json({ detail: "Not authenticated" }, { status: 401 })),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request("/api/control-plane/organizations"),
+      "/organizations",
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("clears session cookies when a presented refresh token is rejected", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).endsWith("/auth/refresh")) {
+        return Promise.resolve(Response.json({ detail: "Revoked" }, { status: 401 }));
+      }
+      return Promise.resolve(Response.json({ detail: "Expired" }, { status: 401 }));
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request(
+        "/api/control-plane/organizations",
+        "beaco_access_token=expired; beaco_refresh_token=revoked",
+      ),
+      "/organizations",
+    );
+
+    expect(response.status).toBe(401);
+    const cookies = response.headers.getSetCookie();
+    expect(cookies).toContainEqual(
+      expect.stringMatching(/^beaco_access_token=; Path=\/; Max-Age=0/),
+    );
+    expect(cookies).toContainEqual(
+      expect.stringMatching(/^beaco_refresh_token=; Path=\/api; (Expires=[^;]+; )?Max-Age=0/),
+    );
+  });
+
+  it("expires refresh cookies left at a superseded path scope", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          Response.json({
+            access_token: "renewed-access",
+            refresh_token: "renewed-refresh",
+            token_type: "bearer",
+          }),
+        );
+      }
+      if (fetcher.mock.calls.length === 1) {
+        return Promise.resolve(Response.json({ detail: "Expired" }, { status: 401 }));
+      }
+      return Promise.resolve(Response.json([{ id: "organization-1" }]));
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.forwardAuthenticated(
+      request(
+        "/api/control-plane/organizations",
+        "beaco_access_token=expired; beaco_refresh_token=refresh-token",
+      ),
+      "/organizations",
+    );
+
+    const cookies = response.headers.getSetCookie();
+    expect(cookies).toContainEqual(
+      expect.stringContaining("beaco_refresh_token=renewed-refresh; Path=/api;"),
+    );
+    expect(cookies).toContainEqual(
+      expect.stringMatching(/^beaco_refresh_token=; Path=\/; (Expires=[^;]+; )?Max-Age=0/),
+    );
+    expect(cookies).toContainEqual(
+      expect.stringMatching(/^beaco_refresh_token=; Path=\/api\/auth; (Expires=[^;]+; )?Max-Age=0/),
+    );
+  });
+
+  it("recovers with a valid refresh cookie when a stale duplicate shadows it", async () => {
+    const refreshAttempts: string[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        const body = JSON.parse(String(init?.body)) as { refresh_token: string };
+        refreshAttempts.push(body.refresh_token);
+        if (body.refresh_token !== "current-valid") {
+          return Response.json({ detail: "Revoked" }, { status: 401 });
+        }
+        return Response.json({
+          access_token: "renewed-access",
+          refresh_token: "current-valid",
+          token_type: "bearer",
+        });
+      }
+      if (url.endsWith("/auth/me")) {
+        const authorization = new Headers(init?.headers).get("authorization");
+        return authorization === "Bearer renewed-access"
+          ? Response.json(backendUser)
+          : Response.json({ detail: "Expired" }, { status: 401 });
+      }
+      throw new Error(`Unexpected request to ${url}`);
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.session(
+      request(
+        "/api/auth/session",
+        [
+          "beaco_access_token=expired",
+          "beaco_refresh_token=old-auth-path-revoked",
+          "beaco_refresh_token=current-valid",
+          "beaco_refresh_token=old-root-revoked",
+        ].join("; "),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(refreshAttempts).toEqual(["old-auth-path-revoked", "current-valid"]);
+  });
+
   it("exchanges an OAuth code for a cookie-backed Session", async () => {
     const fetcher = vi.fn((input: RequestInfo | URL) => {
       if (String(input).endsWith("/auth/oauth/exchange")) {
@@ -416,17 +583,23 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
-  it("revokes the refresh credential and clears the browser Session", async () => {
-    const fetcher = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+  it("revokes current and legacy refresh credentials and clears the browser Session", async () => {
+    const fetcher = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
     const auth = createNextAuthAdapter({
       appAuthPath: "/identity",
+      refreshCookiePath: "/identity",
       backendApiUrl: "http://api:8000/api/v1",
       publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
     const response = await auth.logout(
-      request("/identity/logout", "beaco_refresh_token=refresh-token"),
+      request(
+        "/identity/logout",
+        "beaco_refresh_token=current-refresh; beaco_refresh_token=legacy-refresh",
+      ),
     );
 
     expect(response.status).toBe(200);
@@ -434,12 +607,10 @@ describe("createNextAuthAdapter", () => {
     expect(response.headers.get("set-cookie")).toContain(
       "beaco_refresh_token=; Path=/identity; Max-Age=0",
     );
-    expect(fetcher).toHaveBeenCalledWith(
-      "http://api:8000/api/v1/auth/logout",
-      expect.objectContaining({
-        body: JSON.stringify({ refresh_token: "refresh-token" }),
-        method: "POST",
-      }),
-    );
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.map(([, init]) => init?.body)).toEqual([
+      JSON.stringify({ refresh_token: "current-refresh" }),
+      JSON.stringify({ refresh_token: "legacy-refresh" }),
+    ]);
   });
 });
