@@ -419,12 +419,15 @@
   .organization-settings__member-role .app-select__control {
     font-size: 9px;
     padding-left: 8px;
-    padding-right: 32px;
   }
 
   .organization-settings__member-role .app-select__chevron {
-    padding-left: 7px;
-    right: 8px;
+    margin-left: 4px;
+    padding: 0 7px;
+  }
+
+  .organization-settings__member-role .app-select__option {
+    font-size: 10px;
   }
 
   .organization-settings__project {

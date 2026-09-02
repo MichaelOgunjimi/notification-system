@@ -1,49 +1,70 @@
 .app-select {
-  --app-select-background: var(--dashboard-overlay, var(--card));
+  --app-select-surface: var(--dashboard-overlay, var(--card));
+  --app-select-panel: var(--dashboard-elevated, var(--popover, var(--card)));
   --app-select-border: var(--dashboard-line-strong, var(--input));
   --app-select-ink: var(--dashboard-ink, var(--foreground));
   --app-select-muted: var(--dashboard-muted, var(--muted-foreground));
   --app-select-focus: var(--dashboard-accent, var(--ring));
-  align-items: center;
-  background: var(--app-select-background);
-  border: 1px solid var(--app-select-border);
-  border-radius: 8px;
+  --app-select-shadow: 0 18px 48px -12px rgba(0, 0, 0, 0.55);
   display: inline-grid;
-  grid-template-areas: "control";
   min-width: 0;
   position: relative;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
 }
 
-.app-select:hover:not([data-disabled="true"]) {
-  background: color-mix(in srgb, var(--app-select-background) 82%, var(--app-select-ink) 6%);
+.light .app-select {
+  --app-select-shadow: 0 16px 36px -14px rgba(28, 25, 19, 0.28);
+}
+
+/* Trigger -------------------------------------------------------------- */
+
+.app-select__control {
+  align-items: center;
+  background: var(--app-select-surface);
+  border: 1px solid var(--app-select-border);
+  border-radius: 8px;
+  color: var(--app-select-ink);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 11px;
+  gap: 0;
+  min-height: 38px;
+  min-width: 0;
+  outline: 0;
+  padding: 0 0 0 12px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+  width: 100%;
+}
+
+.app-select__control:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--app-select-border) 64%, var(--app-select-ink) 36%);
 }
 
-.app-select:focus-within {
+.app-select__control:focus-visible,
+.app-select[data-open="true"] .app-select__control {
   border-color: var(--app-select-focus);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-select-focus) 18%, transparent);
 }
 
-.app-select__control {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: inherit;
-  color: var(--app-select-ink);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  grid-area: control;
-  min-height: 38px;
+.app-select__control:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.app-select__value {
+  flex: 1;
   min-width: 0;
-  outline: 0;
-  padding: 0 38px 0 12px;
-  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-select__value[data-placeholder] {
+  color: var(--app-select-muted);
 }
 
 .app-select__chevron {
@@ -51,30 +72,115 @@
   border-left: 1px solid color-mix(in srgb, var(--app-select-border) 72%, transparent);
   color: var(--app-select-muted);
   display: flex;
-  grid-area: control;
+  flex: 0 0 auto;
   height: 20px;
-  justify-self: end;
-  padding-left: 9px;
-  pointer-events: none;
-  position: relative;
-  right: 11px;
+  margin-left: 8px;
+  padding: 0 11px;
+  transition: transform 180ms ease;
 }
 
-.app-select:focus-within .app-select__chevron {
+.app-select[data-open="true"] .app-select__chevron {
   color: var(--app-select-focus);
+  transform: rotate(180deg);
 }
 
-.app-select[data-disabled="true"] {
-  cursor: wait;
-  opacity: 0.52;
+/* Panel --------------------------------------------------------------- */
+
+.app-select__panel {
+  background: var(--app-select-panel);
+  border: 1px solid var(--app-select-border);
+  border-radius: 10px;
+  box-shadow: var(--app-select-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  left: 0;
+  list-style: none;
+  margin: 0;
+  max-height: min(280px, 40vh);
+  max-width: min(320px, 92vw);
+  min-width: 100%;
+  overflow-y: auto;
+  width: max-content;
+  padding: 5px;
+  position: absolute;
+  z-index: 6;
 }
 
-.app-select[data-disabled="true"] .app-select__control {
-  cursor: wait;
+.app-select[data-placement="bottom"] .app-select__panel {
+  top: calc(100% + 6px);
+  animation: app-select-in-below 120ms ease;
+}
+
+.app-select[data-placement="top"] .app-select__panel {
+  bottom: calc(100% + 6px);
+  animation: app-select-in-above 120ms ease;
+}
+
+.app-select__option {
+  align-items: center;
+  border-radius: 7px;
+  color: var(--app-select-ink);
+  cursor: pointer;
+  display: grid;
+  font-size: 11px;
+  gap: 8px;
+  grid-template-columns: 14px 1fr;
+  padding: 8px 10px;
+  user-select: none;
+}
+
+.app-select__option[data-active] {
+  background: color-mix(in srgb, var(--app-select-focus) 14%, transparent);
+}
+
+.app-select__option[data-selected] {
+  color: var(--app-select-ink);
+  font-weight: 600;
+}
+
+.app-select__option[aria-disabled="true"] {
+  color: var(--app-select-muted);
+  cursor: not-allowed;
+}
+
+.app-select__check {
+  align-items: center;
+  color: var(--app-select-focus);
+  display: flex;
+  height: 14px;
+  justify-content: center;
+  width: 14px;
+}
+
+.app-select__option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes app-select-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes app-select-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-select {
+  .app-select__control,
+  .app-select__chevron {
     transition: none;
+  }
+
+  .app-select__panel {
+    animation: none;
   }
 }

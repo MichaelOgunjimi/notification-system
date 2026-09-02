@@ -280,14 +280,9 @@ export function OrganizationSettings({
                 id={inviteRoleId}
                 aria-label="Invitation role"
                 value={inviteRole}
-                onChange={(event) => setInviteRole(event.target.value as OrganizationRole)}
-              >
-                {invitationRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </AppSelect>
+                onValueChange={setInviteRole}
+                options={invitationRoles.map((role) => ({ value: role, label: role }))}
+              />
               <button disabled={inviteMember.isPending}>
                 {inviteMember.isPending ? "Sending" : "Invite"}
               </button>
@@ -329,24 +324,19 @@ export function OrganizationSettings({
                     aria-label={`Role for ${member.name}`}
                     value={member.role}
                     disabled={updateRole.isPending}
-                    onChange={(event) =>
+                    onValueChange={(role) =>
                       updateRole.mutate({
                         organizationId: organization.id,
                         membershipId: member.id,
-                        role: event.target.value as OrganizationRole,
+                        role,
                       })
                     }
-                  >
-                    {memberRoles.map((role) => (
-                      <option
-                        key={role}
-                        value={role}
-                        disabled={role === "owner" && organization.role !== "owner"}
-                      >
-                        {role}
-                      </option>
-                    ))}
-                  </AppSelect>
+                    options={memberRoles.map((role) => ({
+                      value: role,
+                      label: role,
+                      disabled: role === "owner" && organization.role !== "owner",
+                    }))}
+                  />
                 ) : (
                   <span className="organization-settings__tag">{member.role}</span>
                 )}
