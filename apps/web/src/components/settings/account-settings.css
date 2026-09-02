@@ -1,6 +1,6 @@
 .account-settings {
   min-height: calc(100dvh - 72px);
-  padding: clamp(34px, 5vw, 72px);
+  padding: clamp(30px, 4vw, 52px);
   position: relative;
 }
 
@@ -27,7 +27,9 @@
   border-bottom: 1px solid var(--dashboard-line);
   display: flex;
   justify-content: space-between;
-  padding-bottom: clamp(28px, 4vw, 48px);
+  margin-inline: auto;
+  max-width: 920px;
+  padding-bottom: 30px;
 }
 
 .account-settings__heading p {
@@ -39,7 +41,7 @@
 }
 
 .account-settings__heading h1 {
-  font-size: clamp(2.5rem, 5vw, 4.8rem);
+  font-size: clamp(2.35rem, 4vw, 3.6rem);
   font-weight: 620;
   letter-spacing: -0.065em;
   line-height: 0.92;
@@ -51,7 +53,7 @@
   display: block;
   font-size: 12px;
   line-height: 1.7;
-  margin-top: 18px;
+  margin-top: 14px;
   max-width: 42rem;
 }
 
@@ -63,11 +65,11 @@
   color: var(--dashboard-muted);
   display: flex;
   flex: 0 0 auto;
-  height: 64px;
+  height: 54px;
   justify-content: center;
   margin-left: 32px;
   overflow: hidden;
-  width: 64px;
+  width: 54px;
 }
 
 .account-settings__identity-mark img {
@@ -78,14 +80,15 @@
 
 .account-settings__layout {
   display: grid;
-  grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr);
-  margin-top: 36px;
+  grid-template-columns: 164px minmax(0, 1fr);
+  margin: 28px auto 0;
+  max-width: 920px;
 }
 
 .account-settings__nav {
   align-self: start;
   display: grid;
-  padding-right: clamp(22px, 4vw, 54px);
+  padding-right: 28px;
   position: sticky;
   top: 108px;
 }
@@ -149,15 +152,15 @@
 
 .account-settings__section + .account-settings__section {
   border-top: 1px solid var(--dashboard-line);
-  margin-top: 54px;
-  padding-top: 54px;
+  margin-top: 38px;
+  padding-top: 38px;
 }
 
 .account-settings__section-heading {
   display: grid;
   gap: 18px;
   grid-template-columns: 34px minmax(0, 1fr);
-  padding: 0 0 28px clamp(22px, 4vw, 52px);
+  padding: 0 0 22px 30px;
 }
 
 .account-settings__section-heading > span {
@@ -168,7 +171,7 @@
 }
 
 .account-settings__section-heading h2 {
-  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
   font-weight: 580;
   letter-spacing: -0.045em;
 }
@@ -193,7 +196,7 @@
 .account-settings__message,
 .account-settings__form-actions {
   border-bottom: 1px solid var(--dashboard-line);
-  padding: 22px clamp(20px, 3vw, 34px);
+  padding: 17px 22px;
 }
 
 .account-settings__form > label {
@@ -331,7 +334,7 @@
   font-weight: 650;
   gap: 8px;
   justify-content: center;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 14px;
   transition:
     background 160ms ease,
@@ -367,8 +370,8 @@
   border-top: 1px solid var(--dashboard-line);
   display: flex;
   gap: 14px;
-  min-height: 92px;
-  padding: 18px clamp(20px, 3vw, 34px);
+  min-height: 76px;
+  padding: 14px 22px;
 }
 
 .account-settings__provider-icon {
@@ -378,9 +381,9 @@
   border-radius: 10px;
   display: flex;
   flex: 0 0 auto;
-  height: 44px;
+  height: 40px;
   justify-content: center;
-  width: 44px;
+  width: 40px;
 }
 
 .account-settings__provider-copy {
@@ -430,7 +433,7 @@
   display: flex;
   font-size: 10px;
   gap: 8px;
-  padding: 16px clamp(20px, 3vw, 34px);
+  padding: 14px 22px;
 }
 
 .account-settings__connection-error button {
