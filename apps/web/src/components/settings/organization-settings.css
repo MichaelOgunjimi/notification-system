@@ -123,9 +123,7 @@
 .organization-settings__form input,
 .organization-settings__form textarea,
 .organization-settings__invite input,
-.organization-settings__invite select,
-.organization-settings__project-create input,
-.organization-settings__row select {
+.organization-settings__project-create input {
   background: var(--dashboard-overlay);
   border-left: 0;
   border-radius: 0;
@@ -222,13 +220,16 @@
 }
 
 .organization-settings__invite input,
-.organization-settings__invite select,
-.organization-settings__project-create input,
-.organization-settings__row select {
+.organization-settings__project-create input {
   border: 1px solid var(--dashboard-line-strong);
   border-radius: 7px;
   min-height: 36px;
   padding: 0 10px;
+}
+
+.organization-settings__invite .app-select,
+.organization-settings__member-role {
+  width: 100%;
 }
 
 .organization-settings__list {
@@ -415,9 +416,15 @@
     padding-inline: 8px;
   }
 
-  .organization-settings__row select {
+  .organization-settings__member-role .app-select__control {
     font-size: 9px;
-    padding-inline: 6px;
+    padding-left: 8px;
+    padding-right: 32px;
+  }
+
+  .organization-settings__member-role .app-select__chevron {
+    padding-left: 7px;
+    right: 8px;
   }
 
   .organization-settings__project {

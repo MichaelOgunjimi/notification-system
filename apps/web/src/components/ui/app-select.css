@@ -1,0 +1,80 @@
+.app-select {
+  --app-select-background: var(--dashboard-overlay, var(--card));
+  --app-select-border: var(--dashboard-line-strong, var(--input));
+  --app-select-ink: var(--dashboard-ink, var(--foreground));
+  --app-select-muted: var(--dashboard-muted, var(--muted-foreground));
+  --app-select-focus: var(--dashboard-accent, var(--ring));
+  align-items: center;
+  background: var(--app-select-background);
+  border: 1px solid var(--app-select-border);
+  border-radius: 8px;
+  display: inline-grid;
+  grid-template-areas: "control";
+  min-width: 0;
+  position: relative;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.app-select:hover:not([data-disabled="true"]) {
+  background: color-mix(in srgb, var(--app-select-background) 82%, var(--app-select-ink) 6%);
+  border-color: color-mix(in srgb, var(--app-select-border) 64%, var(--app-select-ink) 36%);
+}
+
+.app-select:focus-within {
+  border-color: var(--app-select-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-select-focus) 18%, transparent);
+}
+
+.app-select__control {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  color: var(--app-select-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  grid-area: control;
+  min-height: 38px;
+  min-width: 0;
+  outline: 0;
+  padding: 0 38px 0 12px;
+  width: 100%;
+}
+
+.app-select__chevron {
+  align-items: center;
+  border-left: 1px solid color-mix(in srgb, var(--app-select-border) 72%, transparent);
+  color: var(--app-select-muted);
+  display: flex;
+  grid-area: control;
+  height: 20px;
+  justify-self: end;
+  padding-left: 9px;
+  pointer-events: none;
+  position: relative;
+  right: 11px;
+}
+
+.app-select:focus-within .app-select__chevron {
+  color: var(--app-select-focus);
+}
+
+.app-select[data-disabled="true"] {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.app-select[data-disabled="true"] .app-select__control {
+  cursor: wait;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-select {
+    transition: none;
+  }
+}

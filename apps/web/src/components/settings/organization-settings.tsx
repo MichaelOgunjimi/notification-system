@@ -29,6 +29,7 @@ import {
   useUpdateOrganizationMemberRole,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { AppSelect } from "@/components/ui/app-select";
 import { dashboardPath } from "@/lib/dashboard-route";
 import "./organization-settings.css";
 
@@ -275,7 +276,7 @@ export function OrganizationSettings({
                 value={inviteEmail}
                 onChange={(event) => setInviteEmail(event.target.value)}
               />
-              <select
+              <AppSelect
                 id={inviteRoleId}
                 aria-label="Invitation role"
                 value={inviteRole}
@@ -286,7 +287,7 @@ export function OrganizationSettings({
                     {role}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
               <button disabled={inviteMember.isPending}>
                 {inviteMember.isPending ? "Sending" : "Invite"}
               </button>
@@ -323,7 +324,8 @@ export function OrganizationSettings({
                   <small>{member.email}</small>
                 </div>
                 {canManageMembers ? (
-                  <select
+                  <AppSelect
+                    containerClassName="organization-settings__member-role"
                     aria-label={`Role for ${member.name}`}
                     value={member.role}
                     disabled={updateRole.isPending}
@@ -344,7 +346,7 @@ export function OrganizationSettings({
                         {role}
                       </option>
                     ))}
-                  </select>
+                  </AppSelect>
                 ) : (
                   <span className="organization-settings__tag">{member.role}</span>
                 )}
