@@ -34,6 +34,7 @@ import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
 import { AccountSettings } from "@/components/settings/account-settings";
+import { OrganizationSettings } from "@/components/settings/organization-settings";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
 import {
@@ -47,7 +48,7 @@ type DashboardShellProps = Readonly<{
   organization: Organization;
   project: Project;
   projects: Project[];
-  surface?: "overview" | "account-settings";
+  surface?: "overview" | "account-settings" | "organization-settings";
 }>;
 
 const primaryNavigation = [
@@ -58,8 +59,9 @@ const primaryNavigation = [
 ] as const;
 
 const projectNavigation = [
-  { label: "API keys", icon: Key },
-  { label: "Activity log", icon: ListBullets },
+  { label: "Organization", icon: Buildings, surface: "organization-settings" },
+  { label: "API keys", icon: Key, surface: null },
+  { label: "Activity log", icon: ListBullets, surface: null },
 ] as const;
 
 /**
@@ -88,7 +90,13 @@ export function DashboardShell({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
   const accountSettingsPath = `${currentDashboardPath}/settings/account`;
-  const stageTitle = surface === "account-settings" ? "Account settings" : "Overview";
+  const stageTitle =
+    surface === "account-settings"
+      ? "Account settings"
+      : surface === "organization-settings"
+        ? "Organization settings"
+        : "Overview";
+  const organizationSettingsPath = `${currentDashboardPath}/settings/organization`;
   const userInitials = (user.name || user.email)
     .split(/\s+/)
     .slice(0, 2)
@@ -294,13 +302,27 @@ export function DashboardShell({
             );
           })}
           <p>Configure</p>
-          {projectNavigation.map(({ label, icon: Icon }) => (
-            <span key={label} aria-disabled="true">
-              <Icon size={17} />
-              <span>{label}</span>
-              <small>soon</small>
-            </span>
-          ))}
+          {projectNavigation.map(({ label, icon: Icon, surface: navigationSurface }) =>
+            navigationSurface ? (
+              <Link
+                key={label}
+                href={organizationSettingsPath}
+                title={label}
+                data-active={surface === navigationSurface || undefined}
+                aria-current={surface === navigationSurface ? "page" : undefined}
+                onClick={closeMobileSidebar}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+              </Link>
+            ) : (
+              <span key={label} aria-disabled="true">
+                <Icon size={17} />
+                <span>{label}</span>
+                <small>soon</small>
+              </span>
+            ),
+          )}
         </nav>
 
         <div className="dashboard-sidebar__identity">
@@ -463,6 +485,14 @@ export function DashboardShell({
 
         {surface === "account-settings" ? (
           <AccountSettings user={user} returnPath={accountSettingsPath} />
+        ) : surface === "organization-settings" ? (
+          <OrganizationSettings
+            key={organization.id}
+            userId={user.id}
+            organization={organization}
+            project={project}
+            projects={projects}
+          />
         ) : (
           <div className="dashboard-overview">
             <div className="dashboard-overview__heading">

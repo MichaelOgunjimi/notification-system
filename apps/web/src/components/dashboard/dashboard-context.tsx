@@ -13,7 +13,7 @@ import "./dashboard-context.css";
 type DashboardContextProps = Readonly<{
   organizationSlug: string;
   projectSlug: string;
-  surface?: "overview" | "account-settings";
+  surface?: "overview" | "account-settings" | "organization-settings";
 }>;
 
 function DashboardContextMessage({
