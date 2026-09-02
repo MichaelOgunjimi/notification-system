@@ -23,10 +23,17 @@ const controlPlane = createControlPlaneClient({
 
 const organizations = await controlPlane.organizations.list();
 const projects = await controlPlane.projects.list(organizations[0].id);
+const members = await controlPlane.members.list(organizations[0].id);
 ```
 
 The default client calls the same-origin `/api/control-plane` boundary. A custom
 `fetch` implementation and path can be supplied for another application or test.
+
+The client also exposes organization updates, membership roles and removals,
+invitations, and project creation/archival. These methods reflect the backend
+domain; they do not infer authorization. Use each organization record's
+`capabilities` to shape the interface, while treating backend enforcement as the
+security boundary.
 
 ## React Query
 
@@ -36,7 +43,11 @@ create a `QueryClient`, so mount it beneath the application's existing TanStack
 
 ```tsx
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ControlPlaneProvider, useOrganizations } from "@beaco/control-plane/react";
+import {
+  ControlPlaneProvider,
+  useOrganizationMembers,
+  useOrganizations,
+} from "@beaco/control-plane/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
   return (

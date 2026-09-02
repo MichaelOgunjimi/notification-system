@@ -5,6 +5,11 @@ export type {
   ControlPlaneClientOptions,
   Organization,
   OrganizationCapability,
+  OrganizationInvitation,
+  OrganizationInvitationCreate,
+  OrganizationMember,
   OrganizationRole,
+  OrganizationUpdate,
   Project,
+  ProjectCreate,
 } from "./types";

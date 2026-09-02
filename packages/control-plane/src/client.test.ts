@@ -98,4 +98,87 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("forwards organization updates as JSON through the application boundary", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        id: "organization-1",
+        name: "Northstar Labs",
+        slug: "northstar-labs",
+        description: null,
+        role: "owner",
+        capabilities: ["organization:read", "organization:manage"],
+        created_at: "2026-09-01T09:00:00Z",
+        updated_at: "2026-09-02T09:00:00Z",
+        archived_at: null,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.organizations.update("organization-1", {
+      name: "Northstar Labs",
+      slug: "northstar-labs",
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1",
+      expect.objectContaining({
+        body: JSON.stringify({ name: "Northstar Labs", slug: "northstar-labs" }),
+        method: "PATCH",
+      }),
+    );
+  });
+
+  it("maps member and invitation records and handles empty delete responses", async () => {
+    const fetcher = fetchAdapter((input, init) => {
+      const path = String(input);
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      if (path.endsWith("/members")) {
+        return Response.json([
+          {
+            id: "membership-1",
+            user_id: "user-1",
+            email: "maya@example.com",
+            name: "Maya",
+            role: "admin",
+            joined_at: "2026-09-01T09:00:00Z",
+          },
+        ]);
+      }
+      return Response.json([
+        {
+          id: "invitation-1",
+          organization_id: "organization-1",
+          email: "leo@example.com",
+          role: "member",
+          invited_by_user_id: "user-1",
+          expires_at: "2026-09-09T09:00:00Z",
+          accepted_at: null,
+          revoked_at: null,
+          created_at: "2026-09-02T09:00:00Z",
+        },
+      ]);
+    });
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.members.list("organization-1")).resolves.toEqual([
+      {
+        id: "membership-1",
+        userId: "user-1",
+        email: "maya@example.com",
+        name: "Maya",
+        role: "admin",
+        joinedAt: "2026-09-01T09:00:00Z",
+      },
+    ]);
+    await expect(client.invitations.list("organization-1")).resolves.toEqual([
+      expect.objectContaining({
+        id: "invitation-1",
+        organizationId: "organization-1",
+        acceptedAt: null,
+        revokedAt: null,
+      }),
+    ]);
+    await expect(client.members.remove("organization-1", "membership-1")).resolves.toBeUndefined();
+  });
 });
