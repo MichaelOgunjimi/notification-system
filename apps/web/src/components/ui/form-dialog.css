@@ -149,6 +149,50 @@
   margin-top: 4px;
 }
 
+.form-dialog__field-label {
+  color: var(--fd-muted-bright);
+  font-size: 10px;
+  font-weight: 560;
+  margin-top: 10px;
+}
+
+.form-dialog__field-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 2fr 1fr;
+}
+
+.form-dialog__segmented {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.form-dialog__segmented button {
+  background: var(--fd-overlay);
+  border: 1px solid var(--fd-line-strong);
+  border-radius: 7px;
+  color: var(--fd-muted-bright);
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  padding: 7px 16px;
+  text-transform: uppercase;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.form-dialog__segmented button[data-active] {
+  border-color: var(--fd-accent);
+  color: var(--fd-ink);
+}
+
+@media (max-width: 520px) {
+  .form-dialog__field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-dialog__error {
   align-items: center;
   color: #d88274;

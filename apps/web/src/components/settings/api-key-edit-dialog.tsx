@@ -2,54 +2,47 @@
 
 import { FormEvent, useId, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
-import type { ApiKeyScope, CreatedProjectApiKey } from "@beaco/control-plane";
-import { useCreateProjectApiKey } from "@beaco/control-plane/react";
+import type { ApiKeyScope, ProjectApiKey } from "@beaco/control-plane";
+import { useUpdateProjectApiKey } from "@beaco/control-plane/react";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { useToast } from "@/components/ui/toast";
 import { ScopeGrid } from "./api-key-scopes";
 
-type ApiKeyCreateDialogProps = Readonly<{
+type ApiKeyEditDialogProps = Readonly<{
   open: boolean;
   projectId: string;
+  apiKey: ProjectApiKey;
   onOpenChange: (open: boolean) => void;
-  onCreated: (apiKey: CreatedProjectApiKey) => void;
+  onSaved: () => void;
 }>;
 
-function parseRateLimit(raw: string): { value: number | null } | { error: string } {
-  if (!raw.trim()) return { value: null };
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return { error: "Rate limit must be a whole number of at least 1." };
-  }
-  return { value: parsed };
-}
-
 /**
- * Modal form for creating a project API key: name, optional description,
- * environment, an optional rate limit, and a per-resource scope grid. The
- * caller renders the one-time secret on success.
+ * Modal form for editing an active API key's name, description, scopes, and
+ * rate limit. The environment cannot change after creation.
  *
- * @param props Dialog visibility, target project, and success/close callbacks.
- * @returns The create-key dialog.
+ * @param props Dialog visibility, target project and key, and success/close callbacks.
+ * @returns The edit-key dialog.
  */
-export function ApiKeyCreateDialog({
+export function ApiKeyEditDialog({
   open,
   projectId,
+  apiKey,
   onOpenChange,
-  onCreated,
-}: ApiKeyCreateDialogProps) {
+  onSaved,
+}: ApiKeyEditDialogProps) {
   const toast = useToast();
   const formId = useId();
   const nameId = useId();
   const descriptionId = useId();
   const rateLimitId = useId();
-  const createKey = useCreateProjectApiKey();
+  const updateKey = useUpdateProjectApiKey();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [environment, setEnvironment] = useState<"test" | "live">("live");
-  const [scopes, setScopes] = useState<Set<ApiKeyScope>>(new Set());
-  const [rateLimit, setRateLimit] = useState("");
+  const [name, setName] = useState(apiKey.name);
+  const [description, setDescription] = useState(apiKey.description ?? "");
+  const [scopes, setScopes] = useState<Set<ApiKeyScope>>(new Set(apiKey.scopes));
+  const [rateLimit, setRateLimit] = useState(
+    apiKey.rateLimitPerMin === null ? "" : String(apiKey.rateLimitPerMin),
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   function toggleScope(scope: ApiKeyScope) {
@@ -64,24 +57,29 @@ export function ApiKeyCreateDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
-    createKey.reset();
+    updateKey.reset();
     if (!name.trim()) return setFormError("Enter a name for this key.");
     if (scopes.size === 0) return setFormError("Select at least one scope.");
-    const rate = parseRateLimit(rateLimit);
-    if ("error" in rate) return setFormError(rate.error);
+    let parsedRateLimit: number | null = null;
+    if (rateLimit.trim()) {
+      parsedRateLimit = Number(rateLimit);
+      if (!Number.isInteger(parsedRateLimit) || parsedRateLimit < 1) {
+        return setFormError("Rate limit must be a whole number of at least 1.");
+      }
+    }
     try {
-      const created = await createKey.mutateAsync({
+      await updateKey.mutateAsync({
         projectId,
-        input: {
+        apiKeyId: apiKey.id,
+        changes: {
           name: name.trim(),
           description: description.trim() || null,
           scopes: [...scopes],
-          environment,
-          rateLimitPerMin: rate.value,
+          rateLimitPerMin: parsedRateLimit,
         },
       });
-      toast.success(`${created.name} created`);
-      onCreated(created);
+      toast.success(`${name.trim()} updated`);
+      onSaved();
     } catch {
       // The structured mutation error is rendered below the form.
     }
@@ -91,14 +89,14 @@ export function ApiKeyCreateDialog({
     <FormDialog
       open={open}
       onOpenChange={(next) => {
-        if (!createKey.isPending) onOpenChange(next);
+        if (!updateKey.isPending) onOpenChange(next);
       }}
-      eyebrow="Project security"
-      title="Create an API key"
-      description="Name it for where it runs, then grant the narrowest set of scopes it needs. The secret is shown once, right after creation."
-      busy={createKey.isPending}
+      eyebrow="API key"
+      title={`Edit ${apiKey.name}`}
+      description="Changes take effect immediately. Rotate the key instead if the secret may be compromised."
+      busy={updateKey.isPending}
       formId={formId}
-      submitLabel="Create key"
+      submitLabel="Save changes"
       submitDisabled={!name.trim() || scopes.size === 0}
       onSubmit={handleSubmit}
     >
@@ -110,7 +108,6 @@ export function ApiKeyCreateDialog({
             value={name}
             maxLength={255}
             autoFocus
-            placeholder="Production ingest"
             onChange={(event) => setName(event.target.value)}
           />
         </div>
@@ -135,31 +132,15 @@ export function ApiKeyCreateDialog({
         onChange={(event) => setDescription(event.target.value)}
       />
 
-      <span className="form-dialog__field-label">Environment</span>
-      <div className="form-dialog__segmented" role="radiogroup" aria-label="Environment">
-        {(["live", "test"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={environment === value}
-            data-active={environment === value || undefined}
-            onClick={() => setEnvironment(value)}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
-
       <span className="form-dialog__field-label">
         Scopes {scopes.size ? `· ${scopes.size} selected` : ""}
       </span>
       <ScopeGrid value={scopes} onToggle={toggleScope} />
 
-      {formError || createKey.isError ? (
+      {formError || updateKey.isError ? (
         <p className="form-dialog__error" role="alert">
           <WarningCircle size={14} />
-          {formError ?? createKey.error?.message}
+          {formError ?? updateKey.error?.message}
         </p>
       ) : null}
     </FormDialog>

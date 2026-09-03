@@ -6,6 +6,7 @@ import {
   Check,
   Copy,
   Key,
+  PencilSimple,
   Plus,
   SpinnerGap,
   Trash,
@@ -23,10 +24,12 @@ import {
   useProjectApiKeys,
   useRevokeProjectApiKey,
   useRotateProjectApiKey,
+  useUpdateProjectApiKey,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { useToast } from "@/components/ui/toast";
 import { ApiKeyCreateDialog } from "./api-key-create-dialog";
+import { ApiKeyEditDialog } from "./api-key-edit-dialog";
 import "./api-keys-settings.css";
 
 type ApiKeysSettingsProps = Readonly<{
@@ -125,6 +128,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   const [createdKey, setCreatedKey] = useState<CreatedProjectApiKey | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ProjectApiKey | null>(null);
   const [keyToRotate, setKeyToRotate] = useState<ProjectApiKey | null>(null);
+  const [keyToEdit, setKeyToEdit] = useState<ProjectApiKey | null>(null);
 
   const filtersActive = environment !== "" || status !== "";
   const apiKeys = useProjectApiKeys(canManage ? project.id : null, {
@@ -135,6 +139,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   });
   const revokeKey = useRevokeProjectApiKey();
   const rotateKey = useRotateProjectApiKey();
+  const updateKey = useUpdateProjectApiKey();
 
   async function handleRevoke() {
     if (!keyToRevoke) return;
@@ -331,6 +336,16 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
                   <div className="api-keys__row-actions">
                     <button
                       type="button"
+                      aria-label={`Edit ${apiKey.name}`}
+                      onClick={() => {
+                        updateKey.reset();
+                        setKeyToEdit(apiKey);
+                      }}
+                    >
+                      <PencilSimple size={15} /> Edit
+                    </button>
+                    <button
+                      type="button"
                       aria-label={`Rotate ${apiKey.name}`}
                       onClick={() => {
                         rotateKey.reset();
@@ -422,6 +437,18 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
             setCreateOpen(false);
             setPage(1);
           }}
+        />
+      ) : null}
+
+      {keyToEdit ? (
+        <ApiKeyEditDialog
+          open
+          projectId={project.id}
+          apiKey={keyToEdit}
+          onOpenChange={(open) => {
+            if (!open) setKeyToEdit(null);
+          }}
+          onSaved={() => setKeyToEdit(null)}
         />
       ) : null}
 

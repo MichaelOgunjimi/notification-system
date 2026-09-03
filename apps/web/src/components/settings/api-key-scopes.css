@@ -1,0 +1,29 @@
+.scope-grid {
+  display: grid;
+  gap: 12px 18px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.scope-grid__group p {
+  color: var(--dashboard-muted, var(--workspace-muted, var(--muted-foreground)));
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.scope-grid__group label {
+  align-items: center;
+  color: var(--dashboard-muted-bright, var(--workspace-muted-bright, var(--foreground)));
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.scope-grid__group input {
+  accent-color: var(--dashboard-accent, var(--workspace-accent, var(--primary)));
+  height: 13px;
+  width: 13px;
+}
