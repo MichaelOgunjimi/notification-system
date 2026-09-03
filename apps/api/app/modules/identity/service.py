@@ -209,6 +209,10 @@ async def add_user_email(db: AsyncSession, redis: Redis, *, user: User, email: s
         await db.delete(existing)
         await db.flush()
 
+    # Always secondary + unverified: every caller here is an authenticated user who
+    # already owns a primary. This deliberately diverges from _attach_verified_email
+    # (OAuth path), which may mint a primary and refuses an address held by another
+    # user's *unverified* row rather than reclaiming a lapsed squat as we do above.
     email_address = EmailAddress(user_id=user.id, email=normalized, verified_at=None)
     db.add(email_address)
     await db.flush()
