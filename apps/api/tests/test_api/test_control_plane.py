@@ -229,8 +229,32 @@ async def test_api_key_can_be_edited_and_rotated(
     assert rotated.status_code == 200
     assert rotated.json()["key"] != old_secret
     assert rotated.json()["environment"] == "test"
+    assert rotated.json()["rotated_from_id"] == key_id
     rejected = await client.get("/api/v1/templates", headers={"X-API-Key": old_secret})
     assert rejected.status_code == 401
+
+    listed = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"status": "active"},
+    )
+    assert listed.status_code == 200
+    active = listed.json()["items"]
+    assert [item["id"] for item in active] == [rotated.json()["id"]]
+
+    revoked = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"status": "revoked", "environment": "test"},
+    )
+    assert [item["id"] for item in revoked.json()["items"]] == [key_id]
+
+    live_only = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"environment": "live"},
+    )
+    assert live_only.json()["items"] == []
 
 
 async def test_usage_summaries_roll_up_from_project_to_organization(

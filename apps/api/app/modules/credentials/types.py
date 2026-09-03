@@ -44,6 +44,7 @@ class ApiKeyView:
     updated_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+    rotated_from_id: uuid.UUID | None
 
 
 @dataclass(frozen=True, slots=True)
