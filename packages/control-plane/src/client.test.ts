@@ -99,6 +99,52 @@ describe("createControlPlaneClient", () => {
     );
   });
 
+  it("creates an organization through the application boundary", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "organization-9",
+          name: "Fresh Co",
+          slug: "fresh-co",
+          description: null,
+          role: "owner",
+          capabilities: ["organization:read", "organization:manage", "project:create"],
+          created_at: "2026-09-03T09:00:00Z",
+          updated_at: "2026-09-03T09:00:00Z",
+          archived_at: null,
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.organizations.create({
+        name: "Fresh Co",
+        slug: "fresh-co",
+        project: { name: "Web", slug: "web" },
+      }),
+    ).resolves.toEqual({
+      id: "organization-9",
+      name: "Fresh Co",
+      slug: "fresh-co",
+      description: null,
+      role: "owner",
+      capabilities: ["organization:read", "organization:manage", "project:create"],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Fresh Co",
+          slug: "fresh-co",
+          project: { name: "Web", slug: "web" },
+        }),
+      }),
+    );
+  });
+
   it("forwards organization updates as JSON through the application boundary", async () => {
     const fetcher = fetchAdapter(() =>
       Response.json({

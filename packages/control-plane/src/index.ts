@@ -7,6 +7,7 @@ export type {
   CreatedProjectApiKey,
   Organization,
   OrganizationCapability,
+  OrganizationCreate,
   OrganizationInvitation,
   OrganizationInvitationCreate,
   OrganizationMember,

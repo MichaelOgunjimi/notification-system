@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  OrganizationCreate,
   OrganizationInvitationCreate,
   OrganizationRole,
   OrganizationUpdate,
@@ -74,6 +75,22 @@ export function useOrganizationInvitations(organizationId: string | null) {
   return useQuery({
     ...organizationInvitationsQuery(client, organizationId ?? "pending"),
     enabled: Boolean(organizationId),
+  });
+}
+
+/**
+ * Creates an organization (the backend seeds a default project) and refreshes
+ * the organization list.
+ *
+ * @returns TanStack mutation accepting the new organization's name, slug, and description.
+ */
+export function useCreateOrganization() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organization: OrganizationCreate) => client.organizations.create(organization),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: controlPlaneQueryKeys.organizations() }),
   });
 }
 

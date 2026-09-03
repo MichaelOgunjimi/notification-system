@@ -14,6 +14,7 @@ describe("control-plane queries", () => {
     const client: ControlPlaneClient = {
       organizations: {
         list: vi.fn().mockResolvedValue([]),
+        create: vi.fn(),
         update: vi.fn(),
         archive: vi.fn(),
       },

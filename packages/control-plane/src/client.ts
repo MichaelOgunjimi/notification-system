@@ -111,6 +111,10 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       const organizations = await this.get<ApiOrganization[]>("/organizations");
       return organizations.map(mapOrganization);
     },
+    create: async (
+      organization: Parameters<ControlPlaneClient["organizations"]["create"]>[0],
+    ): Promise<Organization> =>
+      mapOrganization(await this.request<ApiOrganization>("/organizations", "POST", organization)),
     update: async (
       organizationId: string,
       changes: Parameters<ControlPlaneClient["organizations"]["update"]>[1],

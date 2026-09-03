@@ -43,6 +43,17 @@ export type OrganizationUpdate = Readonly<{
 }>;
 
 /**
+ * Fields required to create an organization. The first project is created in
+ * the same request, so its name and slug are supplied by the caller.
+ */
+export type OrganizationCreate = Readonly<{
+  name: string;
+  slug: string;
+  description?: string | null;
+  project: Readonly<{ name: string; slug: string }>;
+}>;
+
+/**
  * Project belonging to an organization available to the authenticated user.
  *
  * @property id Stable backend project identifier.
@@ -189,6 +200,15 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the application boundary or backend rejects the request.
      */
     list(): Promise<Organization[]>;
+    /**
+     * Creates an organization owned by the current user. The backend also seeds
+     * a default project so the workspace is immediately usable.
+     *
+     * @param organization Name, URL slug, and optional description.
+     * @returns The created organization including the caller's owner capabilities.
+     * @throws {ControlPlaneError} When the slug conflicts or validation fails.
+     */
+    create(organization: OrganizationCreate): Promise<Organization>;
     /**
      * Updates organization-owned profile fields.
      *
