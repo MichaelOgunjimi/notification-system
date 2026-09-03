@@ -97,6 +97,22 @@ export function useCreateOrganization() {
 }
 
 /**
+ * Archives an organization and refreshes the organization list.
+ *
+ * @returns TanStack mutation accepting an organization identifier.
+ */
+export function useArchiveOrganization() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ organizationId }: { organizationId: string }) =>
+      client.organizations.archive(organizationId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: controlPlaneQueryKeys.organizations() }),
+  });
+}
+
+/**
  * Updates organization profile fields and refreshes organization caches.
  *
  * @returns TanStack mutation accepting an organization identifier and field changes.

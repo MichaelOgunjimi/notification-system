@@ -1,5 +1,6 @@
 export {
   useCreateOrganization,
+  useArchiveOrganization,
   useArchiveProject,
   useCreateProject,
   useCreateProjectApiKey,

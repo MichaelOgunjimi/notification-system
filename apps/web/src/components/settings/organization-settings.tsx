@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useId, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Buildings,
   Check,
   EnvelopeSimple,
   FolderSimple,
+  GearSix,
   SpinnerGap,
   Trash,
   UserMinus,
@@ -19,6 +21,7 @@ import type {
   Project,
 } from "@beaco/control-plane";
 import {
+  useArchiveOrganization,
   useCreateProject,
   useInviteOrganizationMember,
   useOrganizationInvitations,
@@ -30,6 +33,7 @@ import {
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { AppSelect } from "@/components/ui/app-select";
+import { useToast } from "@/components/ui/toast";
 import { dashboardPath } from "@/lib/dashboard-route";
 import "./organization-settings.css";
 
@@ -60,6 +64,7 @@ export function OrganizationSettings({
   projects,
 }: OrganizationSettingsProps) {
   const router = useRouter();
+  const toast = useToast();
   const nameId = useId();
   const slugId = useId();
   const descriptionId = useId();
@@ -77,6 +82,7 @@ export function OrganizationSettings({
   const [projectSlug, setProjectSlug] = useState("");
   const [projectError, setProjectError] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<OrganizationMember | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const capabilities = useMemo(
     () => new Set(organization.capabilities),
     [organization.capabilities],
@@ -84,6 +90,8 @@ export function OrganizationSettings({
   const canManageOrganization = capabilities.has("organization:manage");
   const canManageMembers = capabilities.has("organization:members:manage");
   const canCreateProject = capabilities.has("project:create");
+  const canManageProject = capabilities.has("project:manage");
+  const canDeleteOrganization = capabilities.has("organization:delete");
   const members = useOrganizationMembers(organization.id);
   const invitations = useOrganizationInvitations(canManageMembers ? organization.id : null);
   const updateOrganization = useUpdateOrganization();
@@ -92,6 +100,7 @@ export function OrganizationSettings({
   const inviteMember = useInviteOrganizationMember();
   const revokeInvitation = useRevokeOrganizationInvitation();
   const createProject = useCreateProject();
+  const archiveOrganization = useArchiveOrganization();
   const profileChanged =
     name.trim() !== organization.name ||
     slug.trim() !== organization.slug ||
@@ -172,6 +181,16 @@ export function OrganizationSettings({
     }
   }
 
+  async function handleArchiveOrganization() {
+    try {
+      await archiveOrganization.mutateAsync({ organizationId: organization.id });
+      toast.success(`${organization.name} archived`);
+      router.replace("/workspace");
+    } catch {
+      // The structured mutation error is rendered inside the confirmation dialog.
+    }
+  }
+
   return (
     <div className="organization-settings">
       <header className="organization-settings__heading">
@@ -189,6 +208,7 @@ export function OrganizationSettings({
         <a href="#general">01 General</a>
         <a href="#members">02 Members</a>
         <a href="#projects">03 Projects</a>
+        {canDeleteOrganization ? <a href="#danger">04 Danger</a> : null}
       </nav>
 
       <div className="organization-settings__sections">
@@ -435,29 +455,75 @@ export function OrganizationSettings({
           ) : null}
           <div className="organization-settings__list">
             {projects.map((candidate) => (
-              <button
+              <div
                 key={candidate.id}
-                type="button"
                 className="organization-settings__row organization-settings__project"
                 data-active={candidate.id === project.id || undefined}
-                onClick={() => router.push(dashboardPath(organization.slug, candidate.slug))}
               >
-                <span className="organization-settings__avatar">
-                  <FolderSimple size={17} />
-                </span>
-                <div>
-                  <strong>{candidate.name}</strong>
-                  <small>
-                    /{organization.slug}/{candidate.slug}
-                  </small>
-                </div>
+                <button
+                  type="button"
+                  className="organization-settings__project-open"
+                  onClick={() => router.push(dashboardPath(organization.slug, candidate.slug))}
+                >
+                  <span className="organization-settings__avatar">
+                    <FolderSimple size={17} />
+                  </span>
+                  <div>
+                    <strong>{candidate.name}</strong>
+                    <small>
+                      /{organization.slug}/{candidate.slug}
+                    </small>
+                  </div>
+                </button>
+                {canManageProject ? (
+                  <Link
+                    href={`${dashboardPath(organization.slug, candidate.slug)}/settings/project`}
+                    className="organization-settings__icon-action"
+                    aria-label={`Settings for ${candidate.name}`}
+                  >
+                    <GearSix size={16} />
+                  </Link>
+                ) : null}
                 <span className="organization-settings__tag">
                   {candidate.id === project.id ? "current" : "open"}
                 </span>
-              </button>
+              </div>
             ))}
           </div>
         </section>
+
+        {canDeleteOrganization ? (
+          <section
+            id="danger"
+            className="organization-settings__section organization-settings__section--danger"
+          >
+            <div className="organization-settings__section-heading">
+              <span>04</span>
+              <div>
+                <h2>Danger zone</h2>
+                <p>
+                  Archiving removes {organization.name} and every project in it from the workspace.
+                </p>
+              </div>
+            </div>
+            <div className="organization-settings__danger-row">
+              <div>
+                <strong>Archive this organization</strong>
+                <small>Members lose access immediately. Delivery data is retained.</small>
+              </div>
+              <button
+                type="button"
+                className="organization-settings__danger-action"
+                onClick={() => {
+                  archiveOrganization.reset();
+                  setArchiveOpen(true);
+                }}
+              >
+                <Trash size={15} /> Archive organization
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <AppDialog
@@ -488,6 +554,41 @@ export function OrganizationSettings({
         {removeMember.isError ? (
           <p className="app-dialog__error" role="alert">
             {removeMember.error.message}
+          </p>
+        ) : null}
+      </AppDialog>
+
+      <AppDialog
+        open={archiveOpen}
+        onOpenChange={(open) => {
+          if (!open && !archiveOrganization.isPending) setArchiveOpen(false);
+        }}
+        eyebrow="Organization"
+        title={`Archive ${organization.name}?`}
+        description="Every member loses access and every project is removed from the workspace. Delivery history is retained."
+        busy={archiveOrganization.isPending}
+        footer={
+          <>
+            <DialogAction
+              disabled={archiveOrganization.isPending}
+              onClick={() => setArchiveOpen(false)}
+            >
+              Keep organization
+            </DialogAction>
+            <DialogAction
+              tone="danger"
+              disabled={archiveOrganization.isPending}
+              onClick={handleArchiveOrganization}
+            >
+              <Trash size={15} />
+              {archiveOrganization.isPending ? "Archiving" : "Archive"}
+            </DialogAction>
+          </>
+        }
+      >
+        {archiveOrganization.isError ? (
+          <p className="app-dialog__error" role="alert">
+            {archiveOrganization.error.message}
           </p>
         ) : null}
       </AppDialog>

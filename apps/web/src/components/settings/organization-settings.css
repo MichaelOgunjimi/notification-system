@@ -351,12 +351,91 @@
 }
 
 .organization-settings__project {
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
-.organization-settings__project:hover,
 .organization-settings__project[data-active="true"] {
   background: var(--dashboard-overlay);
+}
+
+.organization-settings__project-open {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  text-align: left;
+}
+
+.organization-settings__project-open > div {
+  min-width: 0;
+}
+
+.organization-settings__project-open:hover {
+  color: var(--dashboard-ink);
+}
+
+.organization-settings__project-open:hover strong {
+  color: var(--dashboard-accent);
+}
+
+.organization-settings__project a.organization-settings__icon-action:hover {
+  color: var(--dashboard-ink);
+}
+
+.organization-settings__section + .organization-settings__section--danger {
+  border-top-color: color-mix(in srgb, #d88274 40%, var(--dashboard-line));
+}
+
+.organization-settings__section--danger .organization-settings__section-heading > span {
+  color: #d88274;
+}
+
+.organization-settings__danger-row {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, #d88274 35%, var(--dashboard-line-strong));
+  border-radius: 10px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.organization-settings__danger-row strong {
+  display: block;
+  font-size: 13px;
+}
+
+.organization-settings__danger-row small {
+  color: var(--dashboard-muted);
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.organization-settings__danger-action {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #b95749;
+  border-radius: 8px;
+  color: #d88274;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.organization-settings__danger-action:hover {
+  background: #b95749;
+  color: #fff8f4;
 }
 
 @media (max-width: 720px) {
