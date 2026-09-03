@@ -101,3 +101,8 @@
   background: var(--primary);
   color: var(--primary-foreground);
 }
+
+.dark ::selection {
+  background: #f5e7c6;
+  color: #1c1710;
+}
