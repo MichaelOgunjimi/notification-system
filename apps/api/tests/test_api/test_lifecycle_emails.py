@@ -1,6 +1,7 @@
 """Lifecycle notification emails: rendering and best-effort dispatch."""
 
 import json
+import uuid
 from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
@@ -220,6 +221,129 @@ async def test_promoting_the_current_primary_notifies_no_one(
         response = await client.post(
             f"/api/v1/auth/me/emails/{primary.id}/primary",
             headers=await _auth(user, db, mock_redis),
+        )
+
+    assert response.status_code == 200
+    notify.assert_not_awaited()
+
+
+async def _member_of(
+    db: AsyncSession, organization_id, email: str, role: str = "member"
+) -> tuple[User, str]:
+    from app.modules.tenancy.models.organization import OrganizationMembership, OrganizationRole
+
+    member = await _verified_user(db, email, name=email.partition("@")[0])
+    membership = OrganizationMembership(
+        organization_id=organization_id, user_id=member.id, role=OrganizationRole(role)
+    )
+    db.add(membership)
+    await db.commit()
+    await db.refresh(membership)
+    return member, str(membership.id)
+
+
+async def test_removing_a_member_notifies_them(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    from app.modules.tenancy.lifecycle import create_organization
+
+    owner = await _verified_user(db, "owner-rm@example.com", name="Owner")
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme-rm")
+    await db.commit()
+    _member, membership_id = await _member_of(db, organization.id, "dropped@example.com")
+
+    with patch(
+        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.delete(
+            f"/api/v1/organizations/{organization.id}/members/{membership_id}",
+            headers=await _auth(owner, db, mock_redis),
+        )
+
+    assert response.status_code == 204
+    notify.assert_awaited_once()
+    recipient, message = notify.await_args.args
+    assert recipient == "dropped@example.com"
+    assert "Acme" in message.html
+
+
+async def test_removing_a_member_succeeds_even_when_the_notification_fails(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    from app.modules.tenancy.lifecycle import create_organization
+    from app.modules.tenancy.models.organization import OrganizationMembership
+
+    owner = await _verified_user(db, "owner-rm2@example.com", name="Owner")
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme-rm2")
+    await db.commit()
+    _member, membership_id = await _member_of(db, organization.id, "dropped2@example.com")
+
+    # Fail at the provider boundary so the real best-effort helper runs and swallows it.
+    with patch(
+        "app.modules.delivery.notifications.EmailAdapter.send",
+        side_effect=RuntimeError("smtp down"),
+    ):
+        response = await client.delete(
+            f"/api/v1/organizations/{organization.id}/members/{membership_id}",
+            headers=await _auth(owner, db, mock_redis),
+        )
+
+    assert response.status_code == 204
+    gone = (
+        await db.execute(
+            select(OrganizationMembership).where(
+                OrganizationMembership.id == uuid.UUID(membership_id)
+            )
+        )
+    ).scalar_one_or_none()
+    assert gone is None
+
+
+async def test_changing_a_members_role_notifies_the_member_not_the_actor(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    from app.modules.tenancy.lifecycle import create_organization
+
+    owner = await _verified_user(db, "owner-role@example.com", name="Owner")
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme-role")
+    await db.commit()
+    _member, membership_id = await _member_of(db, organization.id, "promoted@example.com")
+
+    with patch(
+        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.patch(
+            f"/api/v1/organizations/{organization.id}/members/{membership_id}",
+            headers=await _auth(owner, db, mock_redis),
+            json={"role": "admin"},
+        )
+
+    assert response.status_code == 200
+    notify.assert_awaited_once()
+    recipient, message = notify.await_args.args
+    assert recipient == "promoted@example.com"
+    assert "Admin" in message.html
+
+
+async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    from app.modules.tenancy.lifecycle import create_organization
+
+    owner = await _verified_user(db, "owner-noop@example.com", name="Owner")
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme-noop")
+    await db.commit()
+    _member, membership_id = await _member_of(
+        db, organization.id, "steady@example.com", role="member"
+    )
+
+    with patch(
+        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.patch(
+            f"/api/v1/organizations/{organization.id}/members/{membership_id}",
+            headers=await _auth(owner, db, mock_redis),
+            json={"role": "member"},
         )
 
     assert response.status_code == 200
