@@ -9,6 +9,7 @@ import {
   EnvelopeSimple,
   FolderSimple,
   GearSix,
+  PaperPlaneTilt,
   SpinnerGap,
   Trash,
   UserMinus,
@@ -82,6 +83,7 @@ export function OrganizationSettings({
   const [projectSlug, setProjectSlug] = useState("");
   const [projectError, setProjectError] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<OrganizationMember | null>(null);
+  const [resendingInvitation, setResendingInvitation] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const capabilities = useMemo(
     () => new Set(organization.capabilities),
@@ -144,6 +146,25 @@ export function OrganizationSettings({
       setInviteRole("member");
     } catch {
       // The structured mutation error is rendered beside the invitation form.
+    }
+  }
+
+  async function handleResendInvitation(email: string, role: OrganizationRole) {
+    setResendingInvitation(email);
+    inviteMember.reset();
+    try {
+      await inviteMember.mutateAsync({
+        organizationId: organization.id,
+        invitation: { email, role },
+      });
+      toast.success(`Invitation resent to ${email}`);
+    } catch {
+      toast.error(`Could not resend the invitation to ${email}`);
+    } finally {
+      // Feedback for the resend path is the toast; keep the shared mutation
+      // error off the invite form.
+      inviteMember.reset();
+      setResendingInvitation(null);
     }
   }
 
@@ -388,17 +409,28 @@ export function OrganizationSettings({
                       {new Date(invitation.expiresAt).toLocaleDateString()}
                     </small>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      revokeInvitation.mutate({
-                        organizationId: organization.id,
-                        invitationId: invitation.id,
-                      })
-                    }
-                  >
-                    <Trash size={14} /> Revoke
-                  </button>
+                  <div className="organization-settings__pending-actions">
+                    <button
+                      type="button"
+                      className="organization-settings__pending-resend"
+                      disabled={resendingInvitation === invitation.email}
+                      onClick={() => handleResendInvitation(invitation.email, invitation.role)}
+                    >
+                      <PaperPlaneTilt size={14} />
+                      {resendingInvitation === invitation.email ? "Sending" : "Resend"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        revokeInvitation.mutate({
+                          organizationId: organization.id,
+                          invitationId: invitation.id,
+                        })
+                      }
+                    >
+                      <Trash size={14} /> Revoke
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

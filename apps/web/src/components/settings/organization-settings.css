@@ -337,6 +337,24 @@
   gap: 5px;
 }
 
+.organization-settings__pending-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.organization-settings__pending .organization-settings__pending-resend {
+  color: var(--dashboard-muted-bright);
+}
+
+.organization-settings__pending .organization-settings__pending-resend:hover:not(:disabled) {
+  color: var(--dashboard-ink);
+}
+
+.organization-settings__pending .organization-settings__pending-resend:disabled {
+  opacity: 0.55;
+}
+
 .organization-settings__empty {
   align-items: center;
   color: var(--dashboard-muted);
