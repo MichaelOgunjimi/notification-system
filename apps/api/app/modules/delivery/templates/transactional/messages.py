@@ -101,6 +101,215 @@ def email_verification_email(
     )
 
 
+def welcome_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    recipient_name: str,
+    workspace_name: str,
+) -> TransactionalEmail:
+    subject = "Welcome to Beaco"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"Your workspace {workspace_name} is ready.",
+        "eyebrow": "Account created",
+        "heading": "Beaco is ready for you",
+        "intro": (
+            f"Hi {recipient_name}, your account is live. {workspace_name} is set up "
+            "with a first project, so anything you send runs through one accountable "
+            "delivery record."
+        ),
+        "detail_label": "Workspace",
+        "detail_value": workspace_name,
+        "security_value": "Passwordless sign-in",
+        "action_label": "Open your workspace",
+        "action_url": f"{frontend_url.rstrip('/')}/workspace",
+        "footnote": (
+            "You received this because an account was created with this address. "
+            "If it was not you, reply to let us know."
+        ),
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "welcome.txt.j2",
+            recipient_name=recipient_name,
+            workspace_name=workspace_name,
+            action_url=f"{frontend_url.rstrip('/')}/workspace",
+        ),
+    )
+
+
+def email_changed_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    recipient_name: str,
+    new_email: str,
+) -> TransactionalEmail:
+    subject = "Your Beaco primary email address changed"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"Your account is now identified by {new_email}.",
+        "eyebrow": "Security alert",
+        "heading": "Primary address changed",
+        "intro": (
+            f"Hi {recipient_name}, the primary email address on your Beaco account "
+            f"was changed to {new_email}. Sign-in links and notifications now go there."
+        ),
+        "detail_label": "New primary address",
+        "detail_value": new_email,
+        "security_value": "Change you can review",
+        "action_label": "Go to sign in",
+        "action_url": f"{frontend_url.rstrip('/')}/login",
+        "footnote": (
+            "If you did not make this change, someone may have access to your "
+            "account. Reply to this email immediately so we can help you recover it."
+        ),
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "email_changed.txt.j2",
+            recipient_name=recipient_name,
+            new_email=new_email,
+            action_url=f"{frontend_url.rstrip('/')}/login",
+        ),
+    )
+
+
+def member_removed_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    recipient_name: str,
+    organization_name: str,
+) -> TransactionalEmail:
+    subject = f"You were removed from {organization_name} on Beaco"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"Your access to {organization_name} has ended.",
+        "eyebrow": "Membership update",
+        "heading": f"Your seat at {organization_name} closed",
+        "intro": (
+            f"Hi {recipient_name}, your membership in {organization_name} was removed. "
+            "You no longer have access to its projects, API keys, or delivery history."
+        ),
+        "detail_label": "Organization",
+        "detail_value": organization_name,
+        "security_value": "Access ended",
+        "action_label": "Go to Beaco",
+        "action_url": f"{frontend_url.rstrip('/')}/workspace",
+        "footnote": (
+            "If you think this was a mistake, contact an administrator of that organization."
+        ),
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "member_removed.txt.j2",
+            recipient_name=recipient_name,
+            organization_name=organization_name,
+            action_url=f"{frontend_url.rstrip('/')}/workspace",
+        ),
+    )
+
+
+def member_role_changed_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    recipient_name: str,
+    organization_name: str,
+    role: str,
+) -> TransactionalEmail:
+    role_label = role.replace("_", " ").title()
+    subject = f"Your role in {organization_name} changed"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"You are now {role_label} in {organization_name}.",
+        "eyebrow": "Membership update",
+        "heading": f"New access level in {organization_name}",
+        "intro": (
+            f"Hi {recipient_name}, your role in {organization_name} is now {role_label}. "
+            "This changes what you can see and manage across its projects."
+        ),
+        "detail_label": "New role",
+        "detail_value": role_label,
+        "security_value": "Effective immediately",
+        "action_label": "Open Beaco",
+        "action_url": f"{frontend_url.rstrip('/')}/workspace",
+        "footnote": (
+            "Roles are set by organization administrators. Contact one of them with any questions."
+        ),
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "member_role_changed.txt.j2",
+            recipient_name=recipient_name,
+            organization_name=organization_name,
+            role=role_label,
+            action_url=f"{frontend_url.rstrip('/')}/workspace",
+        ),
+    )
+
+
+def invitation_accepted_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    recipient_name: str,
+    organization_name: str,
+    member_email: str,
+    role: str,
+) -> TransactionalEmail:
+    role_label = role.replace("_", " ").title()
+    subject = f"{member_email} joined {organization_name}"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"{member_email} accepted your invitation to {organization_name}.",
+        "eyebrow": "Invitation accepted",
+        "heading": f"{organization_name} has a new member",
+        "intro": (
+            f"Hi {recipient_name}, {member_email} accepted your invitation and joined "
+            f"{organization_name} as {role_label}."
+        ),
+        "detail_label": "New member",
+        "detail_value": member_email,
+        "security_value": "Verified-email access",
+        "action_label": "View members",
+        "action_url": f"{frontend_url.rstrip('/')}/workspace",
+        "footnote": "You received this because you sent the invitation.",
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "invitation_accepted.txt.j2",
+            recipient_name=recipient_name,
+            organization_name=organization_name,
+            member_email=member_email,
+            role=role_label,
+            action_url=f"{frontend_url.rstrip('/')}/workspace",
+        ),
+    )
+
+
 def organization_invitation_email(
     *,
     frontend_url: str,
