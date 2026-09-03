@@ -101,15 +101,19 @@ async def _create_user_with_workspace(
     return user, email_address
 
 
-async def _send_welcome_email(user: User) -> None:
-    """Best-effort welcome, sent after the new user + workspace have committed."""
+async def _send_welcome_email(*, email: str, name: str) -> None:
+    """Best-effort welcome, sent after the new user + workspace have committed.
+
+    Takes plain values rather than a ``User`` instance: the caller commits first,
+    which expires ORM attributes, and this runs outside that refresh.
+    """
     message = welcome_email(
         frontend_url=settings.FRONTEND_URL,
-        recipient=user.email,
-        recipient_name=user.name,
-        workspace_name=f"{user.name}'s Workspace",
+        recipient=email,
+        recipient_name=name,
+        workspace_name=f"{name}'s Workspace",
     )
-    await send_notification_email(user.email, message)
+    await send_notification_email(email, message)
 
 
 async def _attach_verified_email(
@@ -434,12 +438,13 @@ async def verify_magic_link(
 
     email_result = await db.execute(select(EmailAddress).where(col(EmailAddress.email) == email))
     email_address = email_result.scalar_one_or_none()
-    registered_user: User | None = None
+    registered_name: str | None = None
     if email_address is None:
-        registered_user, email_address = await _create_user_with_workspace(
+        registered_name = email.partition("@")[0]
+        _new_user, email_address = await _create_user_with_workspace(
             db,
             email=email,
-            name=email.partition("@")[0],
+            name=registered_name,
         )
         await db.commit()
     if email_address.verified_at is None:
@@ -453,8 +458,8 @@ async def verify_magic_link(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
-    if registered_user is not None:
-        await _send_welcome_email(registered_user)
+    if registered_name is not None:
+        await _send_welcome_email(email=email, name=registered_name)
     return await create_user_tokens(user, db, redis)
 
 
@@ -503,10 +508,11 @@ async def get_or_create_oauth_user(
             detail="This email already has an account; sign in and connect this provider",
         )
 
+    registered_name = str(identity.get("name") or identity["login"])
     user, _email_address = await _create_user_with_workspace(
         db,
         email=email,
-        name=str(identity.get("name") or identity["login"]),
+        name=registered_name,
         avatar_url=identity.get("avatar_url"),
     )
 
@@ -523,7 +529,7 @@ async def get_or_create_oauth_user(
     )
     await db.commit()
     await db.refresh(user)
-    await _send_welcome_email(user)
+    await _send_welcome_email(email=email, name=registered_name)
     return user
 
 
