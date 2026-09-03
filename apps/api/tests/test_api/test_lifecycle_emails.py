@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime import utc_now
@@ -166,6 +167,59 @@ async def test_returning_magic_link_sign_in_sends_no_welcome_email(
     ) as notify:
         response = await client.post(
             "/api/v1/auth/magic-link/verify", json={"token": "return-token"}
+        )
+
+    assert response.status_code == 200
+    notify.assert_not_awaited()
+
+
+async def _auth(user: User, db: AsyncSession, redis) -> dict[str, str]:
+    from app.modules.identity.service import create_user_tokens
+
+    tokens = await create_user_tokens(user, db, redis)
+    return {"Authorization": f"Bearer {tokens.access_token}"}
+
+
+async def test_promoting_a_verified_address_notifies_the_previous_primary(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    user = await _verified_user(db, "old-primary@example.com")
+    secondary = EmailAddress(
+        user_id=user.id, email="new-primary@example.com", verified_at=utc_now()
+    )
+    db.add(secondary)
+    await db.commit()
+    await db.refresh(secondary)
+
+    with patch(
+        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.post(
+            f"/api/v1/auth/me/emails/{secondary.id}/primary",
+            headers=await _auth(user, db, mock_redis),
+        )
+
+    assert response.status_code == 200
+    notify.assert_awaited_once()
+    recipient, message = notify.await_args.args
+    assert recipient == "old-primary@example.com"
+    assert "new-primary@example.com" in message.html
+
+
+async def test_promoting_the_current_primary_notifies_no_one(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    user = await _verified_user(db, "only@example.com")
+    primary = (
+        await db.execute(select(EmailAddress).where(EmailAddress.user_id == user.id))
+    ).scalar_one()
+
+    with patch(
+        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.post(
+            f"/api/v1/auth/me/emails/{primary.id}/primary",
+            headers=await _auth(user, db, mock_redis),
         )
 
     assert response.status_code == 200

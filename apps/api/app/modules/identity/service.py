@@ -21,6 +21,7 @@ from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
 from app.modules.delivery.notifications import send_notification_email
 from app.modules.delivery.templates.transactional import (
+    email_changed_email,
     email_verification_email,
     magic_link_email,
     welcome_email,
@@ -301,6 +302,9 @@ async def set_primary_email(
         )
     if email_address.is_primary:
         return email_address
+    # Captured before the mutation below overwrites user.email — the security
+    # notification has to reach the address that is losing control.
+    previous_email = user.email
     current = (
         await db.execute(
             select(EmailAddress).where(
@@ -318,6 +322,16 @@ async def set_primary_email(
     db.add_all([email_address, user])
     await db.commit()
     await db.refresh(email_address)
+    if previous_email != email_address.email:
+        await send_notification_email(
+            previous_email,
+            email_changed_email(
+                frontend_url=settings.FRONTEND_URL,
+                recipient=previous_email,
+                recipient_name=user.name,
+                new_email=email_address.email,
+            ),
+        )
     return email_address
 
 
