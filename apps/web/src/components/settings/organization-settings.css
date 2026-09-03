@@ -103,47 +103,44 @@
 }
 
 .organization-settings__form {
-  border-top: 1px solid var(--dashboard-line);
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-}
-
-.organization-settings__form label,
-.organization-settings__form input,
-.organization-settings__form textarea {
-  border-bottom: 1px solid var(--dashboard-line);
-  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .organization-settings__form label {
   color: var(--dashboard-muted-bright);
   font-size: 10px;
+  font-weight: 560;
+  margin-top: 10px;
+}
+
+.organization-settings__form label:first-child {
+  margin-top: 0;
 }
 
 .organization-settings__form input,
-.organization-settings__form textarea,
-.organization-settings__invite input,
-.organization-settings__project-create input {
+.organization-settings__form textarea {
   background: var(--dashboard-overlay);
-  border-left: 0;
-  border-radius: 0;
-  border-right: 0;
-  border-top: 0;
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 8px;
   color: var(--dashboard-ink);
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
+  margin-top: 4px;
   min-width: 0;
   outline: 0;
+  padding: 9px 11px;
+  width: 100%;
 }
 
 .organization-settings__form textarea {
   resize: vertical;
 }
 
-.organization-settings__form input:focus,
-.organization-settings__form textarea:focus {
-  background: var(--dashboard-overlay-hover);
-  box-shadow: inset 2px 0 var(--dashboard-accent);
+.organization-settings__form input:focus-visible,
+.organization-settings__form textarea:focus-visible {
+  border-color: var(--dashboard-accent);
 }
 
 .organization-settings__form :disabled {
@@ -151,22 +148,37 @@
   opacity: 0.6;
 }
 
-.organization-settings__actions,
+.organization-settings__invite input,
+.organization-settings__project-create input {
+  background: var(--dashboard-overlay);
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-size: 11px;
+  min-width: 0;
+  outline: 0;
+}
+
 .organization-settings__message {
   align-items: center;
   display: flex;
-  gap: 12px;
-  grid-column: 1 / -1;
-  padding: 14px 18px;
+  font-size: 11px;
+  gap: 9px;
+  margin-top: 8px;
 }
 
 .organization-settings__actions {
-  justify-content: flex-end;
+  align-items: center;
+  border-top: 1px solid var(--dashboard-line);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 16px;
 }
 
 .organization-settings__actions span {
   color: var(--dashboard-muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .organization-settings__actions button,
@@ -190,10 +202,6 @@
 .organization-settings__invite > button:disabled,
 .organization-settings__project-create > button:disabled {
   opacity: 0.45;
-}
-
-.organization-settings__message {
-  font-size: 10px;
 }
 
 .organization-settings__message[data-tone="error"] {
@@ -467,30 +475,6 @@
 
   .organization-settings__role {
     flex: 0 0 auto;
-  }
-
-  .organization-settings__form {
-    grid-template-columns: 1fr;
-  }
-
-  .organization-settings__form label,
-  .organization-settings__form input,
-  .organization-settings__form textarea {
-    grid-column: 1;
-  }
-
-  .organization-settings__form label {
-    border-bottom: 0;
-    padding-bottom: 7px;
-  }
-
-  .organization-settings__form input,
-  .organization-settings__form textarea {
-    border: 1px solid var(--dashboard-line-strong);
-    border-radius: 7px;
-    margin: 0 14px 14px;
-    padding: 12px;
-    width: calc(100% - 28px);
   }
 
   .organization-settings__invite,
