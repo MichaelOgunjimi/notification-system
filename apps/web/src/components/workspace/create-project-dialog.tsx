@@ -35,9 +35,11 @@ export function CreateProjectDialog({
   const slugId = useId();
   const createProject = useCreateProject();
 
+  const descriptionId = useId();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [description, setDescription] = useState("");
   const [suffix] = useState(randomSlugSuffix);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -52,7 +54,11 @@ export function CreateProjectDialog({
     try {
       const created = await createProject.mutateAsync({
         organizationId,
-        project: { name: name.trim(), slug: effectiveSlug.trim() },
+        project: {
+          name: name.trim(),
+          slug: effectiveSlug.trim(),
+          description: description.trim() || null,
+        },
       });
       toast.success(`${created.name} created`);
       onCreated(created);
@@ -100,6 +106,15 @@ export function CreateProjectDialog({
       <p className="form-dialog__hint">
         A short random suffix keeps the slug unique. Edit it to set your own.
       </p>
+
+      <label htmlFor={descriptionId}>Description</label>
+      <input
+        id={descriptionId}
+        value={description}
+        maxLength={1000}
+        placeholder="Optional"
+        onChange={(event) => setDescription(event.target.value)}
+      />
 
       {formError || createProject.isError ? (
         <p className="form-dialog__error" role="alert">

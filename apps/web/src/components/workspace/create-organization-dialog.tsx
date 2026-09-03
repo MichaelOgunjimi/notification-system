@@ -30,6 +30,7 @@ export function CreateOrganizationDialog({
   const formId = useId();
   const nameId = useId();
   const slugId = useId();
+  const descriptionId = useId();
   const projectNameId = useId();
   const projectSlugId = useId();
   const createOrganization = useCreateOrganization();
@@ -37,6 +38,7 @@ export function CreateOrganizationDialog({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [description, setDescription] = useState("");
   const [projectName, setProjectName] = useState("");
   const [projectSlug, setProjectSlug] = useState("");
   const [projectSlugTouched, setProjectSlugTouched] = useState(false);
@@ -64,6 +66,7 @@ export function CreateOrganizationDialog({
       const created = await createOrganization.mutateAsync({
         name: name.trim(),
         slug: effectiveSlug.trim(),
+        description: description.trim() || null,
         project: { name: projectName.trim(), slug: effectiveProjectSlug.trim() },
       });
       toast.success(`${created.name} created`);
@@ -108,6 +111,14 @@ export function CreateOrganizationDialog({
           setSlugTouched(true);
           setSlug(event.target.value.toLowerCase());
         }}
+      />
+      <label htmlFor={descriptionId}>Description</label>
+      <input
+        id={descriptionId}
+        value={description}
+        maxLength={1000}
+        placeholder="Optional"
+        onChange={(event) => setDescription(event.target.value)}
       />
 
       <span className="form-dialog__group">First project</span>
