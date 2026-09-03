@@ -126,7 +126,26 @@ async def _attach_verified_email(
     return email_address
 
 
-async def request_magic_link(email: str, redis: Redis) -> None:
+def safe_next_path(value: str | None) -> str | None:
+    """Return ``value`` only when it is a same-origin relative path.
+
+    Guards the magic-link round-trip against open redirects: the path must be
+    rooted at a single ``/``, must not begin a protocol-relative or backslash
+    authority, and must not smuggle a scheme or control characters.
+    """
+    if not value:
+        return None
+    candidate = value.strip()
+    if not candidate.startswith("/") or candidate.startswith("//"):
+        return None
+    if candidate.startswith("/\\") or "\\" in candidate:
+        return None
+    if "://" in candidate or any(char < " " or char == "\x7f" for char in candidate):
+        return None
+    return candidate
+
+
+async def request_magic_link(email: str, redis: Redis, *, next_path: str | None = None) -> None:
     email_digest = hashlib.sha256(email.encode()).hexdigest()
     request_count = int(
         await redis.eval(  # type: ignore[misc]
@@ -146,6 +165,9 @@ async def request_magic_link(email: str, redis: Redis) -> None:
         json.dumps({"email": email}),
     )
     link = f"{settings.FRONTEND_URL.rstrip('/')}/auth/magic-link?token={quote(token)}"
+    destination = safe_next_path(next_path)
+    if destination is not None:
+        link = f"{link}&next={quote(destination, safe='')}"
     email_message = magic_link_email(
         frontend_url=settings.FRONTEND_URL,
         recipient=email,

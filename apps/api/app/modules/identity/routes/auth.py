@@ -51,7 +51,7 @@ async def send_magic_link(
     body: MagicLinkRequest,
     redis: RedisDep,
 ) -> MessageResponse:
-    await request_magic_link(body.email, redis)
+    await request_magic_link(body.email, redis, next_path=body.next)
     return MessageResponse(message=_MAGIC_LINK_RESPONSE)
 
 

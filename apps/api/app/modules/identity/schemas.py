@@ -19,6 +19,7 @@ class RefreshRequest(BaseModel):
 
 class MagicLinkRequest(BaseModel):
     email: str
+    next: str | None = Field(default=None, max_length=2048)
 
     @field_validator("email")
     @classmethod

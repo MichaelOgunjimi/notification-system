@@ -45,6 +45,39 @@ async def test_request_magic_link_sends_one_time_link_without_exposing_account_s
     assert "plain_text" in send_call.kwargs
 
 
+async def test_request_magic_link_carries_a_safe_relative_next_path(
+    client: AsyncClient,
+    mock_redis: AsyncMock,
+) -> None:
+    with patch("app.modules.identity.service.EmailAdapter.send") as send_email:
+        response = await client.post(
+            "/api/v1/auth/magic-link/request",
+            json={
+                "email": "invitee@example.com",
+                "next": "/invitations/accept?token=abc123_-def",
+            },
+        )
+
+    assert response.status_code == 202
+    sent_body = send_email.call_args.args[2]
+    assert f"{settings.FRONTEND_URL}/auth/magic-link?token=" in sent_body
+    assert "next=%2Finvitations%2Faccept%3Ftoken%3Dabc123_-def" in sent_body
+
+
+async def test_request_magic_link_drops_an_open_redirect_next_path(
+    client: AsyncClient,
+    mock_redis: AsyncMock,
+) -> None:
+    for hostile in ("https://evil.example.com", "//evil.example.com", "/\\evil.example.com"):
+        with patch("app.modules.identity.service.EmailAdapter.send") as send_email:
+            response = await client.post(
+                "/api/v1/auth/magic-link/request",
+                json={"email": "invitee@example.com", "next": hostile},
+            )
+        assert response.status_code == 202
+        assert "next=" not in send_email.call_args.args[2]
+
+
 async def test_verified_email_magic_link_signs_in_existing_user(
     client: AsyncClient,
     db: AsyncSession,
