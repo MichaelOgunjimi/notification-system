@@ -1,7 +1,12 @@
 """Lifecycle notification emails: rendering and best-effort dispatch."""
 
-from unittest.mock import patch
+import json
+from unittest.mock import AsyncMock, patch
 
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.datetime import utc_now
 from app.modules.delivery.adapters.base import DeliveryResult
 from app.modules.delivery.notifications import send_notification_email
 from app.modules.delivery.templates.transactional import (
@@ -11,8 +16,19 @@ from app.modules.delivery.templates.transactional import (
     member_role_changed_email,
     welcome_email,
 )
+from app.modules.identity.models.email_address import EmailAddress
+from app.modules.identity.models.user import User
 
 FRONTEND = "https://app.example.com"
+
+
+async def _verified_user(db: AsyncSession, email: str, name: str = "Person") -> User:
+    user = User(email=email, name=name)
+    db.add(user)
+    await db.flush()
+    db.add(EmailAddress(user_id=user.id, email=email, is_primary=True, verified_at=utc_now()))
+    await db.commit()
+    return user
 
 
 def test_welcome_email_renders_with_a_workspace_call_to_action() -> None:
@@ -118,3 +134,39 @@ async def test_send_notification_email_swallows_an_unexpected_error() -> None:
         side_effect=RuntimeError("boom"),
     ):
         assert await send_notification_email("new@example.com", message) is False
+
+
+async def test_first_magic_link_sign_in_sends_a_welcome_email(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    mock_redis.getdel.return_value = json.dumps({"email": "fresh@example.com"})
+
+    with patch(
+        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.post(
+            "/api/v1/auth/magic-link/verify", json={"token": "welcome-token"}
+        )
+
+    assert response.status_code == 200
+    notify.assert_awaited_once()
+    recipient, message = notify.await_args.args
+    assert recipient == "fresh@example.com"
+    assert message.subject == "Welcome to Beaco"
+
+
+async def test_returning_magic_link_sign_in_sends_no_welcome_email(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock
+) -> None:
+    await _verified_user(db, "returning@example.com")
+    mock_redis.getdel.return_value = json.dumps({"email": "returning@example.com"})
+
+    with patch(
+        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+    ) as notify:
+        response = await client.post(
+            "/api/v1/auth/magic-link/verify", json={"token": "return-token"}
+        )
+
+    assert response.status_code == 200
+    notify.assert_not_awaited()
