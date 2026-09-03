@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { ArrowLeft, EnvelopeSimpleOpen } from "@phosphor-icons/react/dist/ssr";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { safeInternalPath } from "@/lib/auth-return";
 
 export default async function CheckEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; next?: string }>;
 }) {
-  const { email } = await searchParams;
+  const { email, next } = await searchParams;
+  const safeNext = safeInternalPath(next);
+  const loginHref = safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : "/login";
 
   return (
     <AuthShell
@@ -30,7 +33,7 @@ export default async function CheckEmailPage({
           </p>
         </div>
         <Link
-          href="/login"
+          href={loginHref}
           className="mt-10 inline-flex min-h-11 items-center gap-2 text-[13px] text-[var(--site-muted-bright)] transition hover:text-[var(--site-ink)]"
         >
           <ArrowLeft size={15} /> Use a different email

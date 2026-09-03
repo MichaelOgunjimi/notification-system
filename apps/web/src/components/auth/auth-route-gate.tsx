@@ -7,6 +7,7 @@ import { useSession } from "@beaco/auth/react";
 import { SessionRecovery } from "./session-recovery";
 import { postAuthDestination } from "@/lib/dashboard-route";
 import { readOAuthReturnPath } from "@/lib/oauth-return";
+import { safeInternalPath } from "@/lib/auth-return";
 import "./auth-route-gate.css";
 
 /**
@@ -26,7 +27,12 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     readOAuthReturnPath() !== null;
 
   useEffect(() => {
-    if (userId && !completingOAuthConnection) router.replace(postAuthDestination(userId));
+    if (!userId || completingOAuthConnection) return;
+    const requestedNext =
+      typeof window === "undefined"
+        ? null
+        : safeInternalPath(new URLSearchParams(window.location.search).get("next"));
+    router.replace(requestedNext ?? postAuthDestination(userId));
   }, [completingOAuthConnection, router, userId]);
 
   if (session.status === "loading" || (session.user && !completingOAuthConnection)) {

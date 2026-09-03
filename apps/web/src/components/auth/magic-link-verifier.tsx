@@ -6,14 +6,15 @@ import { ArrowRight, CheckCircle, SpinnerGap, WarningCircle } from "@phosphor-ic
 import { AuthShell } from "./auth-shell";
 import { useVerifyMagicLink } from "@beaco/auth/react";
 import { postAuthDestination } from "@/lib/dashboard-route";
+import { safeInternalPath } from "@/lib/auth-return";
 
 /**
  * Exchanges a single-use magic-link token for a cookie-backed session.
  *
- * @param props Optional token read from the magic-link URL.
+ * @param props Token and optional same-origin return path read from the magic-link URL.
  * @returns Verification, recovery, or completion UI until navigation finishes.
  */
-export function MagicLinkVerifier({ token }: { token?: string }) {
+export function MagicLinkVerifier({ token, next }: { token?: string; next?: string }) {
   const verification = useVerifyMagicLink();
   const verify = verification.mutate;
   const started = useRef(false);
@@ -24,10 +25,11 @@ export function MagicLinkVerifier({ token }: { token?: string }) {
     verify(
       { token },
       {
-        onSuccess: (user) => window.location.replace(postAuthDestination(user.id)),
+        onSuccess: (user) =>
+          window.location.replace(safeInternalPath(next) ?? postAuthDestination(user.id)),
       },
     );
-  }, [token, verify]);
+  }, [token, next, verify]);
 
   if (token && (verification.isIdle || verification.isPending)) {
     return (

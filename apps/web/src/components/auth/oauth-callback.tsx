@@ -7,6 +7,7 @@ import { AuthShell } from "./auth-shell";
 import { useCompleteOAuthSignIn } from "@beaco/auth/react";
 import { postAuthDestination } from "@/lib/dashboard-route";
 import { consumeOAuthReturnPath } from "@/lib/oauth-return";
+import { consumeAuthReturnPath } from "@/lib/auth-return";
 
 /**
  * Exchanges a GitHub callback code for the application's cookie-backed session.
@@ -28,7 +29,9 @@ export function OAuthCallback() {
       { code },
       {
         onSuccess: (user) =>
-          window.location.replace(consumeOAuthReturnPath() ?? postAuthDestination(user.id)),
+          window.location.replace(
+            consumeAuthReturnPath() ?? consumeOAuthReturnPath() ?? postAuthDestination(user.id),
+          ),
       },
     );
   }, [completeSignIn]);
