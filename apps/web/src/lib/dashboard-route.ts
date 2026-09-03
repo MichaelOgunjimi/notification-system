@@ -18,6 +18,17 @@ export function dashboardPath(organizationSlug: string, projectSlug: string): st
   return `/app/${organizationSlug}/${projectSlug}`;
 }
 
+/**
+ * Parses a remembered dashboard preference from the browser cookie payload.
+ *
+ * The serialized value is expected to contain the authenticated user ID and a
+ * canonical dashboard path, both of which must pass validation before the
+ * preference is restored.
+ *
+ * @param value Raw cookie value to decode and validate.
+ * @returns Parsed dashboard preference, or null when the value is missing,
+ * malformed, or fails canonical path validation.
+ */
 function parseRememberedDashboard(value: string | undefined): RememberedDashboard | null {
   if (!value) return null;
 

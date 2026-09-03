@@ -1,22 +1,17 @@
-import { DashboardContext } from "@/components/dashboard/dashboard-context";
+"use client";
 
-type AccountSettingsPageProps = Readonly<{
-  params: Promise<{ organizationSlug: string; projectSlug: string }>;
-}>;
+import { AUXILIARY_ROUTES } from "@/components/dashboard/dashboard-navigation";
+import { useDashboardScope } from "@/components/dashboard/dashboard-scope-context";
+import { AccountSettings } from "@/components/settings/account-settings";
+import { dashboardPath } from "@/lib/dashboard-route";
 
 /**
- * Resolves account settings inside a validated organization/project shell.
+ * Renders account settings for the authenticated user inside the dashboard shell.
  *
- * @param props Async dynamic route parameters supplied by Next.js.
- * @returns Membership-aware dashboard context displaying account settings.
+ * @returns Account settings surface with a validated post-OAuth return path.
  */
-export default async function AccountSettingsPage({ params }: AccountSettingsPageProps) {
-  const { organizationSlug, projectSlug } = await params;
-  return (
-    <DashboardContext
-      organizationSlug={organizationSlug}
-      projectSlug={projectSlug}
-      surface="account-settings"
-    />
-  );
+export default function AccountSettingsPage() {
+  const { user, organization, project } = useDashboardScope();
+  const returnPath = `${dashboardPath(organization.slug, project.slug)}/${AUXILIARY_ROUTES.accountSettings.path}`;
+  return <AccountSettings user={user} returnPath={returnPath} />;
 }

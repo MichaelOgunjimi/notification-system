@@ -1,17 +1,10 @@
-import { DashboardContext } from "@/components/dashboard/dashboard-context";
-
-type DashboardPageProps = Readonly<{
-  params: Promise<{ organizationSlug: string; projectSlug: string }>;
-}>;
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 
 /**
- * Resolves the canonical organization and project slugs into an authenticated
- * dashboard context.
+ * Renders the project overview surface inside the resolved dashboard shell.
  *
- * @param props Async dynamic route parameters supplied by Next.js.
- * @returns Membership-aware dashboard entry component.
+ * @returns Overview panel for the active project scope.
  */
-export default async function DashboardPage({ params }: DashboardPageProps) {
-  const { organizationSlug, projectSlug } = await params;
-  return <DashboardContext organizationSlug={organizationSlug} projectSlug={projectSlug} />;
+export default function DashboardPage() {
+  return <DashboardOverview />;
 }

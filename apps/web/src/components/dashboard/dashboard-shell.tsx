@@ -3,84 +3,59 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
-  BellRinging,
   Buildings,
   CaretDown,
   CaretRight,
-  ChartLineUp,
   Check,
   CirclesFour,
-  Code,
-  EnvelopeSimple,
   GearSix,
   House,
-  Key,
   List,
-  ListBullets,
-  PaperPlaneTilt,
-  Pulse,
   SidebarSimple,
   SignOut,
-  SquaresFour,
   UserCircle,
   X,
 } from "@phosphor-icons/react";
-import type { User } from "@beaco/auth";
 import { useSignOut } from "@beaco/auth/react";
-import type { Organization, Project } from "@beaco/control-plane";
 import { ThemeToggle } from "@beaco/theme";
 import BrandLogo from "@/components/brand/brand-logo";
-import { AccountSettings } from "@/components/settings/account-settings";
-import { OrganizationSettings } from "@/components/settings/organization-settings";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
 import {
   readSidebarCollapsedPreference,
   rememberSidebarCollapsedPreference,
 } from "@/lib/sidebar-preference";
+import {
+  AUXILIARY_ROUTES,
+  CONFIGURE_NAV,
+  OPERATE_NAV,
+  stageTitleForSuffix,
+  type DashboardNavItem,
+} from "./dashboard-navigation";
+import { useDashboardScope } from "./dashboard-scope-context";
 import "./dashboard-shell.css";
 
 type DashboardShellProps = Readonly<{
-  user: User;
-  organization: Organization;
-  project: Project;
-  projects: Project[];
-  surface?: "overview" | "account-settings" | "organization-settings";
+  children: React.ReactNode;
 }>;
 
-const primaryNavigation = [
-  { label: "Overview", icon: SquaresFour, active: true },
-  { label: "Events", icon: Pulse, active: false },
-  { label: "Templates", icon: Code, active: false },
-  { label: "Delivery", icon: PaperPlaneTilt, active: false },
-] as const;
-
-const projectNavigation = [
-  { label: "Organization", icon: Buildings, surface: "organization-settings" },
-  { label: "API keys", icon: Key, surface: null },
-  { label: "Activity log", icon: ListBullets, surface: null },
-] as const;
-
 /**
- * Renders the authenticated application chrome for one validated organization
- * and project, including a compact project switcher.
+ * Renders the authenticated application chrome for the organization and project
+ * resolved by the dashboard layout, with the active route rendered in the stage.
  *
- * @param props Validated user, organization, active project, and sibling projects.
- * @returns Dashboard navigation shell and context-aware overview surface.
+ * @param props Nested route content for the active surface.
+ * @returns Dashboard navigation shell wrapping the routed surface.
  */
-export function DashboardShell({
-  user,
-  organization,
-  project,
-  projects,
-  surface = "overview",
-}: DashboardShellProps) {
+export function DashboardShell({ children }: DashboardShellProps) {
+  const { user, organization, project, projects } = useDashboardScope();
   const router = useRouter();
+  const pathname = usePathname();
   const sidebarId = useId();
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const signOut = useSignOut();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsedPreference);
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
@@ -89,14 +64,12 @@ export function DashboardShell({
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
-  const accountSettingsPath = `${currentDashboardPath}/settings/account`;
-  const stageTitle =
-    surface === "account-settings"
-      ? "Account settings"
-      : surface === "organization-settings"
-        ? "Organization settings"
-        : "Overview";
-  const organizationSettingsPath = `${currentDashboardPath}/settings/organization`;
+  const accountSettingsPath = `${currentDashboardPath}/${AUXILIARY_ROUTES.accountSettings.path}`;
+  const activeSuffix = pathname.startsWith(currentDashboardPath)
+    ? pathname.slice(currentDashboardPath.length).replace(/^\//, "")
+    : "";
+  const stageTitle = stageTitleForSuffix(activeSuffix);
+  const capabilities = new Set(organization.capabilities);
   const userInitials = (user.name || user.email)
     .split(/\s+/)
     .slice(0, 2)
@@ -120,6 +93,27 @@ export function DashboardShell({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!switcherOpen) return;
+
+    function closeSwitcher(event: PointerEvent) {
+      if (event.target instanceof Node && !switcherRef.current?.contains(event.target)) {
+        setSwitcherOpen(false);
+      }
+    }
+
+    function closeSwitcherOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setSwitcherOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeSwitcher);
+    window.addEventListener("keydown", closeSwitcherOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeSwitcher);
+      window.removeEventListener("keydown", closeSwitcherOnEscape);
+    };
+  }, [switcherOpen]);
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -159,7 +153,49 @@ export function DashboardShell({
 
   function updateSidebarCollapsed(collapsed: boolean) {
     setSidebarCollapsed(collapsed);
+    setSidebarPeeking(false);
+    setSwitcherOpen(false);
     rememberSidebarCollapsedPreference(collapsed);
+  }
+
+  function toggleSwitcher() {
+    if (sidebarCollapsed) {
+      updateSidebarCollapsed(false);
+      setSwitcherOpen(true);
+      return;
+    }
+    setSwitcherOpen((open) => !open);
+  }
+
+  function renderNavItem(item: DashboardNavItem) {
+    if (item.capability && !capabilities.has(item.capability)) return null;
+    const isActive = activeSuffix === item.path;
+    const Icon = item.icon;
+
+    if (item.comingSoon) {
+      return (
+        <span key={item.label} aria-disabled="true">
+          <Icon size={17} />
+          <span>{item.label}</span>
+          <small>soon</small>
+        </span>
+      );
+    }
+
+    const href = item.path ? `${currentDashboardPath}/${item.path}` : currentDashboardPath;
+    return (
+      <Link
+        key={item.label}
+        href={href}
+        title={item.label}
+        data-active={isActive || undefined}
+        aria-current={isActive ? "page" : undefined}
+        onClick={closeMobileSidebar}
+      >
+        <Icon size={17} />
+        <span>{item.label}</span>
+      </Link>
+    );
   }
 
   return (
@@ -200,11 +236,7 @@ export function DashboardShell({
             className="dashboard-sidebar__collapse"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={sidebarCollapsed}
-            onClick={() => {
-              updateSidebarCollapsed(!sidebarCollapsed);
-              setSidebarPeeking(false);
-              setSwitcherOpen(false);
-            }}
+            onClick={() => updateSidebarCollapsed(!sidebarCollapsed)}
           >
             <SidebarSimple size={17} />
           </button>
@@ -218,14 +250,14 @@ export function DashboardShell({
           </button>
         </div>
 
-        <div className="dashboard-switcher" data-open={switcherOpen || undefined}>
+        <div ref={switcherRef} className="dashboard-switcher" data-open={switcherOpen || undefined}>
           <button
             type="button"
             className="dashboard-switcher__trigger"
             aria-label={`Switch project. Current project: ${project.name}`}
             aria-expanded={switcherOpen}
             aria-controls={`${sidebarId}-switcher`}
-            onClick={() => setSwitcherOpen((open) => !open)}
+            onClick={toggleSwitcher}
           >
             <span className="dashboard-switcher__icon">
               <Buildings size={16} />
@@ -279,50 +311,9 @@ export function DashboardShell({
 
         <nav className="dashboard-nav" aria-label="Project navigation">
           <p>Operate</p>
-          {primaryNavigation.map(({ label, icon: Icon, active }) => {
-            const isActive = active && surface === "overview";
-            return (
-              <Link
-                key={label}
-                href={active ? currentDashboardPath : currentDashboardPath}
-                title={label}
-                data-active={isActive || undefined}
-                aria-current={isActive ? "page" : undefined}
-                aria-disabled={!active}
-                tabIndex={active ? undefined : -1}
-                onClick={(event) => {
-                  if (!active) event.preventDefault();
-                  closeMobileSidebar();
-                }}
-              >
-                <Icon size={17} />
-                <span>{label}</span>
-                {!active ? <small>soon</small> : null}
-              </Link>
-            );
-          })}
+          {OPERATE_NAV.map(renderNavItem)}
           <p>Configure</p>
-          {projectNavigation.map(({ label, icon: Icon, surface: navigationSurface }) =>
-            navigationSurface ? (
-              <Link
-                key={label}
-                href={organizationSettingsPath}
-                title={label}
-                data-active={surface === navigationSurface || undefined}
-                aria-current={surface === navigationSurface ? "page" : undefined}
-                onClick={closeMobileSidebar}
-              >
-                <Icon size={17} />
-                <span>{label}</span>
-              </Link>
-            ) : (
-              <span key={label} aria-disabled="true">
-                <Icon size={17} />
-                <span>{label}</span>
-                <small>soon</small>
-              </span>
-            ),
-          )}
+          {CONFIGURE_NAV.map(renderNavItem)}
         </nav>
 
         <div className="dashboard-sidebar__identity">
@@ -483,80 +474,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        {surface === "account-settings" ? (
-          <AccountSettings user={user} returnPath={accountSettingsPath} />
-        ) : surface === "organization-settings" ? (
-          <OrganizationSettings
-            key={organization.id}
-            userId={user.id}
-            organization={organization}
-            project={project}
-            projects={projects}
-          />
-        ) : (
-          <div className="dashboard-overview">
-            <div className="dashboard-overview__heading">
-              <div>
-                <p>Operational workspace</p>
-                <h1>{project.name}</h1>
-              </div>
-              <span className="dashboard-overview__status">
-                <i /> Context verified
-              </span>
-            </div>
-
-            <section className="dashboard-overview__intro">
-              <div>
-                <span className="dashboard-overview__index">01 / Foundation</span>
-                <h2>Your delivery surface starts here.</h2>
-                <p>
-                  This shell is now scoped to {organization.name} / {project.name}. The next
-                  dashboard modules can consume this canonical context without relying on temporary
-                  selection state.
-                </p>
-              </div>
-              <div className="dashboard-overview__route" aria-label="Notification delivery path">
-                <span>
-                  <Code size={17} /> Event
-                </span>
-                <i />
-                <span>
-                  <BellRinging size={17} /> Beaco
-                </span>
-                <i />
-                <span>
-                  <EnvelopeSimple size={17} /> Channel
-                </span>
-              </div>
-            </section>
-
-            <div className="dashboard-overview__grid">
-              <article>
-                <span>
-                  <Pulse size={18} /> Live context
-                </span>
-                <strong>URL-backed scope</strong>
-                <p>
-                  Organization and project slugs can now survive reloads, links, and browser tabs.
-                </p>
-              </article>
-              <article>
-                <span>
-                  <Key size={18} /> Session boundary
-                </span>
-                <strong>Credentials stay server-side</strong>
-                <p>The dashboard continues through the cookie-backed application boundary.</p>
-              </article>
-              <article>
-                <span>
-                  <ChartLineUp size={18} /> Next module
-                </span>
-                <strong>Real delivery data</strong>
-                <p>Events and delivery status will replace this foundation panel next.</p>
-              </article>
-            </div>
-          </div>
-        )}
+        {children}
       </section>
 
       <AppDialog

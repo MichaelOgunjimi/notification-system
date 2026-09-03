@@ -1,22 +1,22 @@
-import { DashboardContext } from "@/components/dashboard/dashboard-context";
+"use client";
 
-type OrganizationSettingsPageProps = Readonly<{
-  params: Promise<{ organizationSlug: string; projectSlug: string }>;
-}>;
+import { useDashboardScope } from "@/components/dashboard/dashboard-scope-context";
+import { OrganizationSettings } from "@/components/settings/organization-settings";
 
 /**
- * Resolves organization settings inside a validated organization/project shell.
+ * Renders organization settings for the resolved dashboard scope.
  *
- * @param props Async dynamic route parameters supplied by Next.js.
- * @returns Membership-aware dashboard context displaying organization settings.
+ * @returns Organization settings surface bound to the active organization.
  */
-export default async function OrganizationSettingsPage({ params }: OrganizationSettingsPageProps) {
-  const { organizationSlug, projectSlug } = await params;
+export default function OrganizationSettingsPage() {
+  const { user, organization, project, projects } = useDashboardScope();
   return (
-    <DashboardContext
-      organizationSlug={organizationSlug}
-      projectSlug={projectSlug}
-      surface="organization-settings"
+    <OrganizationSettings
+      key={organization.id}
+      userId={user.id}
+      organization={organization}
+      project={project}
+      projects={projects}
     />
   );
 }
