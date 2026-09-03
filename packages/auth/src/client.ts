@@ -40,12 +40,14 @@ class HttpAuthClient implements AuthClient {
    * @param request Email request payload.
    * @returns Backend acknowledgement for the email request.
    */
-  async sendMagicLink({ email }: MagicLinkRequest): Promise<MagicLinkReceipt> {
+  async sendMagicLink({ email, next }: MagicLinkRequest): Promise<MagicLinkReceipt> {
+    const payload: { email: string; next?: string } = { email: email.trim().toLowerCase() };
+    if (next) payload.next = next;
     return this.request<MagicLinkReceipt>(
       "/magic-link/request",
       {
         method: "POST",
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify(payload),
       },
       "We could not send the sign-in link.",
     );

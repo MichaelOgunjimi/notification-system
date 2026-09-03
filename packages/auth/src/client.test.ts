@@ -33,6 +33,26 @@ describe("createAuthClient", () => {
     );
   });
 
+  it("forwards a return path when requesting a magic link", async () => {
+    const fetcher = fetchAdapter(() => Response.json({ message: "sent" }, { status: 202 }));
+    const client = createAuthClient({ appAuthPath: "/identity", fetch: fetcher });
+
+    await client.sendMagicLink({
+      email: "person@example.com",
+      next: "/invitations/accept?token=abc",
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/identity/magic-link/request",
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: "person@example.com",
+          next: "/invitations/accept?token=abc",
+        }),
+      }),
+    );
+  });
+
   it("models an unauthenticated session as a null user", async () => {
     const client = createAuthClient({
       fetch: fetchAdapter(() => Response.json({ detail: "Not authenticated." }, { status: 401 })),

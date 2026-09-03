@@ -51,7 +51,11 @@ export type SessionStatus = "loading" | "authenticated" | "anonymous" | "error";
  *
  * @property email Email address to send the sign-in link to.
  */
-export type MagicLinkRequest = Readonly<{ email: string }>;
+export type MagicLinkRequest = Readonly<{
+  email: string;
+  /** Same-origin relative path to return to after the link is verified. */
+  next?: string;
+}>;
 
 /**
  * Successful response returned after submitting a magic-link request.
