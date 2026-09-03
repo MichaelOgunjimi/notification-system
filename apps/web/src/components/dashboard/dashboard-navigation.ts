@@ -43,7 +43,6 @@ export const CONFIGURE_NAV: readonly DashboardNavItem[] = [
     icon: Key,
     path: "settings/security",
     capability: "api_key:manage",
-    comingSoon: true,
   },
   {
     label: "Activity log",
