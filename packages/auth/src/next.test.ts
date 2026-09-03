@@ -239,6 +239,32 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("forwards a public request with no credentials and passes the status through", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(Response.json({ detail: "Invalid or expired" }, { status: 404 })),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+
+    const response = await auth.forwardPublic(
+      request("/api/control-plane/invitations/tok-123", "beaco_access_token=access-token"),
+      "/invitations/tok-123",
+    );
+
+    expect(response.status).toBe(404);
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api:8000/api/v1/invitations/tok-123",
+      expect.objectContaining({
+        method: "GET",
+        cache: "no-store",
+        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
+      }),
+    );
+  });
+
   it("updates and normalizes a user profile through the cookie boundary", async () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({

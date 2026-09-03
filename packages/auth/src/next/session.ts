@@ -233,3 +233,58 @@ export async function forwardAuthenticated(
     );
   }
 }
+
+/**
+ * Forwards a backend request that needs no session.
+ *
+ * Same transport and path guard as {@link forwardAuthenticated}, but it never
+ * reads a cookie, attaches no `Authorization` header, and passes the backend's
+ * status through unchanged (including 401/404). Use it only for endpoints the
+ * backend itself leaves unauthenticated, such as a token-keyed invitation
+ * preview a logged-out invitee must see.
+ *
+ * @param context Shared request context for the app and backend.
+ * @param request Incoming Next.js request.
+ * @param backendPath Backend path relative to the API root.
+ * @returns The backend response, streamed through the same-origin boundary.
+ */
+export async function forwardPublic(
+  context: NextAuthRequestContext,
+  request: NextRequest,
+  backendPath: string,
+): Promise<Response> {
+  if (!backendPath.startsWith("/") || backendPath.includes("://")) {
+    return NextResponse.json({ detail: "Invalid backend path." }, { status: 500 });
+  }
+
+  const requestBody =
+    request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+
+  try {
+    const upstream = await context.fetcher(`${context.backendApiUrl}${backendPath}`, {
+      method: request.method,
+      headers: {
+        Accept: request.headers.get("accept") ?? "application/json",
+        ...(requestBody
+          ? { "Content-Type": request.headers.get("content-type") ?? "application/json" }
+          : {}),
+      },
+      body: requestBody,
+      cache: "no-store",
+      redirect: "manual",
+    });
+
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { detail: "The application service is unavailable." },
+      { status: 502 },
+    );
+  }
+}

@@ -158,6 +158,16 @@ export type NextAuthAdapter = Readonly<{
    * @returns Upstream response with refreshed credentials when needed.
    */
   forwardAuthenticated(request: NextRequest, backendPath: string): Promise<Response>;
+
+  /**
+   * Proxies a backend request that needs no session, passing the upstream
+   * status through unchanged. For endpoints the backend leaves unauthenticated.
+   *
+   * @param request Incoming Next.js request.
+   * @param backendPath Backend endpoint path relative to the API root.
+   * @returns Upstream response, streamed through the same-origin boundary.
+   */
+  forwardPublic(request: NextRequest, backendPath: string): Promise<Response>;
 }>;
 
 /**

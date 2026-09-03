@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { disconnectOAuth, getOAuthConnections } from "./connections";
 import { exchangeOAuth, logout, startOAuth, startOAuthConnection } from "./oauth";
 import { requestMagicLink, verifyMagicLink } from "./magic-link";
-import { forwardAuthenticated, getSession, updateProfile } from "./session";
+import { forwardAuthenticated, forwardPublic, getSession, updateProfile } from "./session";
 import type { NextAuthAdapter, NextAuthAdapterOptions, NextAuthRequestContext } from "./types";
 
 function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestContext {
@@ -45,6 +45,9 @@ export function createNextAuthAdapter(options: NextAuthAdapterOptions): NextAuth
     },
     forwardAuthenticated(request, backendPath) {
       return forwardAuthenticated(context, request, backendPath);
+    },
+    forwardPublic(request, backendPath) {
+      return forwardPublic(context, request, backendPath);
     },
     verifyMagicLink(request) {
       return verifyMagicLink(context, request);
