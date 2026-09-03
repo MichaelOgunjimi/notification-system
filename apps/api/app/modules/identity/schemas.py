@@ -39,6 +39,35 @@ class OAuthCodeExchangeRequest(BaseModel):
     code: str
 
 
+class EmailAddressCreate(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        local, separator, domain = normalized.partition("@")
+        if not separator or not local or "." not in domain:
+            raise ValueError("Enter a valid email address")
+        return normalized
+
+
+class EmailVerifyRequest(BaseModel):
+    token: str
+
+
+class EmailAddressResponse(BaseModel):
+    """One email identity attached to the authenticated user."""
+
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    email: str
+    is_primary: bool
+    verified_at: datetime | None
+    created_at: datetime
+
+
 class MessageResponse(BaseModel):
     message: str
 

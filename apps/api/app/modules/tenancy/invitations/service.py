@@ -197,6 +197,7 @@ async def preview_invitation(
     ).scalar_one_or_none()
     return OrganizationInvitationPreview(
         organization_name=organization.name,
+        email=invitation.email,
         role=invitation.role,
         inviter_name=inviter.name if inviter is not None else "A teammate",
         expires_at=invitation.expires_at,

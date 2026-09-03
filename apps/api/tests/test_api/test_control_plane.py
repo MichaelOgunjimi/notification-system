@@ -171,6 +171,7 @@ async def test_invitation_preview_describes_the_pending_invitation(
     assert preview.status_code == 200
     body = preview.json()
     assert body["organization_name"] == "Preview Org"
+    assert body["email"] == "newcomer@example.com"
     assert body["role"] == "admin"
     assert body["inviter_name"] == "Dana Owner"
     assert "expires_at" in body

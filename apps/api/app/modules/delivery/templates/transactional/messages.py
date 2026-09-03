@@ -59,6 +59,48 @@ def magic_link_email(
     )
 
 
+def email_verification_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    action_url: str,
+    expires_hours: int,
+) -> TransactionalEmail:
+    subject = "Confirm your email address"
+    expiry = f"{expires_hours} hours"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"Confirm that {recipient} belongs to your Beaco account.",
+        "eyebrow": "Email verification",
+        "heading": "Confirm this email address",
+        "intro": (
+            f"Add {recipient} as a verified way to reach and identify your "
+            "Beaco account. Confirm it below."
+        ),
+        "detail_label": "Valid for",
+        "detail_value": expiry,
+        "security_value": "Single-use access",
+        "action_label": "Confirm email address",
+        "action_url": action_url,
+        "footnote": (
+            f"This link expires in {expiry}. If you did not add this address, "
+            "no action is required."
+        ),
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "email_verification.txt.j2",
+            recipient=recipient,
+            action_url=action_url,
+            expiry=expiry,
+        ),
+    )
+
+
 def organization_invitation_email(
     *,
     frontend_url: str,

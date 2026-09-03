@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 import uuid
+from datetime import timedelta
 from enum import StrEnum
 from typing import Any
 from urllib.parse import quote
@@ -18,7 +19,10 @@ from sqlmodel import col
 from app.core.config import settings
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.templates.transactional import magic_link_email
+from app.modules.delivery.templates.transactional import (
+    email_verification_email,
+    magic_link_email,
+)
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.refresh_token import RefreshToken
@@ -30,6 +34,7 @@ from app.modules.tenancy.lifecycle import create_organization_with_project
 _REFRESH_PREFIX = "refresh"
 _MAGIC_LINK_PREFIX = "magic_link"
 _OAUTH_CODE_PREFIX = "oauth_code"
+_EMAIL_VERIFY_PREFIX = "email_verify"
 _MAGIC_LINK_RATE_SCRIPT = """
 local count = redis.call('INCR', KEYS[1])
 if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
@@ -54,6 +59,11 @@ def magic_link_cache_key(token: str) -> str:
 def oauth_code_cache_key(code: str) -> str:
     digest = hashlib.sha256(code.encode()).hexdigest()
     return f"{_OAUTH_CODE_PREFIX}:{digest}"
+
+
+def email_verify_cache_key(token: str) -> str:
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    return f"{_EMAIL_VERIFY_PREFIX}:{digest}"
 
 
 async def _create_user_with_workspace(
@@ -124,6 +134,185 @@ async def _attach_verified_email(
     )
     db.add(email_address)
     return email_address
+
+
+async def _send_email_verification(redis: Redis, email_address: EmailAddress) -> None:
+    token = secrets.token_urlsafe(32)
+    await redis.setex(
+        email_verify_cache_key(token),
+        settings.EMAIL_VERIFICATION_TTL_SECONDS,
+        json.dumps({"email_address_id": str(email_address.id)}),
+    )
+    link = f"{settings.FRONTEND_URL.rstrip('/')}/auth/verify-email?token={quote(token)}"
+    message = email_verification_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=email_address.email,
+        action_url=link,
+        expires_hours=max(1, settings.EMAIL_VERIFICATION_TTL_SECONDS // 3600),
+    )
+    result = await asyncio.to_thread(
+        EmailAdapter().send,
+        email_address.email,
+        message.subject,
+        message.html,
+        plain_text=message.text,
+    )
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send the verification email",
+        )
+
+
+async def _rate_limit_email_verification(redis: Redis, *, user_id: uuid.UUID, email: str) -> None:
+    email_digest = hashlib.sha256(email.encode()).hexdigest()
+    for scope in (f"email_verify_rate:user:{user_id}", f"email_verify_rate:addr:{email_digest}"):
+        count = int(
+            await redis.eval(_MAGIC_LINK_RATE_SCRIPT, 1, scope, "3600")  # type: ignore[misc]
+        )
+        if count > settings.EMAIL_VERIFICATION_RATE_LIMIT_PER_HOUR:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many verification emails. Try again later.",
+            )
+
+
+async def list_user_emails(db: AsyncSession, *, user: User) -> list[EmailAddress]:
+    result = await db.execute(
+        select(EmailAddress)
+        .where(col(EmailAddress.user_id) == user.id)
+        .order_by(col(EmailAddress.is_primary).desc(), col(EmailAddress.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def add_user_email(db: AsyncSession, redis: Redis, *, user: User, email: str) -> EmailAddress:
+    normalized = email.strip().lower()
+    await _rate_limit_email_verification(redis, user_id=user.id, email=normalized)
+    existing = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.email) == normalized))
+    ).scalar_one_or_none()
+    if existing is not None:
+        if existing.user_id == user.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This address is already on your account",
+            )
+        lapsed = existing.created_at <= utc_now() - timedelta(
+            seconds=settings.EMAIL_VERIFICATION_TTL_SECONDS
+        )
+        if existing.verified_at is not None or not lapsed:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This address belongs to another account",
+            )
+        await db.delete(existing)
+        await db.flush()
+
+    email_address = EmailAddress(user_id=user.id, email=normalized, verified_at=None)
+    db.add(email_address)
+    await db.flush()
+    await _send_email_verification(redis, email_address)
+    await db.commit()
+    await db.refresh(email_address)
+    return email_address
+
+
+async def resend_email_verification(
+    db: AsyncSession, redis: Redis, *, user: User, email_address_id: uuid.UUID
+) -> None:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.verified_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This address is already verified",
+        )
+    await _rate_limit_email_verification(redis, user_id=user.id, email=email_address.email)
+    await _send_email_verification(redis, email_address)
+
+
+async def verify_email_address(db: AsyncSession, redis: Redis, *, token: str) -> EmailAddress:
+    raw_payload = await redis.getdel(email_verify_cache_key(token))
+    if isinstance(raw_payload, bytes):
+        raw_payload = raw_payload.decode()
+    if not raw_payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        )
+    try:
+        email_address_id = uuid.UUID(str(json.loads(raw_payload)["email_address_id"]))
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        ) from exc
+    email_address = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.id) == email_address_id))
+    ).scalar_one_or_none()
+    if email_address is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        )
+    if email_address.verified_at is None:
+        email_address.verified_at = utc_now()
+        db.add(email_address)
+        await db.commit()
+    return email_address
+
+
+async def _owned_email(
+    db: AsyncSession, *, user: User, email_address_id: uuid.UUID
+) -> EmailAddress:
+    email_address = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.id) == email_address_id))
+    ).scalar_one_or_none()
+    if email_address is None or email_address.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email address not found")
+    return email_address
+
+
+async def set_primary_email(
+    db: AsyncSession, *, user: User, email_address_id: uuid.UUID
+) -> EmailAddress:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.verified_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Verify this address before making it primary",
+        )
+    if email_address.is_primary:
+        return email_address
+    current = (
+        await db.execute(
+            select(EmailAddress).where(
+                col(EmailAddress.user_id) == user.id,
+                col(EmailAddress.is_primary).is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if current is not None:
+        current.is_primary = False
+        db.add(current)
+        await db.flush()
+    email_address.is_primary = True
+    user.email = email_address.email
+    db.add_all([email_address, user])
+    await db.commit()
+    await db.refresh(email_address)
+    return email_address
+
+
+async def remove_user_email(db: AsyncSession, *, user: User, email_address_id: uuid.UUID) -> None:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.is_primary:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Set another address as primary before removing this one",
+        )
+    await db.delete(email_address)
+    await db.commit()
 
 
 def safe_next_path(value: str | None) -> str | None:

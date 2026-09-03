@@ -21,6 +21,7 @@ class OrganizationInvitationPreview(BaseModel):
     """Unauthenticated view of a pending invitation, keyed by its token."""
 
     organization_name: str
+    email: str
     role: OrganizationRole
     inviter_name: str
     expires_at: datetime
