@@ -52,8 +52,20 @@
   font-family: var(--font-geist-mono);
   font-size: 8px;
   gap: 7px;
-  padding: 8px 11px;
+  letter-spacing: 0.04em;
+  padding: 7px 12px;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Membership role chip: a status dot plus the role, hugging its content. */
+.organization-settings__role-tag::before {
+  background: var(--dashboard-accent);
+  border-radius: 999px;
+  content: "";
+  flex-shrink: 0;
+  height: 5px;
+  width: 5px;
 }
 
 .organization-settings__nav {
@@ -236,8 +248,19 @@
 }
 
 .organization-settings__invite .app-select,
+.organization-settings__member {
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+}
+
+.organization-settings__member-trailing {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .organization-settings__member-role {
-  width: 100%;
+  width: 128px;
 }
 
 .organization-settings__list {
@@ -255,7 +278,7 @@
   color: var(--dashboard-ink);
   display: grid;
   gap: 12px;
-  grid-template-columns: 36px minmax(0, 1fr) 112px 34px;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
   min-height: 66px;
   padding: 10px 14px;
   text-align: left;
@@ -493,8 +516,16 @@
   }
 
   .organization-settings__row {
-    grid-template-columns: 34px minmax(0, 1fr) 88px 30px;
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
     padding-inline: 8px;
+  }
+
+  .organization-settings__member {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+  }
+
+  .organization-settings__member-role {
+    width: 116px;
   }
 
   .organization-settings__member-role .app-select__control {
@@ -509,9 +540,5 @@
 
   .organization-settings__member-role .app-select__option {
     font-size: 10px;
-  }
-
-  .organization-settings__project {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
   }
 }

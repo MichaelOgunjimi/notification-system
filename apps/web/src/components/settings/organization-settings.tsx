@@ -348,7 +348,10 @@ export function OrganizationSettings({
               </p>
             ) : null}
             {members.data?.map((member) => (
-              <article key={member.id} className="organization-settings__row">
+              <article
+                key={member.id}
+                className="organization-settings__row organization-settings__member"
+              >
                 <span className="organization-settings__avatar">
                   {member.name.slice(0, 1).toUpperCase()}
                 </span>
@@ -359,41 +362,45 @@ export function OrganizationSettings({
                   </strong>
                   <small>{member.email}</small>
                 </div>
-                {canManageMembers ? (
-                  <AppSelect
-                    containerClassName="organization-settings__member-role"
-                    aria-label={`Role for ${member.name}`}
-                    value={member.role}
-                    disabled={updateRole.isPending}
-                    onValueChange={(role) =>
-                      updateRole.mutate({
-                        organizationId: organization.id,
-                        membershipId: member.id,
-                        role,
-                      })
-                    }
-                    options={memberRoles.map((role) => ({
-                      value: role,
-                      label: role,
-                      disabled: role === "owner" && organization.role !== "owner",
-                    }))}
-                  />
-                ) : (
-                  <span className="organization-settings__tag">{member.role}</span>
-                )}
-                {canManageMembers ? (
-                  <button
-                    type="button"
-                    className="organization-settings__icon-action"
-                    aria-label={`Remove ${member.name}`}
-                    onClick={() => {
-                      removeMember.reset();
-                      setMemberToRemove(member);
-                    }}
-                  >
-                    <UserMinus size={16} />
-                  </button>
-                ) : null}
+                <div className="organization-settings__member-trailing">
+                  {canManageMembers ? (
+                    <AppSelect
+                      containerClassName="organization-settings__member-role"
+                      aria-label={`Role for ${member.name}`}
+                      value={member.role}
+                      disabled={updateRole.isPending}
+                      onValueChange={(role) =>
+                        updateRole.mutate({
+                          organizationId: organization.id,
+                          membershipId: member.id,
+                          role,
+                        })
+                      }
+                      options={memberRoles.map((role) => ({
+                        value: role,
+                        label: role,
+                        disabled: role === "owner" && organization.role !== "owner",
+                      }))}
+                    />
+                  ) : (
+                    <span className="organization-settings__tag organization-settings__role-tag">
+                      {member.role}
+                    </span>
+                  )}
+                  {canManageMembers ? (
+                    <button
+                      type="button"
+                      className="organization-settings__icon-action"
+                      aria-label={`Remove ${member.name}`}
+                      onClick={() => {
+                        removeMember.reset();
+                        setMemberToRemove(member);
+                      }}
+                    >
+                      <UserMinus size={16} />
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>
