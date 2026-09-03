@@ -114,8 +114,21 @@ export function InvitationAcceptView({ token }: { token?: string }) {
         </p>
         {forbidden ? (
           <p className="mt-3 text-[13px] leading-6 text-[var(--site-muted)]">
-            You are signed in as{" "}
-            <strong className="font-medium text-[var(--site-ink)]">{session.user?.email}</strong>.
+            {preview.data?.email ? (
+              <>
+                This invitation was sent to{" "}
+                <strong className="font-medium text-[var(--site-ink)]">{preview.data.email}</strong>
+                . Add and verify that address on your account, then reopen this link.
+              </>
+            ) : (
+              <>
+                You are signed in as{" "}
+                <strong className="font-medium text-[var(--site-ink)]">
+                  {session.user?.email}
+                </strong>
+                .
+              </>
+            )}
           </p>
         ) : null}
         <Link href="/workspace" className="auth-primary-action mt-8 w-full">

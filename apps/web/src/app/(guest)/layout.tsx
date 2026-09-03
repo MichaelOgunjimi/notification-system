@@ -3,19 +3,20 @@ import { AuthProvider } from "@beaco/auth/react";
 import { ControlPlaneProvider } from "@beaco/control-plane/react";
 
 export const metadata: Metadata = {
-  title: "Accept invitation | Beaco",
-  description: "Join a Beaco organization you were invited to.",
+  title: "Beaco",
   robots: { index: false, follow: false },
 };
 
 /**
- * Supplies the session and control-plane clients to the invitation-acceptance
- * route. Unlike the `(auth)` group it does not mount {@link AuthRouteGate}: an
- * authenticated invitee must stay on this route long enough to accept.
+ * Provider boundary for routes that a not-yet-signed-in visitor may land on
+ * from an email link — invitation acceptance, email verification — and still
+ * needs the session and control-plane clients. Unlike `(auth)` it does not
+ * mount {@link AuthRouteGate}, so an authenticated visitor stays on the page
+ * long enough to finish the action.
  *
- * @param props Nested invitation route content.
+ * @param props Nested route content.
  */
-export default function InvitationLayout({ children }: { children: React.ReactNode }) {
+export default function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <ControlPlaneProvider>{children}</ControlPlaneProvider>

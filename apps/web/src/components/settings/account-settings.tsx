@@ -15,6 +15,7 @@ import type { User } from "@beaco/auth";
 import { authClient } from "@beaco/auth";
 import { useDisconnectOAuth, useOAuthConnections, useUpdateProfile } from "@beaco/auth/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { EmailAddressesSection } from "@/components/settings/email-addresses-section";
 import { accountSettingsReturnPath } from "@/lib/oauth-return";
 import "./account-settings.css";
 
@@ -107,8 +108,12 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
             <span>01</span>
             Profile
           </a>
-          <a href="#connections">
+          <a href="#emails">
             <span>02</span>
+            Emails
+          </a>
+          <a href="#connections">
+            <span>03</span>
             Connections
           </a>
           <div>
@@ -123,7 +128,7 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
               <span>01</span>
               <div>
                 <h2>Public profile</h2>
-                <p>Your email remains a verified login identity and cannot be changed here.</p>
+                <p>Display name and avatar. Manage sign-in emails in the section below.</p>
               </div>
             </div>
 
@@ -173,14 +178,6 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
                 />
               </div>
 
-              <div className="account-settings__email">
-                <span>Email identity</span>
-                <strong>{user.email}</strong>
-                <small>
-                  <Check size={13} weight="bold" /> Verified
-                </small>
-              </div>
-
               {validationError || profile.isError ? (
                 <p className="account-settings__message" data-tone="error" role="alert">
                   <WarningCircle size={15} />
@@ -203,9 +200,11 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
             </form>
           </section>
 
+          <EmailAddressesSection />
+
           <section id="connections" className="account-settings__section">
             <div className="account-settings__section-heading">
-              <span>02</span>
+              <span>03</span>
               <div>
                 <h2>Connected accounts</h2>
                 <p>Link external identities without exposing provider tokens to the browser.</p>

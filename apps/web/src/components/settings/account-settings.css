@@ -443,6 +443,175 @@
   text-underline-offset: 3px;
 }
 
+/* Email addresses ---------------------------------------------------- */
+.account-settings__email-add {
+  align-items: center;
+  border-block: 1px solid var(--dashboard-line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 14px 22px;
+}
+
+.account-settings__email-add > svg {
+  color: var(--dashboard-accent);
+}
+
+.account-settings__email-add input {
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 8px;
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-size: 12px;
+  min-height: 36px;
+  outline: 0;
+  padding: 0 11px;
+}
+
+.account-settings__email-add input:focus-visible {
+  border-color: var(--dashboard-accent);
+}
+
+.account-settings__email-add button {
+  align-items: center;
+  background: var(--dashboard-accent);
+  border: 1px solid var(--dashboard-accent);
+  border-radius: 8px;
+  color: var(--dashboard-accent-ink);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 650;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+}
+
+.account-settings__email-add button:disabled {
+  opacity: 0.45;
+}
+
+.account-settings__email-list {
+  list-style: none;
+}
+
+.account-settings__email-empty {
+  align-items: center;
+  color: var(--dashboard-muted);
+  display: flex;
+  font-size: 10px;
+  gap: 8px;
+  padding: 16px 22px;
+}
+
+.account-settings__email-row {
+  align-items: center;
+  border-bottom: 1px solid var(--dashboard-line);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  min-height: 62px;
+  padding: 12px 22px;
+}
+
+.account-settings__email-row > div:first-child {
+  min-width: 0;
+}
+
+.account-settings__email-row strong {
+  display: block;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-settings__email-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.account-settings__email-tags span {
+  align-items: center;
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 999px;
+  color: var(--dashboard-muted-bright);
+  display: inline-flex;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  gap: 5px;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.account-settings__email-tags span[data-variant="primary"] {
+  color: var(--dashboard-accent);
+}
+
+.account-settings__email-tags span[data-variant="verified"] {
+  color: #68b982;
+}
+
+.account-settings__email-tags span[data-variant="pending"] {
+  color: #d8a35f;
+}
+
+.account-settings__email-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.account-settings__email-actions button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 7px;
+  color: var(--dashboard-muted-bright);
+  display: inline-flex;
+  font-size: 10px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.account-settings__email-actions button:hover:not(:disabled) {
+  background: var(--dashboard-overlay-hover);
+  color: var(--dashboard-ink);
+}
+
+.account-settings__email-actions button:disabled {
+  opacity: 0.45;
+}
+
+.account-settings__email-actions button.account-settings__email-remove {
+  padding: 0 8px;
+}
+
+.account-settings__email-actions button.account-settings__email-remove:hover:not(:disabled) {
+  border-color: #d88274;
+  color: #d88274;
+}
+
+@media (max-width: 760px) {
+  .account-settings__email-add {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .account-settings__email-add > svg {
+    display: none;
+  }
+
+  .account-settings__email-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
 @media (max-width: 760px) {
   .account-settings {
     min-height: calc(100dvh - 62px);
