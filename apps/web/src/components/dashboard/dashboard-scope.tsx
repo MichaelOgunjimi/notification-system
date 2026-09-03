@@ -40,8 +40,12 @@ export function DashboardScope({ organizationSlug, projectSlug, children }: Dash
   const validatedPath =
     organization && project ? dashboardPath(organization.slug, project.slug) : null;
 
-  const organizationMissing = organizations.isSuccess && !organization;
-  const projectMissing = Boolean(organization) && projects.isSuccess && !project;
+  // Only conclude a slug is missing once the query has settled — a background
+  // refetch (e.g. right after creating the org/project) briefly reports success
+  // with stale data that does not yet include the new record.
+  const organizationMissing = organizations.isSuccess && !organizations.isFetching && !organization;
+  const projectMissing =
+    Boolean(organization) && projects.isSuccess && !projects.isFetching && !project;
   const connectionFailed = organizations.isError || (Boolean(organization) && projects.isError);
 
   const redirectTo =
