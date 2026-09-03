@@ -96,3 +96,8 @@
       "calt" 1;
   }
 }
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}

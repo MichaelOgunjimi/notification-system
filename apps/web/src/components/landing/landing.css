@@ -95,11 +95,6 @@
   z-index: -1;
 }
 
-.marketing-shell ::selection {
-  background: var(--site-accent);
-  color: var(--site-accent-ink);
-}
-
 .site-nav {
   background: var(--site-nav-bg);
   border: 1px solid var(--site-line);
