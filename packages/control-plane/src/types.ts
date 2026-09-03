@@ -312,6 +312,15 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the invitation cannot be managed.
      */
     revoke(organizationId: string, invitationId: string): Promise<void>;
+    /**
+     * Accepts an organization invitation on behalf of the signed-in user.
+     *
+     * @param token One-time invitation token from the emailed accept link.
+     * @returns Promise resolved once the membership exists.
+     * @throws {ControlPlaneError} When the token is invalid, expired, or was
+     * issued to an email the current user has not verified.
+     */
+    accept(token: string): Promise<void>;
   };
   /** Project operations scoped by organization membership. */
   readonly projects: {

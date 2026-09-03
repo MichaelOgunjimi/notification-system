@@ -228,6 +228,22 @@ export function useRevokeOrganizationInvitation() {
 }
 
 /**
+ * Accepts an organization invitation for the signed-in user and refreshes the
+ * organization list so the new membership appears.
+ *
+ * @returns TanStack mutation accepting the one-time invitation token.
+ */
+export function useAcceptInvitation() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ token }: { token: string }) => client.invitations.accept(token),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: controlPlaneQueryKeys.organizations() }),
+  });
+}
+
+/**
  * Creates a project and refreshes the organization's project cache.
  *
  * @returns TanStack mutation accepting an organization identifier and project fields.

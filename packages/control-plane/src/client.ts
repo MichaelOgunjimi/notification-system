@@ -187,6 +187,9 @@ class HttpControlPlaneClient implements ControlPlaneClient {
         "DELETE",
       );
     },
+    accept: async (token: string): Promise<void> => {
+      await this.request<void>("/invitations/accept", "POST", { token });
+    },
   };
 
   readonly projects = {

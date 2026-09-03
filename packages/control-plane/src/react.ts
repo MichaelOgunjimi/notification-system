@@ -1,4 +1,5 @@
 export {
+  useAcceptInvitation,
   useCreateOrganization,
   useArchiveOrganization,
   useArchiveProject,

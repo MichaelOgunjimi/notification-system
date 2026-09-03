@@ -263,6 +263,21 @@ describe("createControlPlaneClient", () => {
     await expect(client.members.remove("organization-1", "membership-1")).resolves.toBeUndefined();
   });
 
+  it("accepts an invitation by posting the one-time token", async () => {
+    const fetcher = fetchAdapter(() => new Response(null, { status: 204 }));
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.invitations.accept("invite-token-123")).resolves.toBeUndefined();
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/invitations/accept",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "invite-token-123" }),
+      }),
+    );
+  });
+
   it("lists project API keys as a camel-cased page", async () => {
     const fetcher = fetchAdapter(() =>
       Response.json({
