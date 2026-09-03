@@ -40,12 +40,16 @@ export function DashboardScope({ organizationSlug, projectSlug, children }: Dash
   const validatedPath =
     organization && project ? dashboardPath(organization.slug, project.slug) : null;
 
-  // Only conclude a slug is missing once the query has settled — a background
-  // refetch (e.g. right after creating the org/project) briefly reports success
-  // with stale data that does not yet include the new record.
-  const organizationMissing = organizations.isSuccess && !organizations.isFetching && !organization;
-  const projectMissing =
-    Boolean(organization) && projects.isSuccess && !projects.isFetching && !project;
+  // Only conclude a slug is missing once the query is both fresh and idle.
+  // Right after creating or renaming an org/project the query is invalidated:
+  // it briefly reports success with stale data that does not yet reflect the
+  // change, and there is a render tick before `isFetching` flips — `isStale`
+  // covers that window because invalidation marks it synchronously.
+  const organizationsSettled =
+    organizations.isSuccess && !organizations.isFetching && !organizations.isStale;
+  const projectsSettled = projects.isSuccess && !projects.isFetching && !projects.isStale;
+  const organizationMissing = organizationsSettled && !organization;
+  const projectMissing = Boolean(organization) && projectsSettled && !project;
   const connectionFailed = organizations.isError || (Boolean(organization) && projects.isError);
 
   const redirectTo =
@@ -60,12 +64,23 @@ export function DashboardScope({ organizationSlug, projectSlug, children }: Dash
       ? `The project “${projectSlug}” isn’t available — it may have been archived or moved. Pick another below.`
       : null;
 
+  // A slug can look missing for a beat right after a create/rename while caches
+  // settle. Hold the redirect for a short grace period and only fire it if the
+  // scope is still unresolved — the shell keeps this mounted across slug
+  // changes, so the guard resets whenever scope becomes healthy again.
   const redirectedRef = useRef(false);
   useEffect(() => {
-    if (!redirectTo || redirectedRef.current) return;
-    redirectedRef.current = true;
-    if (redirectNotice) toast.error(redirectNotice);
-    router.replace(redirectTo);
+    if (!redirectTo) {
+      redirectedRef.current = false;
+      return;
+    }
+    if (redirectedRef.current) return;
+    const timer = setTimeout(() => {
+      redirectedRef.current = true;
+      if (redirectNotice) toast.error(redirectNotice);
+      router.replace(redirectTo);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [redirectTo, redirectNotice, router, toast]);
 
   useEffect(() => {
