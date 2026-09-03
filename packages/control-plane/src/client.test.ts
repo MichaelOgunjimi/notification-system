@@ -282,6 +282,7 @@ describe("createControlPlaneClient", () => {
     const fetcher = fetchAdapter(() =>
       Response.json({
         organization_name: "Northstar",
+        email: "leo@example.com",
         role: "admin",
         inviter_name: "Dana",
         expires_at: "2026-09-10T09:00:00Z",
@@ -291,6 +292,7 @@ describe("createControlPlaneClient", () => {
 
     await expect(client.invitations.preview("invite-token-123")).resolves.toEqual({
       organizationName: "Northstar",
+      email: "leo@example.com",
       role: "admin",
       inviterName: "Dana",
       expiresAt: "2026-09-10T09:00:00Z",

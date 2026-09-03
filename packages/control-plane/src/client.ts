@@ -95,6 +95,7 @@ function mapInvitationPreview(
 ): OrganizationInvitationPreview {
   return {
     organizationName: preview.organization_name,
+    email: preview.email,
     role: preview.role,
     inviterName: preview.inviter_name,
     expiresAt: preview.expires_at,

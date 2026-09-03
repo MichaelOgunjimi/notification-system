@@ -116,6 +116,7 @@ export type OrganizationInvitationCreate = Readonly<{
 /** Unauthenticated description of a pending invitation, resolved from its token. */
 export type OrganizationInvitationPreview = Readonly<{
   organizationName: string;
+  email: string;
   role: OrganizationRole;
   inviterName: string;
   expiresAt: string;
@@ -484,6 +485,7 @@ export type ApiOrganizationInvitation = {
 /** Raw invitation preview payload returned by FastAPI. */
 export type ApiOrganizationInvitationPreview = {
   organization_name: string;
+  email: string;
   role: OrganizationRole;
   inviter_name: string;
   expires_at: string;
