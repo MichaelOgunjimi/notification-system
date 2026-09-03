@@ -6,7 +6,7 @@ import type { Organization } from "@beaco/control-plane";
 import { useCreateOrganization } from "@beaco/control-plane/react";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { useToast } from "@/components/ui/toast";
-import { SLUG_PATTERN, randomSlugSuffix, slugify, slugWithSuffix } from "@/lib/slug";
+import { SLUG_PATTERN, randomSlugSuffix, slugWithSuffix } from "@/lib/slug";
 
 type CreateOrganizationDialogProps = Readonly<{
   open: boolean;
@@ -38,6 +38,7 @@ export function CreateOrganizationDialog({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [slugSuffix] = useState(randomSlugSuffix);
   const [description, setDescription] = useState("");
   const [projectName, setProjectName] = useState("");
   const [projectSlug, setProjectSlug] = useState("");
@@ -45,7 +46,7 @@ export function CreateOrganizationDialog({
   const [projectSuffix] = useState(randomSlugSuffix);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const effectiveSlug = slugTouched ? slug : slugify(name);
+  const effectiveSlug = slugTouched ? slug : slugWithSuffix(name, slugSuffix);
   const effectiveProjectSlug = projectSlugTouched
     ? projectSlug
     : slugWithSuffix(projectName, projectSuffix);
@@ -112,6 +113,9 @@ export function CreateOrganizationDialog({
           setSlug(event.target.value.toLowerCase());
         }}
       />
+      <p className="form-dialog__hint">
+        A short random suffix keeps the slug unique. Edit it to set your own.
+      </p>
       <label htmlFor={descriptionId}>Description</label>
       <input
         id={descriptionId}
