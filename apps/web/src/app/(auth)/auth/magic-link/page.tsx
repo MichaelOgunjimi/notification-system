@@ -1,5 +1,5 @@
 import { MagicLinkVerifier } from "@/components/auth/magic-link-verifier";
-import { safeInternalPath } from "@/lib/auth-return";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 export default async function MagicLinkPage({
   searchParams,

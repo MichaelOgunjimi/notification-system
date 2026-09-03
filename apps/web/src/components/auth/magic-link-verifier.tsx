@@ -6,7 +6,7 @@ import { ArrowRight, CheckCircle, SpinnerGap, WarningCircle } from "@phosphor-ic
 import { AuthShell } from "./auth-shell";
 import { useVerifyMagicLink } from "@beaco/auth/react";
 import { postAuthDestination } from "@/lib/dashboard-route";
-import { safeInternalPath } from "@/lib/auth-return";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 /**
  * Exchanges a single-use magic-link token for a cookie-backed session.

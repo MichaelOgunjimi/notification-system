@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, GithubLogo, SpinnerGap } from "@phosphor-icons/react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { useAuthClient, useSendMagicLink } from "@beaco/auth/react";
-import { rememberAuthReturnPath } from "@/lib/auth-return";
 
 /**
  * Passwordless sign-in form. When `next` is present the caller is returned to
@@ -109,8 +108,7 @@ export function LoginForm({ next }: { next?: string }) {
         </div>
 
         <a
-          href={authClient.getOAuthSignInUrl("github")}
-          onClick={() => rememberAuthReturnPath(next)}
+          href={authClient.getOAuthSignInUrl("github", next ? { next } : undefined)}
           className="auth-secondary-action w-full"
         >
           <GithubLogo size={19} weight="fill" /> Continue with GitHub

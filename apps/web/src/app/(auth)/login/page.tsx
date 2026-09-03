@@ -1,5 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
-import { safeInternalPath } from "@/lib/auth-return";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 export default async function LoginPage({
   searchParams,

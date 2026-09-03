@@ -6,8 +6,7 @@ import { SpinnerGap } from "@phosphor-icons/react";
 import { useSession } from "@beaco/auth/react";
 import { SessionRecovery } from "./session-recovery";
 import { postAuthDestination } from "@/lib/dashboard-route";
-import { readOAuthReturnPath } from "@/lib/oauth-return";
-import { hasPendingAuthReturnPath, safeInternalPath } from "@/lib/auth-return";
+import { safeInternalPath } from "@/lib/safe-redirect";
 import "./auth-route-gate.css";
 
 /**
@@ -21,13 +20,11 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const session = useSession();
   const userId = session.user?.id;
-  // On the OAuth callback route the callback component is the sole redirect
-  // authority; the gate must not race it with its own `router.replace`,
-  // especially once a pending return path has been read and cleared.
+  // `/auth/callback` is a transient handoff owned entirely by OAuthCallback,
+  // which reads the `?next=` before stripping the query and navigates itself.
+  // The gate must not race it with its own `router.replace`.
   const callbackOwnsRedirect =
-    typeof window !== "undefined" &&
-    window.location.pathname === "/auth/callback" &&
-    (readOAuthReturnPath() !== null || hasPendingAuthReturnPath());
+    typeof window !== "undefined" && window.location.pathname === "/auth/callback";
 
   useEffect(() => {
     if (!userId || callbackOwnsRedirect) return;

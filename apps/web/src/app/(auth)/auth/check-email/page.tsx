@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, EnvelopeSimpleOpen } from "@phosphor-icons/react/dist/ssr";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { safeInternalPath } from "@/lib/auth-return";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 export default async function CheckEmailPage({
   searchParams,

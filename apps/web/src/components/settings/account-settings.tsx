@@ -15,7 +15,7 @@ import type { User } from "@beaco/auth";
 import { authClient } from "@beaco/auth";
 import { useDisconnectOAuth, useOAuthConnections, useUpdateProfile } from "@beaco/auth/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
-import { rememberOAuthReturnPath } from "@/lib/oauth-return";
+import { accountSettingsReturnPath } from "@/lib/oauth-return";
 import "./account-settings.css";
 
 type AccountSettingsProps = Readonly<{
@@ -237,8 +237,9 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
                 </button>
               ) : (
                 <a
-                  href={authClient.getOAuthConnectUrl("github")}
-                  onClick={() => rememberOAuthReturnPath(returnPath)}
+                  href={authClient.getOAuthConnectUrl("github", {
+                    next: accountSettingsReturnPath(returnPath) ?? undefined,
+                  })}
                 >
                   Connect GitHub <ArrowSquareOut size={15} />
                 </a>
