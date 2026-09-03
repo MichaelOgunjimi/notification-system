@@ -16,6 +16,8 @@ import type {
   Organization,
   Project,
   ProjectApiKey,
+  ProjectApiKeyEnvironment,
+  ProjectApiKeyStatus,
 } from "@beaco/control-plane";
 import {
   useProjectApiKeys,
@@ -32,7 +34,36 @@ type ApiKeysSettingsProps = Readonly<{
   project: Project;
 }>;
 
-const PER_PAGE = 10;
+const PER_PAGE_OPTIONS = [10, 25, 50] as const;
+
+const ENVIRONMENT_FILTERS: ReadonlyArray<{ value: "" | ProjectApiKeyEnvironment; label: string }> =
+  [
+    { value: "", label: "All" },
+    { value: "live", label: "Live" },
+    { value: "test", label: "Test" },
+  ];
+
+const STATUS_FILTERS: ReadonlyArray<{ value: "" | ProjectApiKeyStatus; label: string }> = [
+  { value: "", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "revoked", label: "Revoked" },
+];
+
+/**
+ * Builds a compact page sequence with ellipses: first, last, and a window
+ * around the current page.
+ */
+function pageWindow(current: number, total: number): Array<number | "gap"> {
+  if (total <= 7) return Array.from({ length: total }, (_unused, index) => index + 1);
+  const pages = new Set<number>([1, total, current, current - 1, current + 1]);
+  const ordered = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
+  const withGaps: Array<number | "gap"> = [];
+  ordered.forEach((page, index) => {
+    if (index > 0 && page - ordered[index - 1] > 1) withGaps.push("gap");
+    withGaps.push(page);
+  });
+  return withGaps;
+}
 
 function CreatedKeyPanel({ apiKey, onDone }: { apiKey: CreatedProjectApiKey; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -87,12 +118,21 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   const canManage = capabilities.has("api_key:manage");
 
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState<number>(PER_PAGE_OPTIONS[0]);
+  const [environment, setEnvironment] = useState<"" | ProjectApiKeyEnvironment>("");
+  const [status, setStatus] = useState<"" | ProjectApiKeyStatus>("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreatedProjectApiKey | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ProjectApiKey | null>(null);
   const [keyToRotate, setKeyToRotate] = useState<ProjectApiKey | null>(null);
 
-  const apiKeys = useProjectApiKeys(canManage ? project.id : null, page, PER_PAGE);
+  const filtersActive = environment !== "" || status !== "";
+  const apiKeys = useProjectApiKeys(canManage ? project.id : null, {
+    page,
+    perPage,
+    environment: environment || undefined,
+    status: status || undefined,
+  });
   const revokeKey = useRevokeProjectApiKey();
   const rotateKey = useRotateProjectApiKey();
 
@@ -141,7 +181,15 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
 
   const items = apiKeys.data?.items ?? [];
   const totalPages = apiKeys.data?.totalPages ?? 1;
-  const isEmpty = Boolean(apiKeys.data) && items.length === 0;
+  const resultEmpty = apiKeys.isSuccess && items.length === 0;
+  const isEmpty = resultEmpty && !filtersActive;
+  const noMatches = resultEmpty && filtersActive;
+  const keysById = new Map(items.map((apiKey) => [apiKey.id, apiKey]));
+
+  function updateFilter(next: () => void) {
+    next();
+    setPage(1);
+  }
 
   return (
     <div className="api-keys">
@@ -163,6 +211,35 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
 
       {createdKey ? (
         <CreatedKeyPanel apiKey={createdKey} onDone={() => setCreatedKey(null)} />
+      ) : null}
+
+      {!isEmpty ? (
+        <div className="api-keys__filters">
+          <div className="api-keys__filter-group" role="group" aria-label="Environment">
+            {ENVIRONMENT_FILTERS.map((option) => (
+              <button
+                key={option.value || "all"}
+                type="button"
+                data-active={environment === option.value || undefined}
+                onClick={() => updateFilter(() => setEnvironment(option.value))}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="api-keys__filter-group" role="group" aria-label="Status">
+            {STATUS_FILTERS.map((option) => (
+              <button
+                key={option.value || "all"}
+                type="button"
+                data-active={status === option.value || undefined}
+                onClick={() => updateFilter(() => setStatus(option.value))}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {apiKeys.isPending ? (
@@ -193,80 +270,145 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
         </div>
       ) : null}
 
-      {items.length > 0 ? (
-        <div className="api-keys__list">
-          {items.map((apiKey) => (
-            <article
-              key={apiKey.id}
-              className="api-keys__row"
-              data-revoked={!apiKey.isActive || undefined}
-            >
-              <div className="api-keys__row-main">
-                <strong>
-                  {apiKey.name}
-                  <span className="api-keys__env" data-env={apiKey.environment}>
-                    {apiKey.environment}
-                  </span>
-                  {apiKey.isActive ? null : <span className="api-keys__tag">revoked</span>}
-                </strong>
-                <code>{apiKey.keyPrefix}…</code>
-                {apiKey.description ? <small>{apiKey.description}</small> : null}
-                <small>
-                  {apiKey.scopes.length} scope{apiKey.scopes.length === 1 ? "" : "s"} ·{" "}
-                  {apiKey.lastUsedAt
-                    ? `last used ${new Date(apiKey.lastUsedAt).toLocaleDateString()}`
-                    : "never used"}
-                </small>
-              </div>
-              {apiKey.isActive ? (
-                <div className="api-keys__row-actions">
-                  <button
-                    type="button"
-                    aria-label={`Rotate ${apiKey.name}`}
-                    onClick={() => {
-                      rotateKey.reset();
-                      setKeyToRotate(apiKey);
-                    }}
-                  >
-                    <ArrowClockwise size={15} /> Rotate
-                  </button>
-                  <button
-                    type="button"
-                    className="api-keys__danger"
-                    aria-label={`Revoke ${apiKey.name}`}
-                    onClick={() => {
-                      revokeKey.reset();
-                      setKeyToRevoke(apiKey);
-                    }}
-                  >
-                    <Trash size={15} /> Revoke
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          ))}
+      {noMatches ? (
+        <div className="api-keys__empty-state">
+          <span>
+            <Key size={22} />
+          </span>
+          <strong>No keys match these filters</strong>
+          <button
+            type="button"
+            onClick={() =>
+              updateFilter(() => {
+                setEnvironment("");
+                setStatus("");
+              })
+            }
+          >
+            Clear filters
+          </button>
         </div>
       ) : null}
 
-      {totalPages > 1 ? (
+      {items.length > 0 ? (
+        <div className="api-keys__list">
+          {items.map((apiKey) => {
+            const rotatedFrom = apiKey.rotatedFromId
+              ? keysById.get(apiKey.rotatedFromId)
+              : undefined;
+            return (
+              <article
+                key={apiKey.id}
+                className="api-keys__row"
+                data-revoked={!apiKey.isActive || undefined}
+              >
+                <div className="api-keys__row-main">
+                  <strong>
+                    {apiKey.name}
+                    <span className="api-keys__env" data-env={apiKey.environment}>
+                      {apiKey.environment}
+                    </span>
+                    {apiKey.isActive ? null : <span className="api-keys__tag">revoked</span>}
+                  </strong>
+                  <code>{apiKey.keyPrefix}…</code>
+                  {apiKey.description ? <small>{apiKey.description}</small> : null}
+                  {apiKey.rotatedFromId ? (
+                    <small className="api-keys__rotated">
+                      <ArrowClockwise size={11} />
+                      {rotatedFrom
+                        ? `Rotated from ${rotatedFrom.name} · ${rotatedFrom.keyPrefix}…`
+                        : "Rotated key"}
+                    </small>
+                  ) : null}
+                  <small>
+                    {apiKey.scopes.length} scope{apiKey.scopes.length === 1 ? "" : "s"} ·{" "}
+                    {apiKey.lastUsedAt
+                      ? `last used ${new Date(apiKey.lastUsedAt).toLocaleDateString()}`
+                      : "never used"}
+                  </small>
+                </div>
+                {apiKey.isActive ? (
+                  <div className="api-keys__row-actions">
+                    <button
+                      type="button"
+                      aria-label={`Rotate ${apiKey.name}`}
+                      onClick={() => {
+                        rotateKey.reset();
+                        setKeyToRotate(apiKey);
+                      }}
+                    >
+                      <ArrowClockwise size={15} /> Rotate
+                    </button>
+                    <button
+                      type="button"
+                      className="api-keys__danger"
+                      aria-label={`Revoke ${apiKey.name}`}
+                      onClick={() => {
+                        revokeKey.reset();
+                        setKeyToRevoke(apiKey);
+                      }}
+                    >
+                      <Trash size={15} /> Revoke
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {!isEmpty && !noMatches && !apiKeys.isPending ? (
         <div className="api-keys__pagination">
-          <button
-            type="button"
-            disabled={page <= 1 || apiKeys.isFetching}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages || apiKeys.isFetching}
-            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-          >
-            Next
-          </button>
+          <nav className="api-keys__pages" aria-label="API key pages">
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={page <= 1 || apiKeys.isFetching}
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+            >
+              ‹
+            </button>
+            {pageWindow(page, totalPages).map((entry, index) =>
+              entry === "gap" ? (
+                <span key={`gap-${index}`} className="api-keys__page-gap">
+                  …
+                </span>
+              ) : (
+                <button
+                  key={entry}
+                  type="button"
+                  aria-current={entry === page ? "page" : undefined}
+                  data-active={entry === page || undefined}
+                  disabled={apiKeys.isFetching}
+                  onClick={() => setPage(entry)}
+                >
+                  {entry}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={page >= totalPages || apiKeys.isFetching}
+              onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+            >
+              ›
+            </button>
+          </nav>
+          <label className="api-keys__per-page">
+            Per page
+            <select
+              value={perPage}
+              onChange={(event) => updateFilter(() => setPerPage(Number(event.target.value)))}
+            >
+              {PER_PAGE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       ) : null}
 

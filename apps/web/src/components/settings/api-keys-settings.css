@@ -124,11 +124,48 @@
   padding: 0 18px;
 }
 
+.api-keys__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-top: 24px;
+}
+
+.api-keys__filter-group {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.api-keys__filter-group button {
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 999px;
+  color: var(--dashboard-muted-bright);
+  font-size: 11px;
+  padding: 5px 13px;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.api-keys__filter-group button[data-active] {
+  background: color-mix(in srgb, var(--dashboard-accent) 14%, transparent);
+  border-color: var(--dashboard-accent);
+  color: var(--dashboard-ink);
+}
+
+.api-keys__row-main small.api-keys__rotated {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+}
+
 .api-keys__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 26px;
+  margin-top: 22px;
 }
 
 .api-keys__row {
@@ -229,30 +266,63 @@
 .api-keys__pagination {
   align-items: center;
   display: flex;
-  gap: 14px;
-  margin-top: 16px;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  justify-content: space-between;
+  margin-top: 18px;
 }
 
-.api-keys__pagination button {
+.api-keys__pages {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.api-keys__pages button {
   align-items: center;
   background: var(--dashboard-overlay);
   border: 1px solid var(--dashboard-line-strong);
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--dashboard-muted-bright);
   display: inline-flex;
   font-size: 12px;
-  min-height: 34px;
-  padding: 0 14px;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 6px;
 }
 
-.api-keys__pagination button:disabled {
+.api-keys__pages button[data-active] {
+  background: color-mix(in srgb, var(--dashboard-accent) 16%, transparent);
+  border-color: var(--dashboard-accent);
+  color: var(--dashboard-ink);
+}
+
+.api-keys__pages button:disabled {
   cursor: default;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-.api-keys__pagination span {
+.api-keys__page-gap {
   color: var(--dashboard-muted);
+  padding: 0 2px;
+}
+
+.api-keys__per-page {
+  align-items: center;
+  color: var(--dashboard-muted);
+  display: inline-flex;
   font-size: 11px;
+  gap: 8px;
+}
+
+.api-keys__per-page select {
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 7px;
+  color: var(--dashboard-ink);
+  font-size: 12px;
+  padding: 5px 8px;
 }
 
 .api-keys__reveal {

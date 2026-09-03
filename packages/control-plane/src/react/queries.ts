@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ControlPlaneError } from "../error";
-import type { ControlPlaneClient } from "../types";
+import type { ControlPlaneClient, ProjectApiKeyListOptions } from "../types";
 
 /** Hierarchical TanStack Query keys for control-plane cache invalidation. */
 export const controlPlaneQueryKeys = {
@@ -87,25 +87,30 @@ export function organizationInvitationsQuery(client: ControlPlaneClient, organiz
 /**
  * Builds query options for one page of a project's API keys.
  *
- * The page and size are part of the cache key so navigating pages does not
- * discard previously loaded pages; `projectApiKeys(projectId)` remains the
- * invalidation boundary for the whole list.
+ * The page, size, and filters are part of the cache key so navigating pages or
+ * changing filters does not discard previously loaded pages;
+ * `projectApiKeys(projectId)` remains the invalidation boundary for the list.
  *
  * @param client Control-plane client used by the query function.
  * @param projectId Project whose API keys should be loaded.
- * @param page 1-based page number.
- * @param perPage Page size (1-100).
- * @returns TanStack Query options scoped to the project, page, and size.
+ * @param options 1-based page, page size, and optional environment/status filters.
+ * @returns TanStack Query options scoped to the project, page, size, and filters.
  */
 export function projectApiKeysQuery(
   client: ControlPlaneClient,
   projectId: string,
-  page: number,
-  perPage: number,
+  options: ProjectApiKeyListOptions,
 ) {
+  const { page = 1, perPage = 20, environment, status } = options;
   return queryOptions({
-    queryKey: [...controlPlaneQueryKeys.projectApiKeys(projectId), page, perPage] as const,
-    queryFn: () => client.apiKeys.list(projectId, { page, perPage }),
+    queryKey: [
+      ...controlPlaneQueryKeys.projectApiKeys(projectId),
+      page,
+      perPage,
+      environment ?? null,
+      status ?? null,
+    ] as const,
+    queryFn: () => client.apiKeys.list(projectId, { page, perPage, environment, status }),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });

@@ -7,6 +7,7 @@ import type {
   OrganizationRole,
   OrganizationUpdate,
   ProjectApiKeyCreate,
+  ProjectApiKeyListOptions,
   ProjectApiKeyUpdate,
   ProjectCreate,
 } from "../types";
@@ -229,17 +230,19 @@ export function useCreateProject() {
 
 /**
  * Loads one page of a project's API keys, keeping the previous page visible
- * while the next page loads.
+ * while the next page or filter loads.
  *
  * @param projectId Project whose API keys should be loaded; null disables the query.
- * @param page 1-based page number.
- * @param perPage Page size (1-100).
+ * @param options 1-based page, page size, and optional environment/status filters.
  * @returns TanStack Query result containing a page of API key metadata.
  */
-export function useProjectApiKeys(projectId: string | null, page = 1, perPage = 20) {
+export function useProjectApiKeys(
+  projectId: string | null,
+  options: ProjectApiKeyListOptions = {},
+) {
   const client = useControlPlaneClient();
   return useQuery({
-    ...projectApiKeysQuery(client, projectId ?? "pending", page, perPage),
+    ...projectApiKeysQuery(client, projectId ?? "pending", options),
     enabled: Boolean(projectId),
     placeholderData: keepPreviousData,
   });

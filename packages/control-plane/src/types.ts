@@ -156,6 +156,19 @@ export type ProjectApiKey = Readonly<{
   updatedAt: string;
   lastUsedAt: string | null;
   revokedAt: string | null;
+  /** The key this one replaced when it was created by rotation, else null. */
+  rotatedFromId: string | null;
+}>;
+
+/** Whether an API key list is scoped to active or revoked keys. */
+export type ProjectApiKeyStatus = "active" | "revoked";
+
+/** Optional filters and pagination for {@link ControlPlaneClient.apiKeys.list}. */
+export type ProjectApiKeyListOptions = Readonly<{
+  page?: number;
+  perPage?: number;
+  environment?: ProjectApiKeyEnvironment;
+  status?: ProjectApiKeyStatus;
 }>;
 
 /** Project API key including the one-time plaintext secret. */
@@ -331,10 +344,7 @@ export interface ControlPlaneClient {
      * @returns One page of API key metadata without plaintext secrets.
      * @throws {ControlPlaneError} When API key management access is unavailable.
      */
-    list(
-      projectId: string,
-      options?: { page?: number; perPage?: number },
-    ): Promise<Paginated<ProjectApiKey>>;
+    list(projectId: string, options?: ProjectApiKeyListOptions): Promise<Paginated<ProjectApiKey>>;
     /**
      * Creates a project API key.
      *
@@ -453,6 +463,7 @@ export type ApiProjectApiKey = {
   updated_at: string;
   last_used_at: string | null;
   revoked_at: string | null;
+  rotated_from_id: string | null;
 };
 
 /** Raw project API key payload including the one-time plaintext secret. */

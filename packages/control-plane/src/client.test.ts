@@ -246,6 +246,7 @@ describe("createControlPlaneClient", () => {
             updated_at: "2026-09-02T09:00:00Z",
             last_used_at: null,
             revoked_at: null,
+            rotated_from_id: "key-0",
           },
         ],
         total: 1,
@@ -256,7 +257,14 @@ describe("createControlPlaneClient", () => {
     );
     const client = createControlPlaneClient({ fetch: fetcher });
 
-    await expect(client.apiKeys.list("project-1", { page: 2, perPage: 20 })).resolves.toEqual({
+    await expect(
+      client.apiKeys.list("project-1", {
+        page: 2,
+        perPage: 20,
+        environment: "live",
+        status: "active",
+      }),
+    ).resolves.toEqual({
       items: [
         {
           id: "key-1",
@@ -272,6 +280,7 @@ describe("createControlPlaneClient", () => {
           updatedAt: "2026-09-02T09:00:00Z",
           lastUsedAt: null,
           revokedAt: null,
+          rotatedFromId: "key-0",
         },
       ],
       total: 1,
@@ -280,7 +289,7 @@ describe("createControlPlaneClient", () => {
       totalPages: 1,
     });
     expect(fetcher).toHaveBeenCalledWith(
-      "/api/control-plane/projects/project-1/api-keys?page=2&per_page=20",
+      "/api/control-plane/projects/project-1/api-keys?page=2&per_page=20&environment=live&status=active",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -302,6 +311,7 @@ describe("createControlPlaneClient", () => {
           updated_at: "2026-09-02T09:00:00Z",
           last_used_at: null,
           revoked_at: null,
+          rotated_from_id: null,
           key: "bea_test_9_secret",
         },
         { status: 201 },
@@ -354,6 +364,7 @@ describe("createControlPlaneClient", () => {
         updated_at: "2026-09-03T09:00:00Z",
         last_used_at: null,
         revoked_at: null,
+        rotated_from_id: null,
       });
     });
     const client = createControlPlaneClient({ fetch: fetcher });
@@ -389,6 +400,7 @@ describe("createControlPlaneClient", () => {
         updated_at: "2026-09-03T09:00:00Z",
         last_used_at: null,
         revoked_at: null,
+        rotated_from_id: null,
         key: "bea_live_5_secret",
       }),
     );

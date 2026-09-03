@@ -80,6 +80,7 @@ function mapApiKey(apiKey: ApiProjectApiKey): ProjectApiKey {
     updatedAt: apiKey.updated_at,
     lastUsedAt: apiKey.last_used_at,
     revokedAt: apiKey.revoked_at,
+    rotatedFromId: apiKey.rotated_from_id,
   };
 }
 
@@ -215,11 +216,13 @@ class HttpControlPlaneClient implements ControlPlaneClient {
   readonly apiKeys = {
     list: async (
       projectId: string,
-      options: { page?: number; perPage?: number } = {},
+      options: Parameters<ControlPlaneClient["apiKeys"]["list"]>[1] = {},
     ): Promise<Paginated<ProjectApiKey>> => {
       const params = new URLSearchParams();
       if (options.page !== undefined) params.set("page", String(options.page));
       if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
+      if (options.environment !== undefined) params.set("environment", options.environment);
+      if (options.status !== undefined) params.set("status", options.status);
       const query = params.toString();
       const page = await this.get<ApiPaginated<ApiProjectApiKey>>(
         `/projects/${encodeURIComponent(projectId)}/api-keys${query ? `?${query}` : ""}`,

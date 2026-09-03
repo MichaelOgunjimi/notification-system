@@ -84,12 +84,34 @@ describe("control-plane queries", () => {
       },
     } as unknown as ControlPlaneClient;
 
-    const first = projectApiKeysQuery(client, "project-1", 1, 20);
-    const third = projectApiKeysQuery(client, "project-1", 3, 10);
+    const first = projectApiKeysQuery(client, "project-1", { page: 1, perPage: 20 });
+    const filtered = projectApiKeysQuery(client, "project-1", {
+      page: 3,
+      perPage: 10,
+      environment: "live",
+      status: "revoked",
+    });
 
-    expect(first.queryKey).toEqual([...controlPlaneQueryKeys.projectApiKeys("project-1"), 1, 20]);
-    expect(third.queryKey).not.toEqual(first.queryKey);
-    await third.queryFn?.({} as never);
-    expect(client.apiKeys.list).toHaveBeenCalledWith("project-1", { page: 3, perPage: 10 });
+    expect(first.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectApiKeys("project-1"),
+      1,
+      20,
+      null,
+      null,
+    ]);
+    expect(filtered.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectApiKeys("project-1"),
+      3,
+      10,
+      "live",
+      "revoked",
+    ]);
+    await filtered.queryFn?.({} as never);
+    expect(client.apiKeys.list).toHaveBeenCalledWith("project-1", {
+      page: 3,
+      perPage: 10,
+      environment: "live",
+      status: "revoked",
+    });
   });
 });

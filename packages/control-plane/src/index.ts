@@ -18,6 +18,8 @@ export type {
   ProjectApiKey,
   ProjectApiKeyCreate,
   ProjectApiKeyEnvironment,
+  ProjectApiKeyListOptions,
+  ProjectApiKeyStatus,
   ProjectApiKeyUpdate,
   ProjectCreate,
 } from "./types";
