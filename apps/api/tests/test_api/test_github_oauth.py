@@ -51,6 +51,77 @@ async def test_github_login_redirects_with_server_stored_state(
     )
 
 
+async def test_github_login_stores_a_safe_return_path_in_state(
+    client: AsyncClient,
+    mock_redis: AsyncMock,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_ID", "github-client")
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_SECRET", "github-secret")
+
+    response = await client.get(
+        "/api/v1/oauth/github/login?next=/invitations/accept%3Ftoken%3Dabc",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    stored = mock_redis.setex.await_args.args[2]
+    assert json.loads(stored) == {"next": "/invitations/accept?token=abc"}
+
+
+async def test_github_login_drops_an_open_redirect_return_path(
+    client: AsyncClient,
+    mock_redis: AsyncMock,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_ID", "github-client")
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_SECRET", "github-secret")
+
+    response = await client.get(
+        "/api/v1/oauth/github/login?next=https://evil.example.com",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert mock_redis.setex.await_args.args[2] == "1"
+
+
+async def test_github_callback_forwards_a_return_path_from_state(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_ID", "github-client")
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_SECRET", "github-secret")
+    mock_redis.getdel.return_value = json.dumps({"next": "/invitations/accept?token=abc"})
+    monkeypatch.setattr(
+        github_oauth.github_provider,
+        "exchange_identity",
+        AsyncMock(
+            return_value={
+                "id": "9001",
+                "login": "returner",
+                "name": "Ret Urner",
+                "email": "returner@github.example",
+                "avatar_url": "https://avatars.example/returner",
+            }
+        ),
+        raising=False,
+    )
+
+    response = await client.get(
+        "/api/v1/oauth/github/callback?code=oauth-code&state=oauth-state",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    redirect = urlparse(response.headers["location"])
+    query = parse_qs(redirect.query)
+    assert query["next"] == ["/invitations/accept?token=abc"]
+    assert query["code"][0]
+
+
 async def test_github_callback_registers_user_and_default_tenant(
     client: AsyncClient,
     db: AsyncSession,

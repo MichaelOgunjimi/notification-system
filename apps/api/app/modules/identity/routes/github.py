@@ -5,7 +5,7 @@ import secrets
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
@@ -16,6 +16,7 @@ from app.modules.identity.service import (
     connect_oauth_account,
     create_oauth_authorization_code,
     get_or_create_oauth_user,
+    safe_next_path,
 )
 
 router = APIRouter(prefix="/oauth/github", tags=["oauth"])
@@ -28,27 +29,44 @@ def _authorization_redirect(state: str) -> RedirectResponse:
 
 
 @router.get("/login")
-async def github_login(redis: RedisDep) -> RedirectResponse:
-    """Start GitHub OAuth with a single-use, server-stored CSRF state."""
+async def github_login(
+    redis: RedisDep,
+    next: str | None = Query(default=None, max_length=2048),
+) -> RedirectResponse:
+    """Start GitHub OAuth with a single-use, server-stored CSRF state.
+
+    An optional same-origin ``next`` is validated and folded into the state
+    payload so the callback can return the user there.
+    """
     github_provider.require_config()
     state = secrets.token_urlsafe(32)
+    destination = safe_next_path(next)
+    payload = json.dumps({"next": destination}) if destination is not None else "1"
     await redis.setex(
         f"{_STATE_PREFIX}:{state}",
         settings.OAUTH_STATE_TTL_SECONDS,
-        "1",
+        payload,
     )
     return _authorization_redirect(state)
 
 
 @router.get("/connect")
-async def github_connect(user: CurrentUserDep, redis: RedisDep) -> RedirectResponse:
+async def github_connect(
+    user: CurrentUserDep,
+    redis: RedisDep,
+    next: str | None = Query(default=None, max_length=2048),
+) -> RedirectResponse:
     """Connect GitHub to the currently authenticated internal user."""
     github_provider.require_config()
     state = secrets.token_urlsafe(32)
+    payload: dict[str, str] = {"connect_user_id": str(user.id)}
+    destination = safe_next_path(next)
+    if destination is not None:
+        payload["next"] = destination
     await redis.setex(
         f"{_STATE_PREFIX}:{state}",
         settings.OAUTH_STATE_TTL_SECONDS,
-        json.dumps({"connect_user_id": str(user.id)}),
+        json.dumps(payload),
     )
     return _authorization_redirect(state)
 
@@ -71,14 +89,23 @@ async def github_callback(
     if isinstance(stored_state, bytes):
         stored_state = stored_state.decode()
     connect_user_id: str | None = None
+    destination: str | None = None
     if stored_state != "1":
         try:
-            connect_user_id = str(json.loads(stored_state)["connect_user_id"])
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            state_payload = json.loads(stored_state)
+        except (TypeError, json.JSONDecodeError) as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired OAuth state",
             ) from exc
+        if not isinstance(state_payload, dict):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OAuth state",
+            )
+        raw_connect_user_id = state_payload.get("connect_user_id")
+        connect_user_id = None if raw_connect_user_id is None else str(raw_connect_user_id)
+        destination = safe_next_path(state_payload.get("next"))
 
     identity = await github_provider.exchange_identity(code)
     if connect_user_id is None:
@@ -98,6 +125,7 @@ async def github_callback(
             detail="Account is inactive",
         )
     authorization_code = await create_oauth_authorization_code(user, redis)
-    return RedirectResponse(
-        f"{settings.FRONTEND_URL.rstrip('/')}/auth/callback?code={quote(authorization_code)}"
-    )
+    callback = f"{settings.FRONTEND_URL.rstrip('/')}/auth/callback?code={quote(authorization_code)}"
+    if destination is not None:
+        callback = f"{callback}&next={quote(destination, safe='')}"
+    return RedirectResponse(callback)
