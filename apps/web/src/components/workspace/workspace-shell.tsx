@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight, CirclesThreePlus } from "@phosphor-icons/react/dist/ssr";
+import { CirclesThreePlus } from "@phosphor-icons/react/dist/ssr";
 import { ThemeToggle } from "@beaco/theme";
+import { AccountMenu } from "@/components/ui/account-menu";
 import BrandLogo from "@/components/brand/brand-logo";
 import "./workspace-shell.css";
 
@@ -17,10 +18,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </Link>
         <span className="workspace-shell__product-label">Control plane</span>
         <nav aria-label="Workspace utility navigation" className="workspace-shell__utilities">
-          <Link href="/" className="workspace-shell__link">
-            Site <ArrowUpRight size={13} />
-          </Link>
           <ThemeToggle />
+          <AccountMenu />
         </nav>
       </header>
 

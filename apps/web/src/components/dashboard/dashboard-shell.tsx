@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   ArrowRight,
   Buildings,
@@ -11,18 +11,14 @@ import {
   CaretRight,
   Check,
   CirclesFour,
-  GearSix,
-  House,
   List,
   SidebarSimple,
-  SignOut,
   UserCircle,
   X,
 } from "@phosphor-icons/react";
-import { useSignOut } from "@beaco/auth/react";
 import { ThemeToggle } from "@beaco/theme";
+import { AccountMenu } from "@/components/ui/account-menu";
 import BrandLogo from "@/components/brand/brand-logo";
-import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { dashboardPath } from "@/lib/dashboard-route";
 import {
   readSidebarCollapsedPreference,
@@ -51,18 +47,13 @@ type DashboardShellProps = Readonly<{
  */
 export function DashboardShell({ children }: DashboardShellProps) {
   const { user, organization, project, projects } = useDashboardScope();
-  const router = useRouter();
   const pathname = usePathname();
   const sidebarId = useId();
-  const accountMenuRef = useRef<HTMLDivElement>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const signOut = useSignOut();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsedPreference);
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const currentDashboardPath = dashboardPath(organization.slug, project.slug);
   const accountSettingsPath = `${currentDashboardPath}/${AUXILIARY_ROUTES.accountSettings.path}`;
   const activeSuffix = pathname.startsWith(currentDashboardPath)
@@ -70,12 +61,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
     : "";
   const stageTitle = stageTitleForSuffix(activeSuffix);
   const capabilities = new Set(organization.capabilities);
-  const userInitials = (user.name || user.email)
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.slice(0, 1))
-    .join("")
-    .toUpperCase();
 
   useEffect(() => {
     if (!mobileSidebarOpen) return;
@@ -114,37 +99,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
       window.removeEventListener("keydown", closeSwitcherOnEscape);
     };
   }, [switcherOpen]);
-
-  useEffect(() => {
-    if (!accountMenuOpen) return;
-
-    function closeAccountMenu(event: PointerEvent) {
-      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
-        setAccountMenuOpen(false);
-      }
-    }
-
-    function closeAccountMenuOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setAccountMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", closeAccountMenu);
-    window.addEventListener("keydown", closeAccountMenuOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeAccountMenu);
-      window.removeEventListener("keydown", closeAccountMenuOnEscape);
-    };
-  }, [accountMenuOpen]);
-
-  async function handleSignOut() {
-    try {
-      await signOut.mutateAsync();
-      setSignOutDialogOpen(false);
-      router.replace("/login");
-    } catch {
-      // The mutation exposes the recoverable error beside the account controls.
-    }
-  }
 
   function closeMobileSidebar() {
     setMobileSidebarOpen(false);
@@ -371,141 +325,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </div>
           <div className="dashboard-stage__actions">
             <ThemeToggle />
-            <div
-              ref={accountMenuRef}
-              className="dashboard-account-menu"
-              data-open={accountMenuOpen || undefined}
-            >
-              <button
-                type="button"
-                className="dashboard-account-menu__trigger"
-                aria-label="Open account menu"
-                aria-haspopup="menu"
-                aria-expanded={accountMenuOpen}
-                onClick={() => setAccountMenuOpen((open) => !open)}
-              >
-                <span>
-                  {user.avatarUrl ? (
-                    <Image
-                      unoptimized
-                      src={user.avatarUrl}
-                      alt=""
-                      aria-hidden="true"
-                      width={28}
-                      height={28}
-                    />
-                  ) : (
-                    userInitials
-                  )}
-                </span>
-                <CaretDown size={12} />
-              </button>
-
-              {accountMenuOpen ? (
-                <div className="dashboard-account-menu__popover" role="menu">
-                  <div className="dashboard-account-menu__identity" role="presentation">
-                    <span>
-                      {user.avatarUrl ? (
-                        <Image
-                          unoptimized
-                          src={user.avatarUrl}
-                          alt=""
-                          aria-hidden="true"
-                          width={34}
-                          height={34}
-                        />
-                      ) : (
-                        userInitials
-                      )}
-                    </span>
-                    <div>
-                      <strong>{user.name}</strong>
-                      <small>{user.email}</small>
-                    </div>
-                  </div>
-
-                  <div className="dashboard-account-menu__items">
-                    <Link
-                      href={accountSettingsPath}
-                      role="menuitem"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <GearSix size={16} />
-                      <span>
-                        <strong>Account settings</strong>
-                        <small>Profile and connections</small>
-                      </span>
-                    </Link>
-                    <Link
-                      href="/workspace"
-                      role="menuitem"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <Buildings size={16} />
-                      <span>
-                        <strong>Switch workspace</strong>
-                        <small>Organizations and projects</small>
-                      </span>
-                    </Link>
-                    <Link href="/" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
-                      <House size={16} />
-                      <span>
-                        <strong>Visit public site</strong>
-                        <small>Return to Beaco</small>
-                      </span>
-                    </Link>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="dashboard-account-menu__signout"
-                    role="menuitem"
-                    onClick={() => {
-                      setAccountMenuOpen(false);
-                      setSignOutDialogOpen(true);
-                    }}
-                  >
-                    <SignOut size={16} />
-                    Sign out
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            <AccountMenu accountSettingsHref={accountSettingsPath} />
           </div>
         </header>
 
         {children}
       </section>
-
-      <AppDialog
-        open={signOutDialogOpen}
-        onOpenChange={(open) => {
-          if (signOut.isPending) return;
-          setSignOutDialogOpen(open);
-          if (!open) signOut.reset();
-        }}
-        eyebrow="Session control"
-        title="Sign out of Beaco?"
-        description="You’ll need another magic link or GitHub sign-in to return to this dashboard. Your projects and delivery data will remain unchanged."
-        busy={signOut.isPending}
-        footer={
-          <>
-            <DialogAction disabled={signOut.isPending} onClick={() => setSignOutDialogOpen(false)}>
-              Stay signed in
-            </DialogAction>
-            <DialogAction tone="danger" disabled={signOut.isPending} onClick={handleSignOut}>
-              <SignOut size={16} />
-              {signOut.isPending ? "Signing out" : "Sign out"}
-            </DialogAction>
-          </>
-        }
-      >
-        {signOut.isError ? (
-          <p className="app-dialog__error" role="alert">
-            {signOut.error.message}
-          </p>
-        ) : null}
-      </AppDialog>
     </main>
   );
 }

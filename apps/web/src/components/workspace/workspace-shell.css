@@ -81,21 +81,6 @@
   margin-left: auto;
 }
 
-.workspace-shell__link {
-  align-items: center;
-  color: var(--workspace-muted-bright);
-  display: inline-flex;
-  font-size: 12px;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 8px;
-  transition: color 180ms ease;
-}
-
-.workspace-shell__link:hover {
-  color: var(--workspace-ink);
-}
-
 .workspace-shell__frame {
   background: var(--workspace-panel);
   border: 1px solid var(--workspace-line);
