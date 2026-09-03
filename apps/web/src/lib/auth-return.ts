@@ -53,6 +53,18 @@ export function rememberAuthReturnPath(path: string | null | undefined): void {
 }
 
 /**
+ * Reports whether a return destination is pending without clearing it.
+ *
+ * Lets a route guard yield to the OAuth callback as the sole redirect
+ * authority while the cookie is still in play.
+ *
+ * @returns True when a valid return path is waiting to be consumed.
+ */
+export function hasPendingAuthReturnPath(): boolean {
+  return safeInternalPath(readCookie(AUTH_RETURN_COOKIE)) !== null;
+}
+
+/**
  * Reads and clears the pending post-sign-in return destination.
  *
  * @returns The validated return path, or null when none is pending.

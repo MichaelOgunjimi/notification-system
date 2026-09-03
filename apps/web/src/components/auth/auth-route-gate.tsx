@@ -7,7 +7,7 @@ import { useSession } from "@beaco/auth/react";
 import { SessionRecovery } from "./session-recovery";
 import { postAuthDestination } from "@/lib/dashboard-route";
 import { readOAuthReturnPath } from "@/lib/oauth-return";
-import { safeInternalPath } from "@/lib/auth-return";
+import { hasPendingAuthReturnPath, safeInternalPath } from "@/lib/auth-return";
 import "./auth-route-gate.css";
 
 /**
@@ -21,21 +21,24 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const session = useSession();
   const userId = session.user?.id;
-  const completingOAuthConnection =
+  // On the OAuth callback route the callback component is the sole redirect
+  // authority; the gate must not race it with its own `router.replace`,
+  // especially once a pending return path has been read and cleared.
+  const callbackOwnsRedirect =
     typeof window !== "undefined" &&
     window.location.pathname === "/auth/callback" &&
-    readOAuthReturnPath() !== null;
+    (readOAuthReturnPath() !== null || hasPendingAuthReturnPath());
 
   useEffect(() => {
-    if (!userId || completingOAuthConnection) return;
+    if (!userId || callbackOwnsRedirect) return;
     const requestedNext =
       typeof window === "undefined"
         ? null
         : safeInternalPath(new URLSearchParams(window.location.search).get("next"));
     router.replace(requestedNext ?? postAuthDestination(userId));
-  }, [completingOAuthConnection, router, userId]);
+  }, [callbackOwnsRedirect, router, userId]);
 
-  if (session.status === "loading" || (session.user && !completingOAuthConnection)) {
+  if (session.status === "loading" || (session.user && !callbackOwnsRedirect)) {
     return (
       <main className="auth-route-gate" aria-live="polite">
         <SpinnerGap size={16} className="animate-spin" /> Restoring your workspace
@@ -47,7 +50,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     return <SessionRecovery fullPage onRetry={() => void session.refresh()} />;
   }
 
-  if (session.user && completingOAuthConnection) return children;
+  if (session.user && callbackOwnsRedirect) return children;
 
   return children;
 }
