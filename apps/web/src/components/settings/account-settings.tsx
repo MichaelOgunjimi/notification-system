@@ -92,170 +92,155 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
           <p>Personal control</p>
           <h1>Account settings</h1>
           <span>Manage the identity Beaco shows and the providers trusted for sign-in.</span>
+          <span className="account-settings__id">
+            Account ID <code>{user.id}</code>
+          </span>
         </div>
-        <div className="account-settings__identity-mark" aria-hidden="true">
-          {user.avatarUrl ? (
-            <Image unoptimized src={user.avatarUrl} alt="" width={64} height={64} />
-          ) : (
-            <UserCircle size={32} />
-          )}
-        </div>
+        <span className="account-settings__tag">
+          <UserCircle size={15} />
+          <span>{user.email}</span>
+        </span>
       </header>
 
-      <div className="account-settings__layout">
-        <nav className="account-settings__nav" aria-label="Account settings sections">
-          <a href="#profile" data-active="true">
+      <nav className="account-settings__nav" aria-label="Account settings sections">
+        <a href="#profile">01 Profile</a>
+        <a href="#emails">02 Emails</a>
+        <a href="#connections">03 Connections</a>
+      </nav>
+
+      <div className="account-settings__sections">
+        <section id="profile" className="account-settings__section">
+          <div className="account-settings__section-heading">
             <span>01</span>
-            Profile
-          </a>
-          <a href="#emails">
-            <span>02</span>
-            Emails
-          </a>
-          <a href="#connections">
-            <span>03</span>
-            Connections
-          </a>
-          <div>
-            <small>Account ID</small>
-            <code>{user.id}</code>
-          </div>
-        </nav>
-
-        <div className="account-settings__content">
-          <section id="profile" className="account-settings__section">
-            <div className="account-settings__section-heading">
-              <span>01</span>
-              <div>
-                <h2>Public profile</h2>
-                <p>Display name and avatar. Manage sign-in emails in the section below.</p>
-              </div>
+            <div>
+              <h2>Public profile</h2>
+              <p>Display name and avatar. Manage sign-in emails in the section below.</p>
             </div>
+          </div>
 
-            <form className="account-settings__form" onSubmit={handleProfileSubmit}>
-              <label htmlFor={nameId}>
-                Display name
-                <span>Used in navigation, ownership, and activity records.</span>
-              </label>
+          <form className="account-settings__form" onSubmit={handleProfileSubmit}>
+            <label htmlFor={nameId}>
+              Display name
+              <span>Used in navigation, ownership, and activity records.</span>
+            </label>
+            <input
+              id={nameId}
+              name="name"
+              value={name}
+              autoComplete="name"
+              maxLength={255}
+              onChange={(event) => {
+                setName(event.target.value);
+                setValidationError(null);
+                profile.reset();
+              }}
+            />
+
+            <label htmlFor={avatarId}>
+              Avatar URL
+              <span>
+                Optional absolute image URL. Provider images are copied only as a fallback.
+              </span>
+            </label>
+            <div className="account-settings__avatar-field">
+              <span aria-hidden="true">
+                {user.avatarUrl ? (
+                  <Image unoptimized src={user.avatarUrl} alt="" width={38} height={38} />
+                ) : (
+                  <UserCircle size={21} />
+                )}
+              </span>
               <input
-                id={nameId}
-                name="name"
-                value={name}
-                autoComplete="name"
-                maxLength={255}
+                id={avatarId}
+                name="avatarUrl"
+                inputMode="url"
+                value={avatarUrl}
+                placeholder="https://images.example.com/avatar.png"
                 onChange={(event) => {
-                  setName(event.target.value);
+                  setAvatarUrl(event.target.value);
                   setValidationError(null);
                   profile.reset();
                 }}
               />
-
-              <label htmlFor={avatarId}>
-                Avatar URL
-                <span>
-                  Optional absolute image URL. Provider images are copied only as a fallback.
-                </span>
-              </label>
-              <div className="account-settings__avatar-field">
-                <span aria-hidden="true">
-                  {user.avatarUrl ? (
-                    <Image unoptimized src={user.avatarUrl} alt="" width={38} height={38} />
-                  ) : (
-                    <UserCircle size={21} />
-                  )}
-                </span>
-                <input
-                  id={avatarId}
-                  name="avatarUrl"
-                  inputMode="url"
-                  value={avatarUrl}
-                  placeholder="https://images.example.com/avatar.png"
-                  onChange={(event) => {
-                    setAvatarUrl(event.target.value);
-                    setValidationError(null);
-                    profile.reset();
-                  }}
-                />
-              </div>
-
-              {validationError || profile.isError ? (
-                <p className="account-settings__message" data-tone="error" role="alert">
-                  <WarningCircle size={15} />
-                  {validationError ?? profile.error?.message}
-                </p>
-              ) : null}
-              {profile.isSuccess ? (
-                <p className="account-settings__message" data-tone="success" role="status">
-                  <Check size={15} weight="bold" /> Profile saved
-                </p>
-              ) : null}
-
-              <div className="account-settings__form-actions">
-                <button type="submit" disabled={!profileChanged || profile.isPending}>
-                  {profile.isPending ? <SpinnerGap size={15} className="animate-spin" /> : null}
-                  {profile.isPending ? "Saving" : "Save profile"}
-                </button>
-                <span>Changes update every Beaco workspace.</span>
-              </div>
-            </form>
-          </section>
-
-          <EmailAddressesSection />
-
-          <section id="connections" className="account-settings__section">
-            <div className="account-settings__section-heading">
-              <span>03</span>
-              <div>
-                <h2>Connected accounts</h2>
-                <p>Link external identities without exposing provider tokens to the browser.</p>
-              </div>
             </div>
 
-            <div className="account-settings__provider">
-              <span className="account-settings__provider-icon">
-                <GithubLogo size={24} weight="fill" />
-              </span>
-              <div className="account-settings__provider-copy">
-                <strong>GitHub</strong>
-                {connections.isPending ? (
-                  <small>Checking connection</small>
-                ) : githubConnection ? (
-                  <small>
-                    @{githubConnection.providerUsername ?? "connected"}
-                    {githubConnection.providerEmail ? ` · ${githubConnection.providerEmail}` : ""}
-                  </small>
-                ) : (
-                  <small>Not connected</small>
-                )}
-              </div>
+            {validationError || profile.isError ? (
+              <p className="account-settings__message" data-tone="error" role="alert">
+                <WarningCircle size={15} />
+                {validationError ?? profile.error?.message}
+              </p>
+            ) : null}
+            {profile.isSuccess ? (
+              <p className="account-settings__message" data-tone="success" role="status">
+                <Check size={15} weight="bold" /> Profile saved
+              </p>
+            ) : null}
+
+            <div className="account-settings__form-actions">
+              <span>Changes update every Beaco workspace.</span>
+              <button type="submit" disabled={!profileChanged || profile.isPending}>
+                {profile.isPending ? <SpinnerGap size={15} className="animate-spin" /> : null}
+                {profile.isPending ? "Saving" : "Save profile"}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <EmailAddressesSection />
+
+        <section id="connections" className="account-settings__section">
+          <div className="account-settings__section-heading">
+            <span>03</span>
+            <div>
+              <h2>Connected accounts</h2>
+              <p>Link external identities without exposing provider tokens to the browser.</p>
+            </div>
+          </div>
+
+          <div className="account-settings__provider">
+            <span className="account-settings__provider-icon">
+              <GithubLogo size={24} weight="fill" />
+            </span>
+            <div className="account-settings__provider-copy">
+              <strong>GitHub</strong>
               {connections.isPending ? (
-                <SpinnerGap size={17} className="animate-spin" />
+                <small>Checking connection</small>
               ) : githubConnection ? (
-                <button type="button" onClick={() => setDisconnectOpen(true)}>
-                  <LinkBreak size={15} /> Disconnect
-                </button>
+                <small>
+                  @{githubConnection.providerUsername ?? "connected"}
+                  {githubConnection.providerEmail ? ` · ${githubConnection.providerEmail}` : ""}
+                </small>
               ) : (
-                <a
-                  href={authClient.getOAuthConnectUrl("github", {
-                    next: accountSettingsReturnPath(returnPath) ?? undefined,
-                  })}
-                >
-                  Connect GitHub <ArrowSquareOut size={15} />
-                </a>
+                <small>Not connected</small>
               )}
             </div>
+            {connections.isPending ? (
+              <SpinnerGap size={17} className="animate-spin" />
+            ) : githubConnection ? (
+              <button type="button" onClick={() => setDisconnectOpen(true)}>
+                <LinkBreak size={15} /> Disconnect
+              </button>
+            ) : (
+              <a
+                href={authClient.getOAuthConnectUrl("github", {
+                  next: accountSettingsReturnPath(returnPath) ?? undefined,
+                })}
+              >
+                Connect GitHub <ArrowSquareOut size={15} />
+              </a>
+            )}
+          </div>
 
-            {connections.isError ? (
-              <div className="account-settings__connection-error" role="alert">
-                <WarningCircle size={16} />
-                <span>{connections.error.message}</span>
-                <button type="button" onClick={() => void connections.refetch()}>
-                  Retry
-                </button>
-              </div>
-            ) : null}
-          </section>
-        </div>
+          {connections.isError ? (
+            <div className="account-settings__connection-error" role="alert">
+              <WarningCircle size={16} />
+              <span>{connections.error.message}</span>
+              <button type="button" onClick={() => void connections.refetch()}>
+                Retry
+              </button>
+            </div>
+          ) : null}
+        </section>
       </div>
 
       <AppDialog
