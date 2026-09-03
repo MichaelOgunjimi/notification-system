@@ -95,6 +95,78 @@ export type OrganizationInvitationCreate = Readonly<{
   role: OrganizationRole;
 }>;
 
+/** One page of a paginated collection returned by a control-plane endpoint. */
+export type Paginated<T> = Readonly<{
+  items: readonly T[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}>;
+
+/** Environment a project API key authenticates against. */
+export type ProjectApiKeyEnvironment = "test" | "live";
+
+/** Permission a project API key may be granted against the notification API. */
+export type ApiKeyScope =
+  | "events:read"
+  | "events:write"
+  | "templates:read"
+  | "templates:write"
+  | "notifications:read"
+  | "scheduled_events:read"
+  | "scheduled_events:write"
+  | "suppressions:read"
+  | "suppressions:write"
+  | "alerts:read"
+  | "alerts:write"
+  | "analytics:read"
+  | "dead_letters:read"
+  | "dead_letters:write"
+  | "usage:read"
+  | "audit:read"
+  | "settings:read";
+
+/**
+ * Project API key metadata. The plaintext key is never included here; it is
+ * returned once by {@link ControlPlaneClient.apiKeys.create} and `rotate`.
+ */
+export type ProjectApiKey = Readonly<{
+  id: string;
+  projectId: string;
+  keyPrefix: string;
+  name: string;
+  description: string | null;
+  environment: ProjectApiKeyEnvironment;
+  scopes: readonly ApiKeyScope[];
+  isActive: boolean;
+  rateLimitPerMin: number | null;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}>;
+
+/** Project API key including the one-time plaintext secret. */
+export type CreatedProjectApiKey = ProjectApiKey & Readonly<{ key: string }>;
+
+/** Fields accepted when creating a project API key. */
+export type ProjectApiKeyCreate = Readonly<{
+  name: string;
+  description?: string | null;
+  scopes: readonly ApiKeyScope[];
+  rateLimitPerMin?: number | null;
+  environment?: ProjectApiKeyEnvironment;
+}>;
+
+/** Editable fields accepted by the project API key update endpoint. */
+export type ProjectApiKeyUpdate = Readonly<{
+  name?: string;
+  description?: string | null;
+  scopes?: readonly ApiKeyScope[];
+  rateLimitPerMin?: number | null;
+}>;
+
 /**
  * Configuration for a browser-facing control-plane client.
  *
@@ -229,6 +301,63 @@ export interface ControlPlaneClient {
      */
     archive(projectId: string): Promise<Project>;
   };
+  /** Project API key operations; every request requires the `api_key:manage` capability. */
+  readonly apiKeys: {
+    /**
+     * Lists a project's API keys, newest and active first.
+     *
+     * @param projectId Stable project identifier.
+     * @param options Optional 1-based page and page size (1-100, default 20).
+     * @returns One page of API key metadata without plaintext secrets.
+     * @throws {ControlPlaneError} When API key management access is unavailable.
+     */
+    list(
+      projectId: string,
+      options?: { page?: number; perPage?: number },
+    ): Promise<Paginated<ProjectApiKey>>;
+    /**
+     * Creates a project API key.
+     *
+     * @param projectId Stable project identifier.
+     * @param input Name, scopes (at least one), and optional description, rate limit, environment.
+     * @returns The new key including its one-time plaintext secret.
+     * @throws {ControlPlaneError} When validation or authorization fails.
+     */
+    create(projectId: string, input: ProjectApiKeyCreate): Promise<CreatedProjectApiKey>;
+    /**
+     * Updates a project API key's name, description, scopes, or rate limit.
+     *
+     * @param projectId Stable project identifier.
+     * @param apiKeyId Stable API key identifier.
+     * @param changes Fields to update; omitted fields remain unchanged.
+     * @returns Updated API key metadata.
+     * @throws {ControlPlaneError} When the key is revoked or access is denied.
+     */
+    update(
+      projectId: string,
+      apiKeyId: string,
+      changes: ProjectApiKeyUpdate,
+    ): Promise<ProjectApiKey>;
+    /**
+     * Revokes a project API key. The record is retained for audit history.
+     *
+     * @param projectId Stable project identifier.
+     * @param apiKeyId Stable API key identifier.
+     * @returns Promise resolved after revocation succeeds.
+     * @throws {ControlPlaneError} When the key cannot be managed.
+     */
+    revoke(projectId: string, apiKeyId: string): Promise<void>;
+    /**
+     * Rotates a project API key: revokes the current key and issues a
+     * replacement carrying the same configuration.
+     *
+     * @param projectId Stable project identifier.
+     * @param apiKeyId Stable identifier of the key to rotate.
+     * @returns The replacement key including its one-time plaintext secret.
+     * @throws {ControlPlaneError} When the key is already revoked or access is denied.
+     */
+    rotate(projectId: string, apiKeyId: string): Promise<CreatedProjectApiKey>;
+  };
 }
 
 /** Raw organization payload returned by the FastAPI control-plane endpoint. */
@@ -279,3 +408,32 @@ export type ApiOrganizationInvitation = {
   revoked_at: string | null;
   created_at: string;
 };
+
+/** Raw paginated collection envelope returned by FastAPI. */
+export type ApiPaginated<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+};
+
+/** Raw project API key payload returned by FastAPI. */
+export type ApiProjectApiKey = {
+  id: string;
+  project_id: string;
+  key_prefix: string;
+  name: string;
+  description: string | null;
+  environment: ProjectApiKeyEnvironment;
+  scopes: ApiKeyScope[];
+  is_active: boolean;
+  rate_limit_per_min: number | null;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
+
+/** Raw project API key payload including the one-time plaintext secret. */
+export type ApiCreatedProjectApiKey = ApiProjectApiKey & { key: string };

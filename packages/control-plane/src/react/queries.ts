@@ -12,6 +12,8 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "organizations", organizationId, "members"] as const,
   invitations: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "invitations"] as const,
+  projectApiKeys: (projectId: string) =>
+    ["control-plane", "projects", projectId, "api-keys"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -77,6 +79,33 @@ export function organizationInvitationsQuery(client: ControlPlaneClient, organiz
   return queryOptions({
     queryKey: controlPlaneQueryKeys.invitations(organizationId),
     queryFn: () => client.invitations.list(organizationId),
+    retry: retryTransientFailure,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Builds query options for one page of a project's API keys.
+ *
+ * The page and size are part of the cache key so navigating pages does not
+ * discard previously loaded pages; `projectApiKeys(projectId)` remains the
+ * invalidation boundary for the whole list.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose API keys should be loaded.
+ * @param page 1-based page number.
+ * @param perPage Page size (1-100).
+ * @returns TanStack Query options scoped to the project, page, and size.
+ */
+export function projectApiKeysQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  page: number,
+  perPage: number,
+) {
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectApiKeys(projectId), page, perPage] as const,
+    queryFn: () => client.apiKeys.list(projectId, { page, perPage }),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });

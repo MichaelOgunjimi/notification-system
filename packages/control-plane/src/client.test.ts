@@ -181,4 +181,180 @@ describe("createControlPlaneClient", () => {
     ]);
     await expect(client.members.remove("organization-1", "membership-1")).resolves.toBeUndefined();
   });
+
+  it("lists project API keys as a camel-cased page", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "key-1",
+            project_id: "project-1",
+            key_prefix: "bea_live_1",
+            name: "Ingest",
+            description: null,
+            environment: "live",
+            scopes: ["events:write"],
+            is_active: true,
+            rate_limit_per_min: 1000,
+            created_at: "2026-09-02T09:00:00Z",
+            updated_at: "2026-09-02T09:00:00Z",
+            last_used_at: null,
+            revoked_at: null,
+          },
+        ],
+        total: 1,
+        page: 2,
+        per_page: 20,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.apiKeys.list("project-1", { page: 2, perPage: 20 })).resolves.toEqual({
+      items: [
+        {
+          id: "key-1",
+          projectId: "project-1",
+          keyPrefix: "bea_live_1",
+          name: "Ingest",
+          description: null,
+          environment: "live",
+          scopes: ["events:write"],
+          isActive: true,
+          rateLimitPerMin: 1000,
+          createdAt: "2026-09-02T09:00:00Z",
+          updatedAt: "2026-09-02T09:00:00Z",
+          lastUsedAt: null,
+          revokedAt: null,
+        },
+      ],
+      total: 1,
+      page: 2,
+      perPage: 20,
+      totalPages: 1,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/api-keys?page=2&per_page=20",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("creates a project API key and returns the one-time secret", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "key-2",
+          project_id: "project-1",
+          key_prefix: "bea_test_9",
+          name: "CI",
+          description: "Continuous integration",
+          environment: "test",
+          scopes: ["events:read", "events:write"],
+          is_active: true,
+          rate_limit_per_min: 500,
+          created_at: "2026-09-02T09:00:00Z",
+          updated_at: "2026-09-02T09:00:00Z",
+          last_used_at: null,
+          revoked_at: null,
+          key: "bea_test_9_secret",
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const created = await client.apiKeys.create("project-1", {
+      name: "CI",
+      description: "Continuous integration",
+      scopes: ["events:read", "events:write"],
+      rateLimitPerMin: 500,
+      environment: "test",
+    });
+
+    expect(created).toMatchObject({
+      id: "key-2",
+      key: "bea_test_9_secret",
+      keyPrefix: "bea_test_9",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/api-keys",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "CI",
+          description: "Continuous integration",
+          scopes: ["events:read", "events:write"],
+          rate_limit_per_min: 500,
+          environment: "test",
+        }),
+      }),
+    );
+  });
+
+  it("updates only the supplied API key fields and revokes with an empty response", async () => {
+    const fetcher = fetchAdapter((input, init) => {
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      return Response.json({
+        id: "key-1",
+        project_id: "project-1",
+        key_prefix: "bea_live_1",
+        name: "Renamed",
+        description: null,
+        environment: "live",
+        scopes: ["events:read"],
+        is_active: true,
+        rate_limit_per_min: 1000,
+        created_at: "2026-09-02T09:00:00Z",
+        updated_at: "2026-09-03T09:00:00Z",
+        last_used_at: null,
+        revoked_at: null,
+      });
+    });
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.apiKeys.update("project-1", "key-1", {
+      name: "Renamed",
+      scopes: ["events:read"],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/api-keys/key-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Renamed", scopes: ["events:read"] }),
+      }),
+    );
+
+    await expect(client.apiKeys.revoke("project-1", "key-1")).resolves.toBeUndefined();
+  });
+
+  it("rotates a project API key through the dedicated endpoint", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        id: "key-3",
+        project_id: "project-1",
+        key_prefix: "bea_live_5",
+        name: "Ingest",
+        description: null,
+        environment: "live",
+        scopes: ["events:write"],
+        is_active: true,
+        rate_limit_per_min: 1000,
+        created_at: "2026-09-03T09:00:00Z",
+        updated_at: "2026-09-03T09:00:00Z",
+        last_used_at: null,
+        revoked_at: null,
+        key: "bea_live_5_secret",
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.apiKeys.rotate("project-1", "key-1")).resolves.toMatchObject({
+      id: "key-3",
+      key: "bea_live_5_secret",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/api-keys/key-1/rotate",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });

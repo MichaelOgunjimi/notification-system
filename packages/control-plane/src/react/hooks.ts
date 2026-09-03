@@ -1,10 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   OrganizationInvitationCreate,
   OrganizationRole,
   OrganizationUpdate,
+  ProjectApiKeyCreate,
+  ProjectApiKeyUpdate,
   ProjectCreate,
 } from "../types";
 import { useControlPlaneClient } from "./provider";
@@ -13,6 +15,7 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  projectApiKeysQuery,
   projectsQuery,
 } from "./queries";
 
@@ -203,6 +206,105 @@ export function useCreateProject() {
     onSuccess: (_project, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projects(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Loads one page of a project's API keys, keeping the previous page visible
+ * while the next page loads.
+ *
+ * @param projectId Project whose API keys should be loaded; null disables the query.
+ * @param page 1-based page number.
+ * @param perPage Page size (1-100).
+ * @returns TanStack Query result containing a page of API key metadata.
+ */
+export function useProjectApiKeys(projectId: string | null, page = 1, perPage = 20) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectApiKeysQuery(client, projectId ?? "pending", page, perPage),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Creates a project API key and refreshes the project's API key cache.
+ *
+ * @returns TanStack mutation accepting a project identifier and key fields;
+ * resolves with the one-time plaintext secret.
+ */
+export function useCreateProjectApiKey() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: ProjectApiKeyCreate }) =>
+      client.apiKeys.create(projectId, input),
+    onSuccess: (_apiKey, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectApiKeys(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Updates a project API key's name, description, scopes, or rate limit.
+ *
+ * @returns TanStack mutation accepting the project and key identifiers and field changes.
+ */
+export function useUpdateProjectApiKey() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      apiKeyId,
+      changes,
+    }: {
+      projectId: string;
+      apiKeyId: string;
+      changes: ProjectApiKeyUpdate;
+    }) => client.apiKeys.update(projectId, apiKeyId, changes),
+    onSuccess: (_apiKey, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectApiKeys(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Revokes a project API key and refreshes the project's API key cache.
+ *
+ * @returns TanStack mutation accepting the project and key identifiers.
+ */
+export function useRevokeProjectApiKey() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, apiKeyId }: { projectId: string; apiKeyId: string }) =>
+      client.apiKeys.revoke(projectId, apiKeyId),
+    onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectApiKeys(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Rotates a project API key and refreshes the project's API key cache.
+ *
+ * @returns TanStack mutation accepting the project and key identifiers;
+ * resolves with the replacement key's one-time plaintext secret.
+ */
+export function useRotateProjectApiKey() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, apiKeyId }: { projectId: string; apiKeyId: string }) =>
+      client.apiKeys.rotate(projectId, apiKeyId),
+    onSuccess: (_apiKey, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectApiKeys(variables.projectId),
       }),
   });
 }

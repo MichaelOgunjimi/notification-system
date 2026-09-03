@@ -5,6 +5,7 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  projectApiKeysQuery,
   projectsQuery,
 } from "./queries";
 
@@ -31,6 +32,19 @@ describe("control-plane queries", () => {
         create: vi.fn(),
         archive: vi.fn(),
       },
+      apiKeys: {
+        list: vi.fn().mockResolvedValue({
+          items: [],
+          total: 0,
+          page: 1,
+          perPage: 20,
+          totalPages: 0,
+        }),
+        create: vi.fn(),
+        update: vi.fn(),
+        revoke: vi.fn(),
+        rotate: vi.fn(),
+      },
     };
 
     const organizations = organizationsQuery(client);
@@ -50,5 +64,31 @@ describe("control-plane queries", () => {
     expect(client.projects.list).toHaveBeenCalledWith("organization-1");
     expect(client.members.list).toHaveBeenCalledWith("organization-1");
     expect(client.invitations.list).toHaveBeenCalledWith("organization-1");
+  });
+
+  it("scopes project API key queries by project and page", async () => {
+    const client = {
+      apiKeys: {
+        list: vi.fn().mockResolvedValue({
+          items: [],
+          total: 0,
+          page: 3,
+          perPage: 10,
+          totalPages: 0,
+        }),
+        create: vi.fn(),
+        update: vi.fn(),
+        revoke: vi.fn(),
+        rotate: vi.fn(),
+      },
+    } as unknown as ControlPlaneClient;
+
+    const first = projectApiKeysQuery(client, "project-1", 1, 20);
+    const third = projectApiKeysQuery(client, "project-1", 3, 10);
+
+    expect(first.queryKey).toEqual([...controlPlaneQueryKeys.projectApiKeys("project-1"), 1, 20]);
+    expect(third.queryKey).not.toEqual(first.queryKey);
+    await third.queryFn?.({} as never);
+    expect(client.apiKeys.list).toHaveBeenCalledWith("project-1", { page: 3, perPage: 10 });
   });
 });

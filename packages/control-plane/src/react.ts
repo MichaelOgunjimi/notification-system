@@ -1,14 +1,19 @@
 export {
   useCreateProject,
+  useCreateProjectApiKey,
   useInviteOrganizationMember,
   useOrganizationInvitations,
   useOrganizationMembers,
   useOrganizations,
+  useProjectApiKeys,
   useProjects,
   useRemoveOrganizationMember,
   useRevokeOrganizationInvitation,
+  useRevokeProjectApiKey,
+  useRotateProjectApiKey,
   useUpdateOrganization,
   useUpdateOrganizationMemberRole,
+  useUpdateProjectApiKey,
 } from "./react/hooks";
 export {
   ControlPlaneProvider,
@@ -20,5 +25,6 @@ export {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  projectApiKeysQuery,
   projectsQuery,
 } from "./react/queries";
