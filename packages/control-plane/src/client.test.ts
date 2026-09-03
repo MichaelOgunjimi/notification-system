@@ -175,6 +175,41 @@ describe("createControlPlaneClient", () => {
     );
   });
 
+  it("updates and archives a project through the application boundary", async () => {
+    const fetcher = fetchAdapter((input, init) => {
+      const project = {
+        id: "project-1",
+        organization_id: "organization-1",
+        name: init?.method === "DELETE" ? "Delivery" : "Renamed",
+        slug: "delivery",
+        description: init?.method === "DELETE" ? null : "Now with a note",
+        created_by_user_id: "user-1",
+        created_at: "2026-09-01T09:00:00Z",
+        updated_at: "2026-09-03T09:00:00Z",
+        archived_at: init?.method === "DELETE" ? "2026-09-03T09:00:00Z" : null,
+      };
+      return Response.json(project);
+    });
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.projects.update("project-1", { name: "Renamed", description: "Now with a note" }),
+    ).resolves.toMatchObject({ id: "project-1", name: "Renamed", description: "Now with a note" });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Renamed", description: "Now with a note" }),
+      }),
+    );
+
+    await expect(client.projects.archive("project-1")).resolves.toMatchObject({ id: "project-1" });
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "/api/control-plane/projects/project-1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
   it("maps member and invitation records and handles empty delete responses", async () => {
     const fetcher = fetchAdapter((input, init) => {
       const path = String(input);

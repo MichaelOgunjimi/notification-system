@@ -22,4 +22,5 @@ export type {
   ProjectApiKeyStatus,
   ProjectApiKeyUpdate,
   ProjectCreate,
+  ProjectUpdate,
 } from "./types";

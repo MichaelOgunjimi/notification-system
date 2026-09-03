@@ -2,6 +2,7 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   Buildings,
   Code,
+  FolderSimple,
   Key,
   ListBullets,
   PaperPlaneTilt,
@@ -37,6 +38,7 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
 
 /** Configuration surfaces scoped to the active project and its organization. */
 export const CONFIGURE_NAV: readonly DashboardNavItem[] = [
+  { label: "Project", icon: FolderSimple, path: "settings/project", capability: "project:manage" },
   { label: "Organization", icon: Buildings, path: "settings/organization" },
   {
     label: "API keys",

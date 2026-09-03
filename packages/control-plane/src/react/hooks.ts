@@ -10,6 +10,7 @@ import type {
   ProjectApiKeyListOptions,
   ProjectApiKeyUpdate,
   ProjectCreate,
+  ProjectUpdate,
 } from "../types";
 import { useControlPlaneClient } from "./provider";
 import {
@@ -221,6 +222,48 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: ({ organizationId, project }: { organizationId: string; project: ProjectCreate }) =>
       client.projects.create(organizationId, project),
+    onSuccess: (_project, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projects(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Updates a project's profile and refreshes the organization's project cache.
+ *
+ * @returns TanStack mutation accepting the organization and project identifiers and field changes.
+ */
+export function useUpdateProject() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      changes,
+    }: {
+      organizationId: string;
+      projectId: string;
+      changes: ProjectUpdate;
+    }) => client.projects.update(projectId, changes),
+    onSuccess: (_project, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projects(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Archives a project and refreshes the organization's project cache.
+ *
+ * @returns TanStack mutation accepting the organization and project identifiers.
+ */
+export function useArchiveProject() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId }: { organizationId: string; projectId: string }) =>
+      client.projects.archive(projectId),
     onSuccess: (_project, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projects(variables.organizationId),

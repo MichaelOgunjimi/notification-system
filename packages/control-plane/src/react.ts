@@ -1,5 +1,6 @@
 export {
   useCreateOrganization,
+  useArchiveProject,
   useCreateProject,
   useCreateProjectApiKey,
   useInviteOrganizationMember,
@@ -13,6 +14,7 @@ export {
   useRevokeProjectApiKey,
   useRotateProjectApiKey,
   useUpdateOrganization,
+  useUpdateProject,
   useUpdateOrganizationMemberRole,
   useUpdateProjectApiKey,
 } from "./react/hooks";

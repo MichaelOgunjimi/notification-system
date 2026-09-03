@@ -77,6 +77,13 @@ export type ProjectCreate = Readonly<{
   description?: string | null;
 }>;
 
+/** Editable fields accepted by the project settings endpoint. */
+export type ProjectUpdate = Readonly<{
+  name?: string;
+  slug?: string;
+  description?: string | null;
+}>;
+
 /** Organization member visible to users allowed to inspect membership. */
 export type OrganizationMember = Readonly<{
   id: string;
@@ -325,6 +332,15 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When capability, validation, or transport fails.
      */
     create(organizationId: string, project: ProjectCreate): Promise<Project>;
+    /**
+     * Updates a project's name, slug, or description.
+     *
+     * @param projectId Stable project identifier.
+     * @param changes Fields to update; omitted fields remain unchanged.
+     * @returns Updated project record.
+     * @throws {ControlPlaneError} When the slug conflicts or `project:manage` is unavailable.
+     */
+    update(projectId: string, changes: ProjectUpdate): Promise<Project>;
     /**
      * Archives a project and removes it from active listings.
      *

@@ -31,6 +31,7 @@ describe("control-plane queries", () => {
       projects: {
         list: vi.fn().mockResolvedValue([]),
         create: vi.fn(),
+        update: vi.fn(),
         archive: vi.fn(),
       },
       apiKeys: {

@@ -207,6 +207,18 @@ class HttpControlPlaneClient implements ControlPlaneClient {
           project,
         ),
       ),
+    update: async (
+      projectId: string,
+      changes: Parameters<ControlPlaneClient["projects"]["update"]>[1],
+    ): Promise<Project> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.slug !== undefined) body.slug = changes.slug;
+      if (changes.description !== undefined) body.description = changes.description;
+      return mapProject(
+        await this.request<ApiProject>(`/projects/${encodeURIComponent(projectId)}`, "PATCH", body),
+      );
+    },
     archive: async (projectId: string): Promise<Project> =>
       mapProject(
         await this.request<ApiProject>(`/projects/${encodeURIComponent(projectId)}`, "DELETE"),
