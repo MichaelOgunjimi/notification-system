@@ -23,7 +23,12 @@ async function remapJson(
 ): Promise<Response> {
   if (!response.ok) return response;
   const payload = await response.json();
-  return NextResponse.json(map(payload));
+  // Preserve the upstream status (e.g. 201) and the refreshed session cookies
+  // written by forwardAuthenticated.
+  return NextResponse.json(map(payload), {
+    status: response.status,
+    headers: response.headers,
+  });
 }
 
 /**

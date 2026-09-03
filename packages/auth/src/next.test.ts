@@ -350,6 +350,58 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("keeps refreshed session cookies when camel-casing an email list", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          Response.json({
+            access_token: "renewed-access",
+            refresh_token: "renewed-refresh",
+            token_type: "bearer",
+          }),
+        );
+      }
+      if (fetcher.mock.calls.length === 1) {
+        return Promise.resolve(Response.json({ detail: "Expired" }, { status: 401 }));
+      }
+      return Promise.resolve(
+        Response.json([
+          {
+            id: "email-1",
+            email: "second@example.com",
+            is_primary: false,
+            verified_at: null,
+            created_at: "2026-09-03T09:00:00Z",
+          },
+        ]),
+      );
+    });
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher as typeof globalThis.fetch,
+    });
+
+    const response = await auth.listEmailAddresses(
+      request(
+        "/api/auth/me/emails",
+        "beaco_access_token=expired; beaco_refresh_token=refresh-token",
+      ),
+    );
+
+    expect(response.headers.get("set-cookie")).toContain("beaco_access_token=renewed-access");
+    await expect(response.json()).resolves.toEqual([
+      {
+        id: "email-1",
+        email: "second@example.com",
+        isPrimary: false,
+        verifiedAt: null,
+        createdAt: "2026-09-03T09:00:00Z",
+      },
+    ]);
+  });
+
   it("updates and normalizes a user profile through the cookie boundary", async () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({
