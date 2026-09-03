@@ -18,6 +18,8 @@ type FormDialogProps = Readonly<{
   submitLabel: string;
   submitDisabled?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** Widens the surface for denser forms (e.g. a scope grid). */
+  wide?: boolean;
   /** Form fields; rendered inside the scrolling `<form>` body. */
   children: ReactNode;
 }>;
@@ -42,6 +44,7 @@ export function FormDialog({
   submitLabel,
   submitDisabled = false,
   onSubmit,
+  wide = false,
   children,
 }: FormDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -53,6 +56,16 @@ export function FormDialog({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    // A modal <dialog> does not stop the page behind it from scrolling.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   function requestClose() {
     if (!busy) onOpenChange(false);
   }
@@ -61,6 +74,7 @@ export function FormDialog({
     <dialog
       ref={dialogRef}
       className="form-dialog"
+      data-wide={wide || undefined}
       aria-busy={busy || undefined}
       onCancel={(event) => {
         event.preventDefault();

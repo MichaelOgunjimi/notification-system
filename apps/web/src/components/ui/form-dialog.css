@@ -6,7 +6,11 @@
   max-height: calc(100dvh - 32px);
   max-width: calc(100vw - 32px);
   padding: 0;
-  width: 460px;
+  width: 480px;
+}
+
+.form-dialog[data-wide] {
+  width: 640px;
 }
 
 .form-dialog::backdrop {
@@ -104,6 +108,7 @@
   gap: 6px;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 18px 24px 22px;
 }
 

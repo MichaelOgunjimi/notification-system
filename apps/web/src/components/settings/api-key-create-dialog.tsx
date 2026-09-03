@@ -90,6 +90,7 @@ export function ApiKeyCreateDialog({
   return (
     <FormDialog
       open={open}
+      wide
       onOpenChange={(next) => {
         if (!createKey.isPending) onOpenChange(next);
       }}

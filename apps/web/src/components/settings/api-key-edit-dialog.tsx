@@ -88,6 +88,7 @@ export function ApiKeyEditDialog({
   return (
     <FormDialog
       open={open}
+      wide
       onOpenChange={(next) => {
         if (!updateKey.isPending) onOpenChange(next);
       }}
