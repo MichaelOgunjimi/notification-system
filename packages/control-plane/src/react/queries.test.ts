@@ -28,6 +28,7 @@ describe("control-plane queries", () => {
         create: vi.fn(),
         revoke: vi.fn(),
         accept: vi.fn(),
+        preview: vi.fn(),
       },
       projects: {
         list: vi.fn().mockResolvedValue([]),

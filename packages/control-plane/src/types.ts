@@ -113,6 +113,14 @@ export type OrganizationInvitationCreate = Readonly<{
   role: OrganizationRole;
 }>;
 
+/** Unauthenticated description of a pending invitation, resolved from its token. */
+export type OrganizationInvitationPreview = Readonly<{
+  organizationName: string;
+  role: OrganizationRole;
+  inviterName: string;
+  expiresAt: string;
+}>;
+
 /** One page of a paginated collection returned by a control-plane endpoint. */
 export type Paginated<T> = Readonly<{
   items: readonly T[];
@@ -321,6 +329,15 @@ export interface ControlPlaneClient {
      * issued to an email the current user has not verified.
      */
     accept(token: string): Promise<void>;
+    /**
+     * Describes a pending invitation from its token, without a session.
+     *
+     * @param token One-time invitation token from the emailed accept link.
+     * @returns The target organization name, granted role, and inviter name.
+     * @throws {ControlPlaneError} When the token is unknown, revoked, accepted,
+     * or expired (404).
+     */
+    preview(token: string): Promise<OrganizationInvitationPreview>;
   };
   /** Project operations scoped by organization membership. */
   readonly projects: {
@@ -462,6 +479,14 @@ export type ApiOrganizationInvitation = {
   accepted_at: string | null;
   revoked_at: string | null;
   created_at: string;
+};
+
+/** Raw invitation preview payload returned by FastAPI. */
+export type ApiOrganizationInvitationPreview = {
+  organization_name: string;
+  role: OrganizationRole;
+  inviter_name: string;
+  expires_at: string;
 };
 
 /** Raw paginated collection envelope returned by FastAPI. */

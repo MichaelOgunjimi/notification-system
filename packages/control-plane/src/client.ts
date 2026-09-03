@@ -2,6 +2,7 @@ import type {
   ApiCreatedProjectApiKey,
   ApiOrganization,
   ApiOrganizationInvitation,
+  ApiOrganizationInvitationPreview,
   ApiOrganizationMember,
   ApiPaginated,
   ApiProject,
@@ -11,6 +12,7 @@ import type {
   CreatedProjectApiKey,
   Organization,
   OrganizationInvitation,
+  OrganizationInvitationPreview,
   OrganizationMember,
   Paginated,
   Project,
@@ -86,6 +88,17 @@ function mapApiKey(apiKey: ApiProjectApiKey): ProjectApiKey {
 
 function mapCreatedApiKey(apiKey: ApiCreatedProjectApiKey): CreatedProjectApiKey {
   return { ...mapApiKey(apiKey), key: apiKey.key };
+}
+
+function mapInvitationPreview(
+  preview: ApiOrganizationInvitationPreview,
+): OrganizationInvitationPreview {
+  return {
+    organizationName: preview.organization_name,
+    role: preview.role,
+    inviterName: preview.inviter_name,
+    expiresAt: preview.expires_at,
+  };
 }
 
 function mapInvitation(invitation: ApiOrganizationInvitation): OrganizationInvitation {
@@ -190,6 +203,12 @@ class HttpControlPlaneClient implements ControlPlaneClient {
     accept: async (token: string): Promise<void> => {
       await this.request<void>("/invitations/accept", "POST", { token });
     },
+    preview: async (token: string): Promise<OrganizationInvitationPreview> =>
+      mapInvitationPreview(
+        await this.get<ApiOrganizationInvitationPreview>(
+          `/invitations/${encodeURIComponent(token)}`,
+        ),
+      ),
   };
 
   readonly projects = {

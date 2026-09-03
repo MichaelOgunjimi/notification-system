@@ -1,5 +1,6 @@
 export {
   useAcceptInvitation,
+  useInvitationPreview,
   useCreateOrganization,
   useArchiveOrganization,
   useArchiveProject,
@@ -27,6 +28,7 @@ export {
 } from "./react/provider";
 export {
   controlPlaneQueryKeys,
+  invitationPreviewQuery,
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,

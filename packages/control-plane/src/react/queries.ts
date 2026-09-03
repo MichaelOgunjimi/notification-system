@@ -12,6 +12,7 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "organizations", organizationId, "members"] as const,
   invitations: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "invitations"] as const,
+  invitationPreview: (token: string) => ["control-plane", "invitations", "preview", token] as const,
   projectApiKeys: (projectId: string) =>
     ["control-plane", "projects", projectId, "api-keys"] as const,
 };
@@ -79,6 +80,25 @@ export function organizationInvitationsQuery(client: ControlPlaneClient, organiz
   return queryOptions({
     queryKey: controlPlaneQueryKeys.invitations(organizationId),
     queryFn: () => client.invitations.list(organizationId),
+    retry: retryTransientFailure,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Builds query options for an invitation preview resolved from its token.
+ *
+ * A 404 (unknown, revoked, accepted, or expired token) is not retried; the UI
+ * treats it as a dead link.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param token One-time invitation token from the emailed accept link.
+ * @returns TanStack Query options keyed by the token.
+ */
+export function invitationPreviewQuery(client: ControlPlaneClient, token: string) {
+  return queryOptions({
+    queryKey: controlPlaneQueryKeys.invitationPreview(token),
+    queryFn: () => client.invitations.preview(token),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });

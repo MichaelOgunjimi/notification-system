@@ -15,6 +15,7 @@ import type {
 import { useControlPlaneClient } from "./provider";
 import {
   controlPlaneQueryKeys,
+  invitationPreviewQuery,
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
@@ -224,6 +225,20 @@ export function useRevokeOrganizationInvitation() {
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.invitations(variables.organizationId),
       }),
+  });
+}
+
+/**
+ * Loads a description of a pending invitation from its token.
+ *
+ * @param token One-time invitation token; null or empty keeps the query disabled.
+ * @returns TanStack Query result with the organization name, role, and inviter.
+ */
+export function useInvitationPreview(token: string | null) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...invitationPreviewQuery(client, token ?? "pending"),
+    enabled: Boolean(token),
   });
 }
 

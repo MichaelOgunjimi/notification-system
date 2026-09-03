@@ -10,6 +10,7 @@ export type {
   OrganizationCreate,
   OrganizationInvitation,
   OrganizationInvitationCreate,
+  OrganizationInvitationPreview,
   OrganizationMember,
   OrganizationRole,
   OrganizationUpdate,

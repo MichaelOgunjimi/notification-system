@@ -278,6 +278,29 @@ describe("createControlPlaneClient", () => {
     );
   });
 
+  it("previews an invitation by token as a camel-cased record", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        organization_name: "Northstar",
+        role: "admin",
+        inviter_name: "Dana",
+        expires_at: "2026-09-10T09:00:00Z",
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.invitations.preview("invite-token-123")).resolves.toEqual({
+      organizationName: "Northstar",
+      role: "admin",
+      inviterName: "Dana",
+      expiresAt: "2026-09-10T09:00:00Z",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/invitations/invite-token-123",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("lists project API keys as a camel-cased page", async () => {
     const fetcher = fetchAdapter(() =>
       Response.json({
