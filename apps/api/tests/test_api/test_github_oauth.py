@@ -392,7 +392,7 @@ async def test_signed_in_user_can_connect_github_and_add_its_verified_email(
     await db.commit()
 
     connect_response = await client.get(
-        "/api/v1/oauth/github/connect",
+        "/api/v1/oauth/github/connect?next=/app/acme/web/settings/account",
         headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
         follow_redirects=False,
     )
@@ -400,6 +400,10 @@ async def test_signed_in_user_can_connect_github_and_add_its_verified_email(
     assert connect_response.status_code == 307
     state = parse_qs(urlparse(connect_response.headers["location"]).query)["state"][0]
     stored_state = mock_redis.setex.await_args.args[2]
+    assert json.loads(stored_state) == {
+        "connect_user_id": str(user.id),
+        "next": "/app/acme/web/settings/account",
+    }
     mock_redis.getdel.return_value = stored_state
     monkeypatch.setattr(
         github_oauth.github_provider,
@@ -421,6 +425,8 @@ async def test_signed_in_user_can_connect_github_and_add_its_verified_email(
     )
 
     assert callback_response.status_code == 307
+    callback_query = parse_qs(urlparse(callback_response.headers["location"]).query)
+    assert callback_query["next"] == ["/app/acme/web/settings/account"]
     account = (await db.execute(select(OAuthAccount))).scalar_one()
     assert account.user_id == user.id
     assert account.provider == "github"
