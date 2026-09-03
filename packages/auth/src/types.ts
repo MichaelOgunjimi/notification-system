@@ -96,6 +96,20 @@ export type OAuthConnection = Readonly<{
 }>;
 
 /**
+ * One email identity attached to the authenticated user.
+ *
+ * @property isPrimary Whether this is the account's canonical login/contact address.
+ * @property verifiedAt ISO timestamp once control of the address is confirmed, else null.
+ */
+export type EmailAddress = Readonly<{
+  id: string;
+  email: string;
+  isPrimary: boolean;
+  verifiedAt: string | null;
+  createdAt: string;
+}>;
+
+/**
  * OAuth code exchange payload returned from the frontend callback.
  *
  * @property code Authorization code issued by the provider.
@@ -171,6 +185,51 @@ export interface AuthClient {
    * @param provider Provider to disconnect.
    */
   disconnectOAuth(provider: OAuthProvider): Promise<void>;
+
+  /**
+   * Lists the email addresses attached to the authenticated account.
+   *
+   * @returns Email records, primary first.
+   */
+  listEmailAddresses(): Promise<EmailAddress[]>;
+
+  /**
+   * Adds an email address and sends its verification link.
+   *
+   * @param email Address to add; normalized server-side.
+   * @returns The new, still-unverified record.
+   */
+  addEmailAddress(email: string): Promise<EmailAddress>;
+
+  /**
+   * Resends the verification email for one pending address.
+   *
+   * @param emailId Identifier of the address to re-verify.
+   */
+  resendEmailVerification(emailId: string): Promise<void>;
+
+  /**
+   * Promotes one verified address to the account's primary.
+   *
+   * @param emailId Identifier of the verified address to promote.
+   * @returns The updated record.
+   */
+  setPrimaryEmailAddress(emailId: string): Promise<EmailAddress>;
+
+  /**
+   * Removes one non-primary address from the account.
+   *
+   * @param emailId Identifier of the address to remove.
+   */
+  removeEmailAddress(emailId: string): Promise<void>;
+
+  /**
+   * Confirms an address from the token in its verification email.
+   *
+   * @param token One-time token from the emailed link.
+   * @returns The now-verified record.
+   */
+  verifyEmailAddress(token: string): Promise<EmailAddress>;
 
   /**
    * Signs the current user out and clears the active session.

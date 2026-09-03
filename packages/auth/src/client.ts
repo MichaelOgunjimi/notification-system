@@ -2,6 +2,7 @@ import { authErrorFromResponse, authNetworkError } from "./error";
 import type {
   AuthClient,
   AuthClientOptions,
+  EmailAddress,
   MagicLinkReceipt,
   MagicLinkRequest,
   MagicLinkVerification,
@@ -152,6 +153,89 @@ class HttpAuthClient implements AuthClient {
     if (!response.ok) {
       throw await authErrorFromResponse(response, `We could not disconnect ${provider}.`);
     }
+  }
+
+  /**
+   * Lists the authenticated account's email addresses.
+   *
+   * @returns Email records, primary first.
+   */
+  async listEmailAddresses(): Promise<EmailAddress[]> {
+    return this.request<EmailAddress[]>(
+      "/me/emails",
+      { method: "GET" },
+      "We could not load your email addresses.",
+    );
+  }
+
+  /**
+   * Adds an email address and sends its verification link.
+   *
+   * @param email Address to add.
+   * @returns The new, still-unverified record.
+   */
+  async addEmailAddress(email: string): Promise<EmailAddress> {
+    return this.request<EmailAddress>(
+      "/me/emails",
+      { method: "POST", body: JSON.stringify({ email: email.trim().toLowerCase() }) },
+      "We could not add that email address.",
+    );
+  }
+
+  /**
+   * Resends the verification email for one pending address.
+   *
+   * @param emailId Identifier of the address to re-verify.
+   */
+  async resendEmailVerification(emailId: string): Promise<void> {
+    const response = await this.fetch(`/me/emails/${encodeURIComponent(emailId)}/resend`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw await authErrorFromResponse(response, "We could not resend the verification email.");
+    }
+  }
+
+  /**
+   * Promotes one verified address to the account's primary.
+   *
+   * @param emailId Identifier of the verified address to promote.
+   * @returns The updated record.
+   */
+  async setPrimaryEmailAddress(emailId: string): Promise<EmailAddress> {
+    return this.request<EmailAddress>(
+      `/me/emails/${encodeURIComponent(emailId)}/primary`,
+      { method: "POST" },
+      "We could not update your primary email address.",
+    );
+  }
+
+  /**
+   * Removes one non-primary address from the account.
+   *
+   * @param emailId Identifier of the address to remove.
+   */
+  async removeEmailAddress(emailId: string): Promise<void> {
+    const response = await this.fetch(`/me/emails/${encodeURIComponent(emailId)}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      throw await authErrorFromResponse(response, "We could not remove that email address.");
+    }
+  }
+
+  /**
+   * Confirms an address from the token in its verification email.
+   *
+   * @param token One-time token from the emailed link.
+   * @returns The now-verified record.
+   */
+  async verifyEmailAddress(token: string): Promise<EmailAddress> {
+    return this.request<EmailAddress>(
+      "/emails/verify",
+      { method: "POST", body: JSON.stringify({ token }) },
+      "This verification link could not be confirmed.",
+    );
   }
 
   /**

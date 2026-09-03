@@ -3,8 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthError } from "../error";
 import { useAuthClient } from "./provider";
-import { authMutationKeys, authQueryKeys, oauthConnectionsQuery, sessionQuery } from "./queries";
+import {
+  authMutationKeys,
+  authQueryKeys,
+  emailAddressesQuery,
+  oauthConnectionsQuery,
+  sessionQuery,
+} from "./queries";
 import type {
+  EmailAddress,
   Session,
   SessionStatus,
   MagicLinkReceipt,
@@ -128,6 +135,97 @@ export function useDisconnectOAuth() {
     mutationFn: (provider) => client.disconnectOAuth(provider),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: authQueryKeys.connections });
+    },
+  });
+}
+
+/**
+ * Loads the authenticated account's email addresses.
+ *
+ * @returns Query hook containing the email-address list.
+ */
+export function useEmailAddresses() {
+  const client = useAuthClient();
+  return useQuery(emailAddressesQuery(client));
+}
+
+function useEmailAddressMutation<TArgs, TResult>(
+  mutationKey: readonly unknown[],
+  mutationFn: (client: ReturnType<typeof useAuthClient>, args: TArgs) => Promise<TResult>,
+) {
+  const client = useAuthClient();
+  const queryClient = useQueryClient();
+  return useMutation<TResult, AuthError, TArgs>({
+    mutationKey: [...mutationKey],
+    mutationFn: (args) => mutationFn(client, args),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.emailAddresses });
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
+    },
+  });
+}
+
+/**
+ * Adds an email address and refreshes the email-address list.
+ *
+ * @returns Mutation hook accepting the address string.
+ */
+export function useAddEmailAddress() {
+  return useEmailAddressMutation<string, EmailAddress>(
+    authMutationKeys.addEmailAddress,
+    (client, email) => client.addEmailAddress(email),
+  );
+}
+
+/**
+ * Resends the verification email for one pending address.
+ *
+ * @returns Mutation hook accepting the address id.
+ */
+export function useResendEmailVerification() {
+  return useEmailAddressMutation<string, void>(
+    authMutationKeys.resendEmailVerification,
+    (client, emailId) => client.resendEmailVerification(emailId),
+  );
+}
+
+/**
+ * Promotes one verified address to primary and refreshes account caches.
+ *
+ * @returns Mutation hook accepting the address id.
+ */
+export function useSetPrimaryEmailAddress() {
+  return useEmailAddressMutation<string, EmailAddress>(
+    authMutationKeys.setPrimaryEmailAddress,
+    (client, emailId) => client.setPrimaryEmailAddress(emailId),
+  );
+}
+
+/**
+ * Removes one non-primary address and refreshes the email-address list.
+ *
+ * @returns Mutation hook accepting the address id.
+ */
+export function useRemoveEmailAddress() {
+  return useEmailAddressMutation<string, void>(
+    authMutationKeys.removeEmailAddress,
+    (client, emailId) => client.removeEmailAddress(emailId),
+  );
+}
+
+/**
+ * Confirms an email address from the token in its verification link.
+ *
+ * @returns Mutation hook accepting the one-time token.
+ */
+export function useVerifyEmailAddress() {
+  const client = useAuthClient();
+  const queryClient = useQueryClient();
+  return useMutation<EmailAddress, AuthError, string>({
+    mutationKey: [...authMutationKeys.verifyEmailAddress],
+    mutationFn: (token) => client.verifyEmailAddress(token),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: authQueryKeys.emailAddresses });
     },
   });
 }

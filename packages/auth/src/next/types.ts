@@ -45,6 +45,15 @@ export type BackendOAuthConnection = {
   created_at: string;
 };
 
+/** Raw email-address record returned by the identity API. */
+export type BackendEmailAddress = {
+  id: string;
+  email: string;
+  is_primary: boolean;
+  verified_at: string | null;
+  created_at: string;
+};
+
 /**
  * Configuration used to create the Next.js auth adapter.
  *
@@ -101,6 +110,24 @@ export type NextAuthAdapter = Readonly<{
    * @returns Empty success response or an upstream error.
    */
   disconnectOAuth(request: NextRequest, provider: OAuthProvider): Promise<Response>;
+
+  /** Lists the authenticated user's email addresses, camel-cased. */
+  listEmailAddresses(request: NextRequest): Promise<Response>;
+
+  /** Adds an email address and triggers its verification email. */
+  addEmailAddress(request: NextRequest): Promise<Response>;
+
+  /** Resends the verification email for one pending address. */
+  resendEmailVerification(request: NextRequest, emailId: string): Promise<Response>;
+
+  /** Promotes one verified address to primary. */
+  setPrimaryEmailAddress(request: NextRequest, emailId: string): Promise<Response>;
+
+  /** Removes one non-primary address. */
+  removeEmailAddress(request: NextRequest, emailId: string): Promise<Response>;
+
+  /** Confirms an address from its emailed token; needs no session. */
+  verifyEmailAddress(request: NextRequest): Promise<Response>;
 
   /**
    * Creates a route handler that redirects the browser to the backend OAuth login URL.

@@ -1,5 +1,13 @@
 import { type NextRequest } from "next/server";
 import { disconnectOAuth, getOAuthConnections } from "./connections";
+import {
+  addEmailAddress,
+  listEmailAddresses,
+  removeEmailAddress,
+  resendEmailVerification,
+  setPrimaryEmailAddress,
+  verifyEmailAddress,
+} from "./emails";
 import { exchangeOAuth, logout, startOAuth, startOAuthConnection } from "./oauth";
 import { requestMagicLink, verifyMagicLink } from "./magic-link";
 import { forwardAuthenticated, forwardPublic, getSession, updateProfile } from "./session";
@@ -33,6 +41,24 @@ export function createNextAuthAdapter(options: NextAuthAdapterOptions): NextAuth
     },
     disconnectOAuth(request, provider) {
       return disconnectOAuth(context, request, provider);
+    },
+    listEmailAddresses(request) {
+      return listEmailAddresses(context, request);
+    },
+    addEmailAddress(request) {
+      return addEmailAddress(context, request);
+    },
+    resendEmailVerification(request, emailId) {
+      return resendEmailVerification(context, request, emailId);
+    },
+    setPrimaryEmailAddress(request, emailId) {
+      return setPrimaryEmailAddress(context, request, emailId);
+    },
+    removeEmailAddress(request, emailId) {
+      return removeEmailAddress(context, request, emailId);
+    },
+    verifyEmailAddress(request) {
+      return verifyEmailAddress(context, request);
     },
     exchangeOAuth(request) {
       return exchangeOAuth(context, request);

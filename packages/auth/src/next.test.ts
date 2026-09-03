@@ -309,6 +309,47 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("camel-cases email addresses and verifies without a session", async () => {
+    const backendRow = {
+      id: "email-1",
+      email: "second@example.com",
+      is_primary: false,
+      verified_at: null,
+      created_at: "2026-09-03T09:00:00Z",
+    };
+    const fetcher = vi.fn(() => Promise.resolve(Response.json([backendRow])));
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+
+    const list = await auth.listEmailAddresses(
+      request("/api/auth/me/emails", "beaco_access_token=access-token"),
+    );
+    await expect(list.json()).resolves.toEqual([
+      {
+        id: "email-1",
+        email: "second@example.com",
+        isPrimary: false,
+        verifiedAt: null,
+        createdAt: "2026-09-03T09:00:00Z",
+      },
+    ]);
+
+    fetcher.mockResolvedValueOnce(
+      Response.json({ ...backendRow, verified_at: "2026-09-03T10:00:00Z" }),
+    );
+    const verified = await auth.verifyEmailAddress(request("/api/auth/emails/verify"));
+    await expect(verified.json()).resolves.toMatchObject({ verifiedAt: "2026-09-03T10:00:00Z" });
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "http://api:8000/api/v1/auth/emails/verify",
+      expect.not.objectContaining({
+        headers: expect.objectContaining({ Authorization: expect.anything() }),
+      }),
+    );
+  });
+
   it("updates and normalizes a user profile through the cookie boundary", async () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({

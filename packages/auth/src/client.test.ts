@@ -53,6 +53,44 @@ describe("createAuthClient", () => {
     );
   });
 
+  it("manages email addresses through the app auth route", async () => {
+    const emailRecord = {
+      id: "email-1",
+      email: "second@example.com",
+      isPrimary: false,
+      verifiedAt: null,
+      createdAt: "2026-09-03T09:00:00Z",
+    };
+    const fetcher = fetchAdapter((_input, init) =>
+      init?.method === "DELETE" || String(_input).endsWith("/resend")
+        ? new Response(null, { status: 204 })
+        : Response.json(
+            String(_input).endsWith("/emails") && init?.method === "GET"
+              ? [emailRecord]
+              : emailRecord,
+          ),
+    );
+    const client = createAuthClient({ appAuthPath: "/api/auth", fetch: fetcher });
+
+    await expect(client.listEmailAddresses()).resolves.toEqual([emailRecord]);
+    await client.addEmailAddress("  Second@Example.com ");
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "/api/auth/me/emails",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "second@example.com" }),
+      }),
+    );
+    await expect(client.setPrimaryEmailAddress("email-1")).resolves.toEqual(emailRecord);
+    await expect(client.resendEmailVerification("email-1")).resolves.toBeUndefined();
+    await expect(client.removeEmailAddress("email-1")).resolves.toBeUndefined();
+    await expect(client.verifyEmailAddress("verify-token")).resolves.toEqual(emailRecord);
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "/api/auth/emails/verify",
+      expect.objectContaining({ body: JSON.stringify({ token: "verify-token" }) }),
+    );
+  });
+
   it("models an unauthenticated session as a null user", async () => {
     const client = createAuthClient({
       fetch: fetchAdapter(() => Response.json({ detail: "Not authenticated." }, { status: 401 })),

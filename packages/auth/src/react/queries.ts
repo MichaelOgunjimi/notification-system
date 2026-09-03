@@ -9,6 +9,7 @@ export const authQueryKeys = {
   all: ["auth"] as const,
   session: ["auth", "session"] as const,
   connections: ["auth", "connections"] as const,
+  emailAddresses: ["auth", "email-addresses"] as const,
 };
 
 /**
@@ -20,6 +21,11 @@ export const authMutationKeys = {
   completeOAuthSignIn: ["auth", "oauth", "complete"] as const,
   updateProfile: ["auth", "profile", "update"] as const,
   disconnectOAuth: ["auth", "oauth", "disconnect"] as const,
+  addEmailAddress: ["auth", "email-addresses", "add"] as const,
+  resendEmailVerification: ["auth", "email-addresses", "resend"] as const,
+  setPrimaryEmailAddress: ["auth", "email-addresses", "primary"] as const,
+  removeEmailAddress: ["auth", "email-addresses", "remove"] as const,
+  verifyEmailAddress: ["auth", "email-addresses", "verify"] as const,
   signOut: ["auth", "sign-out"] as const,
 };
 
@@ -50,6 +56,20 @@ export function oauthConnectionsQuery(client: AuthClient) {
   return queryOptions({
     queryKey: authQueryKeys.connections,
     queryFn: () => client.getOAuthConnections(),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Builds the cached query for the authenticated user's email addresses.
+ *
+ * @param client Auth client used to load email records.
+ * @returns TanStack Query options for the email-address list.
+ */
+export function emailAddressesQuery(client: AuthClient) {
+  return queryOptions({
+    queryKey: authQueryKeys.emailAddresses,
+    queryFn: () => client.listEmailAddresses(),
     staleTime: 30 * 1000,
   });
 }
