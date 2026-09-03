@@ -17,7 +17,10 @@ from app.modules.tenancy.authorization import (
     capabilities_for_role,
 )
 from app.modules.tenancy.errors import SlugConflictError
-from app.modules.tenancy.lifecycle import create_organization, create_project
+from app.modules.tenancy.lifecycle import (
+    create_organization_with_project,
+    create_project,
+)
 from app.modules.tenancy.models.organization import (
     Organization,
     OrganizationMembership,
@@ -88,15 +91,19 @@ async def create_organization_for_user(
     user: User,
     name: str,
     slug: str,
+    project_name: str,
+    project_slug: str,
     description: str | None = None,
 ) -> OrganizationView:
     try:
-        organization = await create_organization(
+        organization = await create_organization_with_project(
             db,
             owner=user,
             name=name,
             slug=slug,
             description=description,
+            project_name=project_name,
+            project_slug=project_slug,
         )
         await log_action(
             db,

@@ -39,6 +39,39 @@ async def create_organization(
     return organization
 
 
+async def create_organization_with_project(
+    db: AsyncSession,
+    *,
+    owner: User,
+    name: str,
+    slug: str,
+    description: str | None = None,
+    project_name: str = "Default",
+    project_slug: str = "default",
+) -> Organization:
+    """Create an organization and its first project in one step.
+
+    The dashboard is always scoped to a project, so every organization is born
+    with one. First sign-in provisioning uses the defaults; explicit creation
+    passes the project the user named.
+    """
+    organization = await create_organization(
+        db,
+        owner=owner,
+        name=name,
+        slug=slug,
+        description=description,
+    )
+    await create_project(
+        db,
+        organization=organization,
+        creator=owner,
+        name=project_name,
+        slug=project_slug,
+    )
+    return organization
+
+
 async def create_project(
     db: AsyncSession,
     *,

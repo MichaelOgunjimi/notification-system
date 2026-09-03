@@ -9,10 +9,21 @@ from app.modules.tenancy.authorization import OrganizationCapability
 from app.modules.tenancy.models.organization import OrganizationRole
 
 
+class OrganizationInitialProject(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    slug: str = Field(min_length=2, max_length=100, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str) -> str:
+        return value.strip()
+
+
 class OrganizationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     slug: str = Field(min_length=2, max_length=100, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     description: str | None = Field(default=None, max_length=1000)
+    project: OrganizationInitialProject
 
     @field_validator("name")
     @classmethod

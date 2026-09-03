@@ -18,6 +18,57 @@ async def _headers(user: User, db: AsyncSession, redis: AsyncMock) -> dict[str, 
     return {"Authorization": f"Bearer {tokens.access_token}"}
 
 
+async def test_creating_an_organization_also_creates_its_first_project(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    user = User(email="org-creator@example.com", name="Creator")
+    db.add(user)
+    await db.flush()
+    await db.commit()
+    headers = await _headers(user, db, mock_redis)
+
+    created = await client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={
+            "name": "Fresh Co",
+            "slug": "fresh-co",
+            "project": {"name": "Web", "slug": "web"},
+        },
+    )
+    assert created.status_code == 201
+    organization_id = created.json()["id"]
+
+    projects = await client.get(
+        f"/api/v1/organizations/{organization_id}/projects",
+        headers=headers,
+    )
+    assert projects.status_code == 200
+    body = projects.json()
+    assert [(project["name"], project["slug"]) for project in body] == [("Web", "web")]
+
+
+async def test_creating_an_organization_requires_a_first_project(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    user = User(email="org-creator-2@example.com", name="Creator")
+    db.add(user)
+    await db.flush()
+    await db.commit()
+    headers = await _headers(user, db, mock_redis)
+
+    response = await client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={"name": "No Project Co", "slug": "no-project-co"},
+    )
+    assert response.status_code == 422
+
+
 async def test_owner_edits_and_archives_organization_and_project(
     client: AsyncClient,
     db: AsyncSession,

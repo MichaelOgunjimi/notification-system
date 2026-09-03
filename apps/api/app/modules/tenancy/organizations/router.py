@@ -42,6 +42,8 @@ async def create_organization(
         name=body.name,
         slug=body.slug,
         description=body.description,
+        project_name=body.project.name,
+        project_slug=body.project.slug,
     )
 
 

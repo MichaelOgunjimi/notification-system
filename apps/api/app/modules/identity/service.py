@@ -25,7 +25,7 @@ from app.modules.identity.models.refresh_token import RefreshToken
 from app.modules.identity.models.user import User
 from app.modules.identity.schemas import TokenResponse
 from app.modules.identity.tokens import create_access_token, create_refresh_token, decode_token
-from app.modules.tenancy.lifecycle import create_organization, create_project
+from app.modules.tenancy.lifecycle import create_organization_with_project
 
 _REFRESH_PREFIX = "refresh"
 _MAGIC_LINK_PREFIX = "magic_link"
@@ -79,18 +79,11 @@ async def _create_user_with_workspace(
         verified_at=verified_at,
     )
     db.add(email_address)
-    organization = await create_organization(
+    await create_organization_with_project(
         db,
         owner=user,
         name=f"{user.name}'s Workspace",
         slug=f"workspace-{str(user.id)[:8]}",
-    )
-    await create_project(
-        db,
-        organization=organization,
-        creator=user,
-        name="Default",
-        slug="default",
     )
     return user, email_address
 
