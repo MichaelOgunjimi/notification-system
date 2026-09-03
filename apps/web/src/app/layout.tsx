@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@beaco/theme";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -42,13 +43,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${geist.variable} ${geistMono.variable} overflow-x-hidden font-sans antialiased`}
       >
         <ThemeProvider>
-          <a
-            href="#main-content"
-            className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-          >
-            Skip to content
-          </a>
-          {children}
+          <ToastProvider>
+            <a
+              href="#main-content"
+              className="sr-only z-[100] rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+            >
+              Skip to content
+            </a>
+            {children}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
