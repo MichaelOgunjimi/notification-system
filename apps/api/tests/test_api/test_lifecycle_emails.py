@@ -348,3 +348,82 @@ async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
 
     assert response.status_code == 200
     notify.assert_not_awaited()
+
+
+async def _create_invitation(
+    client: AsyncClient, db: AsyncSession, redis, monkeypatch, *, token: str
+) -> tuple[User, str, str]:
+    from app.modules.tenancy.lifecycle import create_organization
+
+    owner = await _verified_user(db, f"inv-owner-{token}@example.com", name="Inviting Owner")
+    invitee = await _verified_user(db, f"inv-joiner-{token}@example.com", name="Joiner")
+    organization = await create_organization(
+        db, owner=owner, name="Invite Co", slug=f"invite-co-{token}"
+    )
+    await db.commit()
+    monkeypatch.setattr(
+        "app.modules.tenancy.invitations.service.secrets.token_urlsafe",
+        lambda _length: token,
+    )
+    created = await client.post(
+        f"/api/v1/organizations/{organization.id}/invitations",
+        headers=await _auth(owner, db, redis),
+        json={"email": invitee.email, "role": "member"},
+    )
+    assert created.status_code == 201
+    return owner, invitee.email, token
+
+
+async def test_accepting_an_invitation_notifies_the_inviter(
+    client: AsyncClient, db: AsyncSession, mock_redis: AsyncMock, monkeypatch
+) -> None:
+    owner, joiner_email, token = await _create_invitation(
+        client, db, mock_redis, monkeypatch, token="accept-notify-token"
+    )
+    joiner = (await db.execute(select(User).where(User.email == joiner_email))).scalar_one()
+
+    with patch(
+        "app.modules.tenancy.invitations.service.send_notification_email",
+        new_callable=AsyncMock,
+    ) as notify:
+        response = await client.post(
+            "/api/v1/invitations/accept",
+            headers=await _auth(joiner, db, mock_redis),
+            json={"token": token},
+        )
+
+    assert response.status_code == 204
+    notify.assert_awaited_once()
+    recipient, message = notify.await_args.args
+    assert recipient == owner.email
+    assert joiner_email in message.html
+    assert "Invite Co" in message.html
+
+
+async def test_inviter_notification_is_silent_when_the_inviter_row_is_gone(
+    db: AsyncSession,
+) -> None:
+    from app.modules.tenancy.invitations.service import _notify_inviter_of_acceptance
+
+    with patch(
+        "app.modules.tenancy.invitations.service.send_notification_email",
+        new_callable=AsyncMock,
+    ) as notify:
+        # invited_by_user_id points at no existing user (deleted inviter).
+        await _notify_inviter_of_acceptance(
+            db,
+            invited_by_user_id=uuid.uuid4(),
+            organization_id=uuid.uuid4(),
+            invitee_email="joiner@example.com",
+            invitee_role="member",
+        )
+        # And the null case.
+        await _notify_inviter_of_acceptance(
+            db,
+            invited_by_user_id=None,
+            organization_id=uuid.uuid4(),
+            invitee_email="joiner@example.com",
+            invitee_role="member",
+        )
+
+    notify.assert_not_awaited()

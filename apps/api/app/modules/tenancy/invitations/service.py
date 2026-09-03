@@ -15,7 +15,11 @@ from app.core.config import settings
 from app.core.crypto import hash_api_key
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.templates.transactional import organization_invitation_email
+from app.modules.delivery.notifications import send_notification_email
+from app.modules.delivery.templates.transactional import (
+    invitation_accepted_email,
+    organization_invitation_email,
+)
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
@@ -271,8 +275,48 @@ async def accept_invitation(
         resource_id=str(membership.id),
         metadata={"invitation_id": str(invitation.id), "role": membership.role},
     )
+    invited_by_user_id = invitation.invited_by_user_id
+    invitee_email = invitation.email
+    invitee_role = str(invitation.role)
+    organization_id = invitation.organization_id
     await db.commit()
+
+    await _notify_inviter_of_acceptance(
+        db,
+        invited_by_user_id=invited_by_user_id,
+        organization_id=organization_id,
+        invitee_email=invitee_email,
+        invitee_role=invitee_role,
+    )
     return membership
+
+
+async def _notify_inviter_of_acceptance(
+    db: AsyncSession,
+    *,
+    invited_by_user_id: uuid.UUID | None,
+    organization_id: uuid.UUID,
+    invitee_email: str,
+    invitee_role: str,
+) -> None:
+    """Best-effort note to the inviter. Silent when the inviter row is gone."""
+    if invited_by_user_id is None:
+        return
+    inviter = await db.get(User, invited_by_user_id)
+    organization = await db.get(Organization, organization_id)
+    if inviter is None or organization is None:
+        return
+    await send_notification_email(
+        inviter.email,
+        invitation_accepted_email(
+            frontend_url=settings.FRONTEND_URL,
+            recipient=inviter.email,
+            recipient_name=inviter.name,
+            organization_name=organization.name,
+            member_email=invitee_email,
+            role=invitee_role,
+        ),
+    )
 
 
 async def revoke_invitation(
