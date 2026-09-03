@@ -16,11 +16,22 @@ import { fetchUser, forwardAuthenticated } from "./session";
  * @param provider OAuth provider to redirect the browser to.
  * @returns Route handler that issues the outbound redirect.
  */
+function relativeNext(request: NextRequest): string | null {
+  const next = request.nextUrl.searchParams.get("next");
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("://")) return null;
+  return next;
+}
+
 export function startOAuth(
   context: NextAuthRequestContext,
   provider: "github",
 ): (request: NextRequest) => Response {
-  return () => NextResponse.redirect(`${context.publicBackendApiUrl}/oauth/${provider}/login`, 307);
+  return (request) => {
+    const target = new URL(`${context.publicBackendApiUrl}/oauth/${provider}/login`);
+    const next = relativeNext(request);
+    if (next) target.searchParams.set("next", next);
+    return NextResponse.redirect(target, 307);
+  };
 }
 
 /**
@@ -34,7 +45,13 @@ export function startOAuthConnection(
   context: NextAuthRequestContext,
   provider: "github",
 ): (request: NextRequest) => Promise<Response> {
-  return (request) => forwardAuthenticated(context, request, `/oauth/${provider}/connect`);
+  return (request) => {
+    const next = relativeNext(request);
+    const path = next
+      ? `/oauth/${provider}/connect?next=${encodeURIComponent(next)}`
+      : `/oauth/${provider}/connect`;
+    return forwardAuthenticated(context, request, path);
+  };
 }
 
 /**

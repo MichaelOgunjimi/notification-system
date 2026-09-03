@@ -20,6 +20,23 @@ async function readJson<T>(response: Response, fallback: string): Promise<T> {
 }
 
 /**
+ * Appends a same-origin `next` return path to an OAuth entry URL.
+ *
+ * The value is only forwarded; the backend re-validates it before it can
+ * influence a redirect. A non-relative path is dropped here as a first guard.
+ *
+ * @param url Base OAuth URL on the application boundary.
+ * @param next Optional relative return path.
+ * @returns The URL, with `?next=` appended when the path is a safe relative one.
+ */
+function withReturnPath(url: string, next?: string): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("://")) {
+    return url;
+  }
+  return `${url}?next=${encodeURIComponent(next)}`;
+}
+
+/**
  * HTTP-backed implementation of the auth client.
  */
 class HttpAuthClient implements AuthClient {
@@ -151,8 +168,8 @@ class HttpAuthClient implements AuthClient {
    * @param provider Provider to initiate the OAuth redirect for.
    * @returns URL that begins the provider sign-in flow.
    */
-  getOAuthSignInUrl(provider: OAuthProvider): string {
-    return `${this.appAuthPath}/oauth/${provider}`;
+  getOAuthSignInUrl(provider: OAuthProvider, options?: { next?: string }): string {
+    return withReturnPath(`${this.appAuthPath}/oauth/${provider}`, options?.next);
   }
 
   /**
@@ -161,8 +178,8 @@ class HttpAuthClient implements AuthClient {
    * @param provider Provider to connect.
    * @returns URL that begins the provider connection flow.
    */
-  getOAuthConnectUrl(provider: OAuthProvider): string {
-    return `${this.appAuthPath}/oauth/${provider}/connect`;
+  getOAuthConnectUrl(provider: OAuthProvider, options?: { next?: string }): string {
+    return withReturnPath(`${this.appAuthPath}/oauth/${provider}/connect`, options?.next);
   }
 
   /**

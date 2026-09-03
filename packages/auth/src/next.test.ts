@@ -141,6 +141,50 @@ describe("createNextAuthAdapter", () => {
     );
   });
 
+  it("forwards a safe return path into the GitHub login redirect", async () => {
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+    });
+
+    const safe = await auth.startOAuth("github")(
+      request("/api/auth/oauth/github?next=%2Finvitations%2Faccept%3Ftoken%3Dabc"),
+    );
+    expect(safe.headers.get("location")).toBe(
+      "https://api.example.com/api/v1/oauth/github/login?next=%2Finvitations%2Faccept%3Ftoken%3Dabc",
+    );
+
+    const hostile = await auth.startOAuth("github")(
+      request("/api/auth/oauth/github?next=https%3A%2F%2Fevil.example.com"),
+    );
+    expect(hostile.headers.get("location")).toBe(
+      "https://api.example.com/api/v1/oauth/github/login",
+    );
+  });
+
+  it("forwards a return path into the authenticated GitHub connect path", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 307, headers: { Location: "https://gh" } })),
+    );
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
+    });
+
+    await auth.startOAuthConnection("github")(
+      request(
+        "/api/auth/oauth/github/connect?next=%2Fapp%2Facme%2Fweb%2Fsettings%2Faccount",
+        "beaco_access_token=access-token",
+      ),
+    );
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api:8000/api/v1/oauth/github/connect?next=%2Fapp%2Facme%2Fweb%2Fsettings%2Faccount",
+      expect.anything(),
+    );
+  });
+
   it("starts authenticated GitHub connection and preserves the provider redirect", async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(

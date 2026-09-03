@@ -131,6 +131,18 @@ describe("createAuthClient", () => {
     expect(client.getOAuthConnectUrl("github")).toBe("/api/auth/oauth/github/connect");
   });
 
+  it("carries a return path on the OAuth sign-in and connect URLs", () => {
+    const client = createAuthClient({ appAuthPath: "/api/auth" });
+
+    expect(client.getOAuthSignInUrl("github", { next: "/invitations/accept?token=abc" })).toBe(
+      "/api/auth/oauth/github?next=%2Finvitations%2Faccept%3Ftoken%3Dabc",
+    );
+    expect(client.getOAuthConnectUrl("github", { next: "/app/acme/web/settings/account" })).toBe(
+      "/api/auth/oauth/github/connect?next=%2Fapp%2Facme%2Fweb%2Fsettings%2Faccount",
+    );
+    expect(client.getOAuthSignInUrl("github")).toBe("/api/auth/oauth/github");
+  });
+
   it("returns structured, retry-aware errors", async () => {
     const client = createAuthClient({
       fetch: fetchAdapter(() =>

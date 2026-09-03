@@ -181,15 +181,17 @@ export interface AuthClient {
    * Builds the provider login URL for the app auth route.
    *
    * @param provider OAuth provider to sign in with.
+   * @param options Optional same-origin `next` return path to resume after sign-in.
    * @returns Relative or absolute app route used to initiate OAuth.
    */
-  getOAuthSignInUrl(provider: OAuthProvider): string;
+  getOAuthSignInUrl(provider: OAuthProvider, options?: { next?: string }): string;
 
   /**
    * Builds the authenticated provider connection URL for the app auth route.
    *
    * @param provider OAuth provider to connect.
+   * @param options Optional same-origin `next` return path to resume after connecting.
    * @returns App route that begins an authenticated provider connection.
    */
-  getOAuthConnectUrl(provider: OAuthProvider): string;
+  getOAuthConnectUrl(provider: OAuthProvider, options?: { next?: string }): string;
 }
