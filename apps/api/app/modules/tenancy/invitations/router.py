@@ -9,12 +9,14 @@ from app.modules.identity.dependencies import CurrentUserDep
 from app.modules.tenancy.invitations.schemas import (
     OrganizationInvitationAccept,
     OrganizationInvitationCreate,
+    OrganizationInvitationPreview,
     OrganizationInvitationResponse,
 )
 from app.modules.tenancy.invitations.service import (
     accept_invitation,
     create_invitation,
     list_invitations,
+    preview_invitation,
     revoke_invitation,
 )
 from app.modules.tenancy.models.organization import OrganizationMembership
@@ -68,6 +70,14 @@ async def delete_invitation(
         organization_id=organization_id,
         invitation_id=invitation_id,
     )
+
+
+@acceptance_router.get("/{token}", response_model=OrganizationInvitationPreview)
+async def preview_organization_invitation(
+    token: str,
+    db: SessionDep,
+) -> OrganizationInvitationPreview:
+    return await preview_invitation(db, token=token)
 
 
 @acceptance_router.post("/accept", status_code=status.HTTP_204_NO_CONTENT)

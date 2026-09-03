@@ -21,7 +21,12 @@ from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
 from app.modules.tenancy.authorization import OrganizationCapability, authorize_organization
 from app.modules.tenancy.invitations.model import OrganizationInvitation
-from app.modules.tenancy.models.organization import OrganizationMembership, OrganizationRole
+from app.modules.tenancy.invitations.schemas import OrganizationInvitationPreview
+from app.modules.tenancy.models.organization import (
+    Organization,
+    OrganizationMembership,
+    OrganizationRole,
+)
 
 
 def _normalize_email(email: str) -> str:
@@ -158,6 +163,44 @@ async def create_invitation(
             detail="Unable to send organization invitation",
         )
     return invitation
+
+
+async def preview_invitation(
+    db: AsyncSession,
+    *,
+    token: str,
+) -> OrganizationInvitationPreview:
+    invitation = (
+        await db.execute(
+            select(OrganizationInvitation).where(
+                col(OrganizationInvitation.token_hash) == hash_api_key(token)
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        invitation is None
+        or invitation.accepted_at is not None
+        or invitation.revoked_at is not None
+        or invitation.expires_at <= utc_now()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid or expired organization invitation",
+        )
+    organization = (
+        await db.execute(
+            select(Organization).where(col(Organization.id) == invitation.organization_id)
+        )
+    ).scalar_one()
+    inviter = (
+        await db.execute(select(User).where(col(User.id) == invitation.invited_by_user_id))
+    ).scalar_one_or_none()
+    return OrganizationInvitationPreview(
+        organization_name=organization.name,
+        role=invitation.role,
+        inviter_name=inviter.name if inviter is not None else "A teammate",
+        expires_at=invitation.expires_at,
+    )
 
 
 async def accept_invitation(

@@ -143,6 +143,45 @@ async def test_final_owner_cannot_be_demoted_or_removed(
     assert remove.status_code == 409
 
 
+async def test_invitation_preview_describes_the_pending_invitation(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+    monkeypatch,
+) -> None:
+    owner = User(email="preview-owner@example.com", name="Dana Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(
+        db, owner=owner, name="Preview Org", slug="preview-org"
+    )
+    await db.commit()
+    monkeypatch.setattr(
+        "app.modules.tenancy.invitations.service.secrets.token_urlsafe",
+        lambda _length: "preview-token",
+    )
+    await client.post(
+        f"/api/v1/organizations/{organization.id}/invitations",
+        headers=await _headers(owner, db, mock_redis),
+        json={"email": "newcomer@example.com", "role": "admin"},
+    )
+
+    preview = await client.get("/api/v1/invitations/preview-token")
+
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["organization_name"] == "Preview Org"
+    assert body["role"] == "admin"
+    assert body["inviter_name"] == "Dana Owner"
+    assert "expires_at" in body
+
+
+async def test_invitation_preview_hides_an_unknown_token(client: AsyncClient) -> None:
+    preview = await client.get("/api/v1/invitations/does-not-exist")
+
+    assert preview.status_code == 404
+
+
 async def test_verified_invitee_accepts_invitation(
     client: AsyncClient,
     db: AsyncSession,
