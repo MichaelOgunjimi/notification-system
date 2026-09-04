@@ -41,10 +41,17 @@ type UsagePageProps = Readonly<{
 }>;
 
 const TOP_ENDPOINTS_LIMIT = 8;
-/** A practical stand-in for "unbounded" on the notification-domain endpoints
- * (analytics/trends), which default to "today" when `from` is omitted —
- * unlike the usage endpoints, which are genuinely unbounded with no `from`. */
-const ANALYTICS_UNBOUNDED_SPAN_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+/**
+ * The window substituted for the notification-domain endpoints
+ * (analytics/trends) when "All time" is selected. Two things rule out
+ * substituting a truly distant date: those endpoints default to "today" when
+ * `from` is omitted at all (unlike usage, which is genuinely unbounded with
+ * no `from`), and a day-bucketed chart spanning years of mostly-empty days
+ * reads as broken even when it's rendering correctly. 90 days keeps the
+ * chart meaningful; the stat cards sourced from `usage/summary` remain
+ * genuinely all-time regardless of this cap.
+ */
+const TREND_DEFAULT_SPAN_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * Formats a request count as a locale-grouped integer.
@@ -87,10 +94,11 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
     () => dateWindowFor(state.range, state.from, state.to),
     [state.range, state.from, state.to],
   );
+  const trendWindowCapped = state.range === "all";
   const analyticsWindow = useMemo(
     () => ({
-      from: dateWindow.from ?? new Date(Date.now() - ANALYTICS_UNBOUNDED_SPAN_MS).toISOString(),
-      to: dateWindow.to,
+      from: dateWindow.from ?? new Date(Date.now() - TREND_DEFAULT_SPAN_MS).toISOString(),
+      to: dateWindow.to ?? new Date().toISOString(),
     }),
     [dateWindow.from, dateWindow.to],
   );
@@ -266,7 +274,10 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
           <strong>{peakHour !== null ? `${String(peakHour).padStart(2, "0")}:00` : "—"}</strong>
           {peakHour !== null ? <em>UTC</em> : null}
         </div>
-        <div className="usage-page__stat">
+        <div
+          className="usage-page__stat"
+          title={trendWindowCapped ? "Delivery-based stat, last 90 days" : undefined}
+        >
           <span>Avg latency</span>
           <strong>
             {analytics.data?.avgDeliveryLatencyMs != null
@@ -280,9 +291,17 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
         <section className="usage-page__chart usage-page__chart--wide">
           <header>
             <h2>Delivery status over time</h2>
-            <p>Delivered, failed, queued, and processing notifications per {granularity}.</p>
+            <p>
+              Delivered, failed, queued, and processing notifications per {granularity}
+              {trendWindowCapped ? ", last 90 days" : ""}.
+            </p>
           </header>
-          <TrendChart points={trends.data?.points ?? []} granularity={granularity} />
+          <TrendChart
+            points={trends.data?.points ?? []}
+            granularity={granularity}
+            from={analyticsWindow.from}
+            to={analyticsWindow.to}
+          />
         </section>
         <section className="usage-page__chart usage-page__chart--wide">
           <header>
@@ -305,7 +324,7 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
         <section className="usage-page__chart">
           <header>
             <h2>Channel mix</h2>
-            <p>Notifications by delivery channel.</p>
+            <p>Notifications by delivery channel{trendWindowCapped ? ", last 90 days" : ""}.</p>
           </header>
           <ChannelDonut stats={analytics.data?.channelStats ?? []} />
         </section>

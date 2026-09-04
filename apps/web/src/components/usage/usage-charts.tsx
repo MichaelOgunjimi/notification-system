@@ -17,29 +17,82 @@ const TREND_SERIES: ReadonlyArray<{ key: keyof TrendPoint; label: string; classN
   { key: "processing", label: "Processing", className: "warning" },
 ];
 
+const ZERO_POINT = { delivered: 0, failed: 0, queued: 0, processing: 0 } as const;
+/** Hard ceiling on generated buckets, so an unexpectedly wide custom range
+ * can't blow up the DOM — 366 covers the daily case (a year) and well past
+ * the hourly case (this chart only uses "hour" for the 24h preset). */
+const MAX_TREND_BUCKETS = 366;
+
+/**
+ * Fills every hour/day between `from` and `to` with a zero point where the
+ * server returned none — it only sends buckets that had at least one
+ * notification, so without this a handful of active days would be spaced
+ * across the full chart width as if they were the only days that existed,
+ * each looking artificially tall and wide next to nothing.
+ *
+ * @param points Sparse points from the API, in any order.
+ * @param from ISO lower bound of the queried window.
+ * @param to ISO upper bound of the queried window.
+ * @param granularity Bucket size the points were truncated to.
+ * @returns One point per bucket across the window, oldest first.
+ */
+function zeroFillTrend(
+  points: readonly TrendPoint[],
+  from: string,
+  to: string,
+  granularity: "hour" | "day",
+): TrendPoint[] {
+  const keyLength = granularity === "hour" ? 13 : 10; // "YYYY-MM-DDTHH" or "YYYY-MM-DD"
+  const byKey = new Map(points.map((point) => [point.timestamp.slice(0, keyLength), point]));
+  const stepMs = granularity === "hour" ? 3_600_000 : 86_400_000;
+
+  const start = new Date(from);
+  start.setUTCMinutes(0, 0, 0);
+  if (granularity === "day") start.setUTCHours(0, 0, 0, 0);
+  const endMs = new Date(to).getTime();
+
+  const filled: TrendPoint[] = [];
+  for (let t = start.getTime(); t <= endMs && filled.length < MAX_TREND_BUCKETS; t += stepMs) {
+    const timestamp = new Date(t).toISOString().slice(0, 19);
+    const existing = byKey.get(timestamp.slice(0, keyLength));
+    filled.push(existing ?? { timestamp, ...ZERO_POINT });
+  }
+  return filled;
+}
+
 /**
  * Stacked chronological area chart of notification outcomes — delivered,
- * failed, queued, processing — one bar per bucket in the queried range.
+ * failed, queued, processing — one bar per bucket across the full queried
+ * window, zero-filled where a bucket had no activity.
  *
- * @param props The trend points, oldest first, and the bucket granularity
- *   (only used to format each bar's tooltip).
- * @returns The chart, or an empty-state message when there are no points.
+ * @param props The (possibly sparse) trend points, the bucket granularity,
+ *   and the window's bounds used to generate the full bucket list.
+ * @returns The chart, or an empty-state message when the window has no
+ *   activity at all.
  */
 export function TrendChart({
   points,
   granularity,
-}: Readonly<{ points: readonly TrendPoint[]; granularity: "hour" | "day" }>) {
+  from,
+  to,
+}: Readonly<{
+  points: readonly TrendPoint[];
+  granularity: "hour" | "day";
+  from: string;
+  to: string;
+}>) {
   if (points.length === 0) {
     return <p className="usage-chart__empty">No delivery activity in this range yet.</p>;
   }
+  const filled = zeroFillTrend(points, from, to, granularity);
   const max = Math.max(
     1,
-    ...points.map((point) => point.delivered + point.failed + point.queued + point.processing),
+    ...filled.map((point) => point.delivered + point.failed + point.queued + point.processing),
   );
   return (
     <div className="usage-chart">
       <div className="usage-chart__stack" role="img" aria-label="Delivery status over time">
-        {points.map((point) => {
+        {filled.map((point) => {
           const total = point.delivered + point.failed + point.queued + point.processing;
           const label = `${absoluteFormatter.format(new Date(point.timestamp))} — ${total.toLocaleString()} ${
             granularity === "hour" ? "this hour" : "this day"
@@ -85,14 +138,25 @@ export function HourlyHeatmap({ points }: Readonly<{ points: readonly UsageHourl
     <div className="usage-heatmap" role="img" aria-label="Request intensity by hour of day, UTC">
       {points.map((point) => {
         const intensity = point.requestCount / max;
+        // Vary the fill's mix percentage, not element opacity, so the hour
+        // label stays fully legible even on a barely-active cell — opacity
+        // would fade the text along with the background.
+        const mixPct = point.requestCount > 0 ? Math.round(15 + intensity * 45) : 0;
         return (
           <span
             key={point.hour}
             className="usage-heatmap__cell"
-            style={intensity > 0 ? { opacity: 0.15 + intensity * 0.85 } : undefined}
+            data-active={point.requestCount > 0 || undefined}
+            style={
+              mixPct > 0
+                ? {
+                    background: `color-mix(in srgb, var(--dashboard-accent) ${mixPct}%, var(--dashboard-overlay))`,
+                  }
+                : undefined
+            }
             title={`${String(point.hour).padStart(2, "0")}:00 UTC — ${point.requestCount.toLocaleString()} requests`}
           >
-            {point.requestCount > 0 ? String(point.hour).padStart(2, "0") : ""}
+            {String(point.hour).padStart(2, "0")}
           </span>
         );
       })}
