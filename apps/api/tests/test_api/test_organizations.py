@@ -6,13 +6,49 @@ from datetime import UTC, datetime
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime import utc_now
 from app.modules.credentials.model import ApiKey
+from app.modules.events.enums import EventStatus
+from app.modules.events.model import Event
 from app.modules.identity.models.user import User
 from app.modules.identity.service import create_user_tokens
+from app.modules.notifications.enums import NotificationChannel, NotificationStatus
+from app.modules.notifications.model import Notification
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.usage.model import ApiKeyUsage
 from app.modules.tenancy.lifecycle import create_organization, create_project
 from app.modules.tenancy.models.organization import OrganizationMembership, OrganizationRole
+
+
+async def _seed_delivered_notification(
+    db: AsyncSession, api_key: ApiKey, *, channel: NotificationChannel
+) -> None:
+    now = utc_now()
+    event = Event(
+        id=uuid.uuid4(),
+        event_type="test.notified",
+        payload={},
+        status=EventStatus.COMPLETED,
+        api_key_id=api_key.id,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(event)
+    await db.flush()
+    db.add(
+        Notification(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            channel=channel,
+            recipient_user_id="test-user",
+            recipient_address="user@test.com",
+            status=NotificationStatus.DELIVERED,
+            queued_at=now,
+            delivered_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+    )
 
 
 async def _authorization_header(user: User, db: AsyncSession, mock_redis) -> dict[str, str]:
@@ -488,6 +524,112 @@ async def test_project_usage_top_endpoints_sorted_desc_and_limited(
     assert rows[0]["endpoint"] == "/api/v1/events"
     assert rows[0]["request_count"] == 20
     assert rows[1]["endpoint"] == "/api/v1/templates"
+
+
+async def test_project_analytics_aggregates_across_the_projects_keys(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="owner@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Production", slug="production"
+    )
+    other_project = await create_project(
+        db, organization=organization, creator=owner, name="Staging", slug="staging"
+    )
+    key_a = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="analytics-a-hash",
+        key_prefix="analytic-a",
+        name="Key A",
+    )
+    key_b = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="analytics-b-hash",
+        key_prefix="analytic-b",
+        name="Key B",
+    )
+    other_key = ApiKey(
+        project_id=other_project.id,
+        created_by_user_id=owner.id,
+        key_hash="analytics-o-hash",
+        key_prefix="analytic-o",
+        name="Other project key",
+    )
+    db.add_all([key_a, key_b, other_key])
+    await db.flush()
+    await _seed_delivered_notification(db, key_a, channel=NotificationChannel.EMAIL)
+    await _seed_delivered_notification(db, key_b, channel=NotificationChannel.SMS)
+    await _seed_delivered_notification(db, other_key, channel=NotificationChannel.EMAIL)
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/analytics",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    channels = {row["channel"]: row for row in response.json()["channel_stats"]}
+    assert channels["email"]["delivered"] == 1
+    assert channels["sms"]["delivered"] == 1
+
+    filtered = await client.get(
+        f"/api/v1/projects/{project.id}/analytics",
+        params={"api_key_id": str(key_a.id)},
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert filtered.status_code == 200
+    filtered_channels = {row["channel"]: row for row in filtered.json()["channel_stats"]}
+    assert "sms" not in filtered_channels
+    assert filtered_channels["email"]["delivered"] == 1
+
+
+async def test_project_trends_aggregate_across_the_projects_keys(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="owner@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Production", slug="production"
+    )
+    key_a = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="trend-a-hash",
+        key_prefix="trend-a-pr",
+        name="Trend key A",
+    )
+    key_b = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="trend-b-hash",
+        key_prefix="trend-b-pr",
+        name="Trend key B",
+    )
+    db.add_all([key_a, key_b])
+    await db.flush()
+    await _seed_delivered_notification(db, key_a, channel=NotificationChannel.EMAIL)
+    await _seed_delivered_notification(db, key_b, channel=NotificationChannel.SMS)
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/analytics/trends",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    points = response.json()["points"]
+    assert sum(point["delivered"] for point in points) == 2
 
 
 async def test_organization_audit_spans_projects_and_requires_admin(

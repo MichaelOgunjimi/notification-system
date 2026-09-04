@@ -11,7 +11,10 @@ from sqlmodel import col
 from app.core.datetime import to_naive_utc
 from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
+from app.modules.events.model import Event
 from app.modules.identity.models.user import User
+from app.modules.observability.analytics import service as analytics_service
+from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
@@ -698,4 +701,128 @@ async def get_organization_audit_log(
         category=category,
         from_=from_,
         to=to,
+    )
+
+
+def _api_key_scope_subquery(
+    *, project_id: uuid.UUID | None, organization_id: uuid.UUID | None
+) -> Any:
+    """Every API key id belonging to a project, or to every project in an
+    organization — the membership an unfiltered analytics/trend query is
+    scoped to."""
+    query = select(col(ApiKey.id))
+    if organization_id is not None:
+        query = query.join(Project, col(Project.id) == col(ApiKey.project_id)).where(
+            col(Project.organization_id) == organization_id
+        )
+    elif project_id is not None:
+        query = query.where(col(ApiKey.project_id) == project_id)
+    return query.scalar_subquery()
+
+
+def _tenant_event_filter(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+) -> Any:
+    """Resolves the `Event.api_key_id` clause the shared analytics service
+    should filter by: one key when the caller picked one, otherwise every key
+    the project (or organization) owns. `get_analytics`/`get_trends` treat a
+    `None` filter as globally unscoped, so a tenant caller must never pass
+    that — this always returns a concrete clause."""
+    if api_key_id is not None:
+        return col(Event.api_key_id) == api_key_id
+    return col(Event.api_key_id).in_(
+        _api_key_scope_subquery(project_id=project_id, organization_id=organization_id)
+    )
+
+
+async def get_project_analytics(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> AnalyticsResponse:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=project_id, organization_id=None, api_key_id=api_key_id
+    )
+    return await analytics_service.get_analytics(db, event_filter, date_from=from_, date_to=to)
+
+
+async def get_organization_analytics(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> AnalyticsResponse:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=None, organization_id=organization_id, api_key_id=api_key_id
+    )
+    return await analytics_service.get_analytics(db, event_filter, date_from=from_, date_to=to)
+
+
+async def get_project_trends(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    granularity: str = "day",
+) -> TrendResponse:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=project_id, organization_id=None, api_key_id=api_key_id
+    )
+    return await analytics_service.get_trends(
+        db, event_filter, date_from=from_, date_to=to, granularity=granularity
+    )
+
+
+async def get_organization_trends(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    granularity: str = "day",
+) -> TrendResponse:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=None, organization_id=organization_id, api_key_id=api_key_id
+    )
+    return await analytics_service.get_trends(
+        db, event_filter, date_from=from_, date_to=to, granularity=granularity
     )

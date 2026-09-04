@@ -1,7 +1,7 @@
 """Analytics service — aggregation queries for delivery metrics."""
 
-import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ def _today_start() -> datetime:
 
 async def get_analytics(
     db: AsyncSession,
-    api_key_id: uuid.UUID | None,
+    event_filter: Any | None,
     *,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -42,7 +42,7 @@ async def get_analytics(
             select(col(Event.status), func.count().label("cnt"))
             .where(col(Event.created_at) >= start)
             .where(*([col(Event.created_at) <= end] if end is not None else []))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .group_by(col(Event.status))
         )
     ).all()
@@ -62,7 +62,7 @@ async def get_analytics(
         await db.execute(
             select(col(Notification.status), func.count().label("cnt"))
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.created_at) >= start)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.status))
@@ -88,7 +88,7 @@ async def get_analytics(
         await db.execute(
             select(func.avg(latency_expr * 1000).label("avg_ms"))
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
             .where(col(Notification.created_at) >= start)
@@ -108,7 +108,7 @@ async def get_analytics(
                 col(DeadLetterMessage.notification_id) == col(Notification.id),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE)
             .where(col(DeadLetterMessage.failed_at) >= start)
             .where(*([col(DeadLetterMessage.failed_at) <= end] if end is not None else []))
@@ -123,7 +123,7 @@ async def get_analytics(
                 func.count().label("cnt"),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.created_at) >= start)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.channel), col(Notification.status))
@@ -172,7 +172,7 @@ async def get_analytics(
 
 async def get_trends(
     db: AsyncSession,
-    api_key_id: uuid.UUID | None,
+    event_filter: Any | None,
     *,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -193,7 +193,7 @@ async def get_trends(
                 func.count().label("cnt"),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.created_at) >= start)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(time_trunc, col(Notification.status))

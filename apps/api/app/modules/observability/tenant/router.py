@@ -9,6 +9,7 @@ from app.core.http.dependencies import SessionDep
 from app.core.http.schemas import PaginatedResponse
 from app.core.pagination import Page
 from app.modules.identity.dependencies import CurrentUserDep
+from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.tenant import service
 from app.modules.observability.tenant.schemas import (
     TenantAuditLogResponse,
@@ -285,4 +286,96 @@ async def get_organization_audit_log(
         category=category,
         from_=from_,
         to=to,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/analytics",
+    response_model=AnalyticsResponse,
+)
+async def get_project_analytics(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    api_key_id: uuid.UUID | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None),
+) -> AnalyticsResponse:
+    return await service.get_project_analytics(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+@router.get(
+    "/organizations/{organization_id}/analytics",
+    response_model=AnalyticsResponse,
+)
+async def get_organization_analytics(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    api_key_id: uuid.UUID | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None),
+) -> AnalyticsResponse:
+    return await service.get_organization_analytics(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/analytics/trends",
+    response_model=TrendResponse,
+)
+async def get_project_trends(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    api_key_id: uuid.UUID | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None),
+    granularity: str = Query(default="day", description="Bucket size: 'hour' or 'day'."),
+) -> TrendResponse:
+    return await service.get_project_trends(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        granularity=granularity,
+    )
+
+
+@router.get(
+    "/organizations/{organization_id}/analytics/trends",
+    response_model=TrendResponse,
+)
+async def get_organization_trends(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    api_key_id: uuid.UUID | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None),
+    granularity: str = Query(default="day", description="Bucket size: 'hour' or 'day'."),
+) -> TrendResponse:
+    return await service.get_organization_trends(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        granularity=granularity,
     )
