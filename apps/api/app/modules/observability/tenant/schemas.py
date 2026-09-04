@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 class TenantUsageResponse(BaseModel):
     project_id: uuid.UUID
     api_key_id: uuid.UUID
+    api_key_name: str
+    api_key_environment: str
     endpoint: str
     hour_bucket: datetime
     request_count: int

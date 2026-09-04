@@ -37,10 +37,18 @@ _CATEGORY_PREFIXES: dict[str, tuple[str, ...]] = {
 }
 
 
-def _usage_query(*, project_id: uuid.UUID | None, organization_id: uuid.UUID | None) -> Any:
+def _usage_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
     selected: Any = select(
         col(ApiKey.project_id).label("project_id"),
         col(ApiKeyUsage.api_key_id).label("api_key_id"),
+        col(ApiKey.name).label("api_key_name"),
+        col(ApiKey.environment).label("api_key_environment"),
         col(ApiKeyUsage.endpoint).label("endpoint"),
         col(ApiKeyUsage.hour_bucket).label("hour_bucket"),
         func.sum(col(ApiKeyUsage.request_count)).label("request_count"),
@@ -51,9 +59,15 @@ def _usage_query(*, project_id: uuid.UUID | None, organization_id: uuid.UUID | N
         )
     elif project_id is not None:
         selected = selected.where(col(ApiKey.project_id) == project_id)
+    if from_ is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) >= to_naive_utc(from_))
+    if to is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) <= to_naive_utc(to))
     return selected.group_by(
         col(ApiKey.project_id),
         col(ApiKeyUsage.api_key_id),
+        col(ApiKey.name),
+        col(ApiKey.environment),
         col(ApiKeyUsage.endpoint),
         col(ApiKeyUsage.hour_bucket),
     )
@@ -78,6 +92,8 @@ async def _usage_page(
         UsageView(
             project_id=row.project_id,
             api_key_id=row.api_key_id,
+            api_key_name=row.api_key_name,
+            api_key_environment=row.api_key_environment,
             endpoint=row.endpoint,
             hour_bucket=row.hour_bucket,
             request_count=int(row.request_count),
@@ -94,6 +110,8 @@ async def get_project_usage(
     project_id: uuid.UUID,
     page: int,
     per_page: int,
+    from_: datetime | None = None,
+    to: datetime | None = None,
 ) -> Page[UsageView]:
     await authorize_project(
         db,
@@ -103,7 +121,7 @@ async def get_project_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=project_id, organization_id=None),
+        query=_usage_query(project_id=project_id, organization_id=None, from_=from_, to=to),
         page=page,
         per_page=per_page,
     )
@@ -116,6 +134,8 @@ async def get_organization_usage(
     organization_id: uuid.UUID,
     page: int,
     per_page: int,
+    from_: datetime | None = None,
+    to: datetime | None = None,
 ) -> Page[UsageView]:
     await authorize_organization(
         db,
@@ -125,7 +145,7 @@ async def get_organization_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=None, organization_id=organization_id),
+        query=_usage_query(project_id=None, organization_id=organization_id, from_=from_, to=to),
         page=page,
         per_page=per_page,
     )

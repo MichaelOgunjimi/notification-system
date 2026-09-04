@@ -30,9 +30,17 @@ async def get_project_usage(
     db: SessionDep,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=1, le=200),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None, alias="to"),
 ) -> Page[UsageView]:
     return await service.get_project_usage(
-        db, user_id=user.id, project_id=project_id, page=page, per_page=per_page
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        page=page,
+        per_page=per_page,
+        from_=from_,
+        to=to,
     )
 
 
@@ -46,6 +54,8 @@ async def get_organization_usage(
     db: SessionDep,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=1, le=200),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None, alias="to"),
 ) -> Page[UsageView]:
     return await service.get_organization_usage(
         db,
@@ -53,6 +63,8 @@ async def get_organization_usage(
         organization_id=organization_id,
         page=page,
         per_page=per_page,
+        from_=from_,
+        to=to,
     )
 
 

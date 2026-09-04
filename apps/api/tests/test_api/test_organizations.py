@@ -231,6 +231,82 @@ async def test_project_usage_is_scoped_to_the_selected_project(
     assert response.json()["items"][0]["request_count"] == 7
 
 
+async def test_project_usage_names_the_api_key_and_bounds_by_date(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="owner@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Production", slug="production"
+    )
+    key = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="usage-hash",
+        key_prefix="usage-key-",
+        name="Usage key",
+    )
+    db.add(key)
+    await db.flush()
+    early = datetime(2026, 8, 1, 9, tzinfo=UTC)
+    late = datetime(2026, 8, 27, 14, tzinfo=UTC)
+    db.add_all(
+        [
+            ApiKeyUsage(
+                api_key_id=key.id,
+                endpoint="/api/v1/events",
+                method="POST",
+                status_code=202,
+                hour_bucket=early,
+                request_count=3,
+            ),
+            ApiKeyUsage(
+                api_key_id=key.id,
+                endpoint="/api/v1/events",
+                method="POST",
+                status_code=202,
+                hour_bucket=late,
+                request_count=7,
+            ),
+        ]
+    )
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/usage",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 2
+    assert all(item["api_key_name"] == "Usage key" for item in items)
+    assert all(item["api_key_environment"] == "live" for item in items)
+
+    bounded = await client.get(
+        f"/api/v1/projects/{project.id}/usage",
+        params={"from": "2026-08-15T00:00:00Z"},
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert bounded.status_code == 200
+    bounded_items = bounded.json()["items"]
+    assert len(bounded_items) == 1
+    assert bounded_items[0]["request_count"] == 7
+
+    capped = await client.get(
+        f"/api/v1/projects/{project.id}/usage",
+        params={"to": "2026-08-15T00:00:00Z"},
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert capped.status_code == 200
+    capped_items = capped.json()["items"]
+    assert len(capped_items) == 1
+    assert capped_items[0]["request_count"] == 3
+
+
 async def test_organization_audit_spans_projects_and_requires_admin(
     client: AsyncClient,
     db: AsyncSession,
