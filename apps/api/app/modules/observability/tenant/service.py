@@ -4,12 +4,14 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from app.core.datetime import to_naive_utc
 from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
+from app.modules.identity.models.user import User
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
@@ -230,6 +232,28 @@ async def get_organization_usage_summary(
     )
 
 
+def _actor_filter(actor: str | None) -> Any | None:
+    """Translate the ``actor`` query value into an optional WHERE clause.
+
+    ``"user"`` / ``"api_key"`` match any entry attributed to that kind of actor;
+    a UUID matches that specific user or API key. Anything else is ignored.
+    """
+    if actor == "user":
+        return col(AuditLog.actor_user_id).is_not(None)
+    if actor == "api_key":
+        return col(AuditLog.api_key_id).is_not(None)
+    if not actor:
+        return None
+    try:
+        actor_id = uuid.UUID(actor)
+    except ValueError:
+        return None
+    return or_(
+        col(AuditLog.actor_user_id) == actor_id,
+        col(AuditLog.api_key_id) == actor_id,
+    )
+
+
 async def _audit_page(
     db: AsyncSession,
     *,
@@ -238,6 +262,7 @@ async def _audit_page(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
     from_: datetime | None,
 ) -> Page[AuditLogView]:
     resolved_project_id = func.coalesce(AuditLog.project_id, ApiKey.project_id)
@@ -249,16 +274,23 @@ async def _audit_page(
         filters.append(resolved_organization_id == organization_id)
     if action:
         filters.append(col(AuditLog.action).ilike(f"%{action}%"))
+    actor_clause = _actor_filter(actor)
+    if actor_clause is not None:
+        filters.append(actor_clause)
     if from_:
-        filters.append(col(AuditLog.created_at) >= from_)
+        # created_at is TIMESTAMP WITHOUT TIME ZONE; drop any offset the client sent.
+        filters.append(col(AuditLog.created_at) >= to_naive_utc(from_))
 
-    query = (
+    query: Any = (
         select(
             AuditLog,
             resolved_organization_id.label("organization_id"),
             resolved_project_id.label("project_id"),
+            col(User.name).label("actor_name"),
+            col(ApiKey.name).label("api_key_name"),
         )
         .outerjoin(ApiKey, col(ApiKey.id) == col(AuditLog.api_key_id))
+        .outerjoin(User, col(User.id) == col(AuditLog.actor_user_id))
         .outerjoin(Project, col(Project.id) == resolved_project_id)
         .where(and_(*filters))
     )
@@ -273,10 +305,12 @@ async def _audit_page(
     items = [
         AuditLogView(
             id=audit_log.id,
-            organization_id=resolved_organization_id,
-            project_id=resolved_project_id,
+            organization_id=row_organization_id,
+            project_id=row_project_id,
             actor_user_id=audit_log.actor_user_id,
+            actor_name=actor_name,
             api_key_id=audit_log.api_key_id,
+            api_key_name=api_key_name,
             action=audit_log.action,
             resource_type=audit_log.resource_type,
             resource_id=audit_log.resource_id,
@@ -284,7 +318,7 @@ async def _audit_page(
             ip_address=audit_log.ip_address,
             created_at=audit_log.created_at,
         )
-        for audit_log, resolved_organization_id, resolved_project_id in result.all()
+        for audit_log, row_organization_id, row_project_id, actor_name, api_key_name in result.all()
     ]
     return Page(items=items, total=total, page=page, per_page=per_page)
 
@@ -297,6 +331,7 @@ async def get_project_audit_log(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
     from_: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_project(
@@ -312,6 +347,7 @@ async def get_project_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
         from_=from_,
     )
 
@@ -324,6 +360,7 @@ async def get_organization_audit_log(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
     from_: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_organization(
@@ -339,5 +376,6 @@ async def get_organization_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
         from_=from_,
     )

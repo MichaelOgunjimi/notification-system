@@ -295,3 +295,55 @@ async def test_organization_audit_spans_projects_and_requires_admin(
         str(second_project.id),
     }
     assert member_response.status_code == 403
+
+
+async def test_organization_audit_filters_by_actor_and_names_them(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="audit-owner@example.com", name="Ada Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="acme-actor")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Prod", slug="prod-actor"
+    )
+    key = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="hash-actor",
+        key_prefix="key-actor",
+        name="Deploy key",
+    )
+    db.add(key)
+    await db.flush()
+    db.add_all(
+        [
+            AuditLog(
+                actor_user_id=owner.id,
+                organization_id=organization.id,
+                action="organization.member_invited",
+                resource_type="organization_invitation",
+            ),
+            AuditLog(
+                api_key_id=key.id,
+                action="event.created",
+                resource_type="event",
+            ),
+        ]
+    )
+    await db.commit()
+    headers = await _authorization_header(owner, db, mock_redis)
+    base = f"/api/v1/organizations/{organization.id}/audit-log"
+
+    people = (await client.get(f"{base}?actor=user", headers=headers)).json()
+    keys = (await client.get(f"{base}?actor=api_key", headers=headers)).json()
+    just_owner = (await client.get(f"{base}?actor={owner.id}", headers=headers)).json()
+
+    assert {item["action"] for item in people["items"]} == {"organization.member_invited"}
+    assert people["items"][0]["actor_name"] == "Ada Owner"
+    assert {item["action"] for item in keys["items"]} == {"event.created"}
+    assert keys["items"][0]["api_key_name"] == "Deploy key"
+    assert keys["items"][0]["actor_name"] is None
+    assert {item["action"] for item in just_owner["items"]} == {"organization.member_invited"}

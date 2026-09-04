@@ -107,6 +107,10 @@ async def get_project_audit_log(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     action: str | None = Query(default=None),
+    actor: str | None = Query(
+        default=None,
+        description='"user", "api_key", or a specific user/API-key id.',
+    ),
     from_: datetime | None = Query(default=None, alias="from"),
 ) -> Page[AuditLogView]:
     return await service.get_project_audit_log(
@@ -116,6 +120,7 @@ async def get_project_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
         from_=from_,
     )
 
@@ -131,6 +136,10 @@ async def get_organization_audit_log(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     action: str | None = Query(default=None),
+    actor: str | None = Query(
+        default=None,
+        description='"user", "api_key", or a specific user/API-key id.',
+    ),
     from_: datetime | None = Query(default=None, alias="from"),
 ) -> Page[AuditLogView]:
     return await service.get_organization_audit_log(
@@ -140,5 +149,6 @@ async def get_organization_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
         from_=from_,
     )

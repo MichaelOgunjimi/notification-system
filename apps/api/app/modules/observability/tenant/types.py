@@ -39,7 +39,9 @@ class AuditLogView:
     organization_id: uuid.UUID
     project_id: uuid.UUID | None
     actor_user_id: uuid.UUID | None
+    actor_name: str | None
     api_key_id: uuid.UUID | None
+    api_key_name: str | None
     action: str
     resource_type: str
     resource_id: str | None
