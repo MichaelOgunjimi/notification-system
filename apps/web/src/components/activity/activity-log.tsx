@@ -117,19 +117,6 @@ export function ActivityLog({ organization, project, projects }: ActivityLogProp
       ),
     },
     {
-      key: "status",
-      label: "Status",
-      width: "120px",
-      render: (entry) => {
-        const status = statusForAction(entry.action);
-        return status ? (
-          <LogPill label={status.label} tone={status.tone} />
-        ) : (
-          <span className="activity-log__muted">—</span>
-        );
-      },
-    },
-    {
       key: "type",
       label: "Type",
       width: "minmax(160px, 240px)",
@@ -159,6 +146,19 @@ export function ActivityLog({ organization, project, projects }: ActivityLogProp
       label: "Details",
       width: "minmax(200px, 1fr)",
       render: (entry) => <span className="activity-log__details">{detailsSummary(entry)}</span>,
+    },
+    {
+      key: "status",
+      label: "Status",
+      width: "120px",
+      render: (entry) => {
+        const status = statusForAction(entry.action);
+        return status ? (
+          <LogPill label={status.label} tone={status.tone} />
+        ) : (
+          <span className="activity-log__muted">—</span>
+        );
+      },
     },
   ];
 
