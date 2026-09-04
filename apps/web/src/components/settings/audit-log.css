@@ -107,15 +107,6 @@
   font-size: 11px;
 }
 
-.audit-log__action {
-  color: var(--dashboard-ink);
-  font-weight: 560;
-}
-
-.audit-log__action[data-destructive] {
-  color: #d88274;
-}
-
 .audit-log__who {
   color: var(--dashboard-muted-bright);
   display: block;

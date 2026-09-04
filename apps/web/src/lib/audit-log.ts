@@ -3,15 +3,15 @@ import type { AuditLogEntry } from "@beaco/control-plane";
 /** Semantic color a {@link LogPill} can render in — see `components/ui/log-pill.tsx`. */
 export type LogTone = "success" | "info" | "warning" | "danger" | "neutral";
 
-const DESTRUCTIVE_VERBS = new Set(["revoked", "removed", "deleted", "archived", "rejected"]);
-
 const ACTION_TONE_BY_VERB: Readonly<Record<string, LogTone>> = {
   created: "info",
   sent: "info",
   updated: "info",
   completed: "success",
   delivered: "success",
+  accepted: "success",
   retried: "warning",
+  rotated: "danger",
   failed: "danger",
   revoked: "danger",
   removed: "danger",
@@ -54,17 +54,6 @@ export function actionTone(action: string): LogTone {
  */
 export function statusForAction(action: string): { label: string; tone: LogTone } | null {
   return STATUS_BY_ACTION[action] ?? null;
-}
-
-/**
- * Reports whether an action removed access or data, the one semantic
- * distinction the log surfaces highlight with colour.
- *
- * @param action Dotted action key, e.g. `api_key.revoked`.
- * @returns `true` when the trailing verb is destructive.
- */
-export function isDestructiveAction(action: string): boolean {
-  return DESTRUCTIVE_VERBS.has(action.split(/[._]/).pop() ?? "");
 }
 
 /**

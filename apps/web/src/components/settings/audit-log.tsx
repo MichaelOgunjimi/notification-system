@@ -5,6 +5,7 @@ import type { AuditLogEntry, Organization, Project } from "@beaco/control-plane"
 import { useOrganizationAuditLog, useProjectAuditLog } from "@beaco/control-plane/react";
 import { LogEntryDetail, LogTable, type LogColumn } from "@/components/ui/log-table";
 import { LogFilters } from "@/components/ui/log-filters";
+import { LogPill } from "@/components/ui/log-pill";
 import { TablePager } from "@/components/ui/table-pager";
 import {
   LOG_PER_PAGE_OPTIONS,
@@ -12,11 +13,11 @@ import {
   useLogUrlState,
 } from "@/components/ui/use-log-url-state";
 import {
+  actionTone,
   actorLabel,
   actorRoleLabel,
   detailsSummary,
   humanizeAction,
-  isDestructiveAction,
   relativeTime,
 } from "@/lib/audit-log";
 import "./audit-log.css";
@@ -99,12 +100,8 @@ export function AuditLog({ organization, project, projects }: AuditLogProps) {
       label: "Action",
       width: "minmax(170px, 280px)",
       render: (entry) => (
-        <span
-          className="audit-log__action"
-          data-destructive={isDestructiveAction(entry.action) || undefined}
-          title={entry.action}
-        >
-          {humanizeAction(entry.action)}
+        <span title={entry.action}>
+          <LogPill label={humanizeAction(entry.action)} tone={actionTone(entry.action)} />
         </span>
       ),
     },
