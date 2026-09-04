@@ -1,0 +1,239 @@
+.usage-chart__empty {
+  color: var(--dashboard-muted);
+  font-size: 12px;
+  padding: 32px 4px;
+  text-align: center;
+}
+
+.usage-chart__stack {
+  align-items: flex-end;
+  display: flex;
+  gap: 2px;
+  height: 140px;
+}
+
+.usage-chart__col {
+  border-radius: 2px 2px 0 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column-reverse;
+  gap: 1px;
+  min-width: 2px;
+  overflow: hidden;
+}
+
+.usage-chart__seg {
+  border-radius: 1px;
+  display: block;
+  flex-shrink: 0;
+  min-height: 1px;
+  width: 100%;
+}
+
+.usage-chart__seg[data-tone="success"] {
+  background: var(--usage-success);
+}
+
+.usage-chart__seg[data-tone="danger"] {
+  background: var(--usage-danger);
+}
+
+.usage-chart__seg[data-tone="info"] {
+  background: var(--usage-info);
+}
+
+.usage-chart__seg[data-tone="warning"] {
+  background: var(--usage-warning);
+}
+
+.usage-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.usage-chart__legend span {
+  align-items: center;
+  color: var(--dashboard-muted-bright);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.usage-chart__legend i {
+  border-radius: 999px;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.usage-chart__legend i[data-tone="success"] {
+  background: var(--usage-success);
+}
+
+.usage-chart__legend i[data-tone="danger"] {
+  background: var(--usage-danger);
+}
+
+.usage-chart__legend i[data-tone="info"] {
+  background: var(--usage-info);
+}
+
+.usage-chart__legend i[data-tone="warning"] {
+  background: var(--usage-warning);
+}
+
+.usage-heatmap {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(24, 1fr);
+}
+
+.usage-heatmap__cell {
+  align-items: center;
+  aspect-ratio: 1;
+  background: color-mix(in srgb, var(--dashboard-accent) 60%, var(--dashboard-overlay));
+  border-radius: 5px;
+  color: var(--dashboard-accent-ink, var(--dashboard-canvas));
+  display: flex;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  justify-content: center;
+  opacity: 0.12;
+  transition: transform 120ms ease;
+}
+
+.usage-heatmap__cell:hover {
+  transform: scale(1.08);
+}
+
+.usage-heatmap__cell:not([style]) {
+  background: var(--dashboard-overlay);
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usage-heatmap__cell {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .usage-heatmap {
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .usage-heatmap {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+.usage-bars {
+  display: grid;
+  gap: 10px;
+}
+
+.usage-bars__row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 2fr) minmax(36px, 1fr) auto;
+}
+
+.usage-bars__label {
+  color: var(--dashboard-muted-bright);
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-bars__track {
+  background: var(--dashboard-overlay);
+  border-radius: 5px;
+  display: block;
+  height: 8px;
+  overflow: hidden;
+}
+
+.usage-bars__fill {
+  background: var(--usage-info);
+  border-radius: 5px;
+  display: block;
+  height: 100%;
+}
+
+.usage-bars__count {
+  color: var(--dashboard-muted);
+  font-family: var(--font-geist-mono);
+  font-size: 10.5px;
+  text-align: right;
+}
+
+.usage-donut {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.usage-donut__ring {
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 108px;
+  width: 108px;
+}
+
+.usage-donut__legend {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.usage-donut__legend > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.usage-donut__legend i {
+  border-radius: 999px;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.usage-donut__legend i[data-tone="success"] {
+  background: var(--usage-success);
+}
+
+.usage-donut__legend i[data-tone="danger"] {
+  background: var(--usage-danger);
+}
+
+.usage-donut__legend i[data-tone="info"] {
+  background: var(--usage-info);
+}
+
+.usage-donut__legend i[data-tone="warning"] {
+  background: var(--usage-warning);
+}
+
+.usage-donut__legend span {
+  color: var(--dashboard-muted-bright);
+  flex: 1;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.usage-donut__legend b {
+  color: var(--dashboard-muted);
+  font-family: var(--font-geist-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+}

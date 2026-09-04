@@ -11,7 +11,7 @@ const DEFAULT_PER_PAGE = LOG_PER_PAGE_OPTIONS[1];
 
 /** Filter state a log surface persists in the URL query string. */
 export type LogUrlState = LogFilterValue &
-  Readonly<{ actor: string; page: number; perPage: number }>;
+  Readonly<{ actor: string; apiKeyId: string; page: number; perPage: number }>;
 
 function parseRange(value: string | null): DateRangeKey {
   return value === "24h" ||
@@ -46,6 +46,7 @@ export function useLogUrlState(): {
     return {
       project: params.get("project") ?? "",
       actor: params.get("actor") ?? "",
+      apiKeyId: params.get("apiKeyId") ?? "",
       range: parseRange(params.get("range")),
       from: params.get("from") ?? "",
       to: params.get("to") ?? "",
@@ -66,6 +67,7 @@ export function useLogUrlState(): {
       const search = new URLSearchParams();
       if (merged.project) search.set("project", merged.project);
       if (merged.actor) search.set("actor", merged.actor);
+      if (merged.apiKeyId) search.set("apiKeyId", merged.apiKeyId);
       if (merged.range !== "all") search.set("range", merged.range);
       if (merged.range === "custom" && merged.from) search.set("from", merged.from);
       if (merged.range === "custom" && merged.to) search.set("to", merged.to);
