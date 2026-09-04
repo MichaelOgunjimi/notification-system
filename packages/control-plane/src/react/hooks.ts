@@ -12,6 +12,8 @@ import type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  UsageFilter,
+  UsageSummaryFilter,
 } from "../types";
 import { useControlPlaneClient } from "./provider";
 import {
@@ -21,9 +23,13 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationUsageQuery,
+  organizationUsageSummaryQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectUsageQuery,
+  projectUsageSummaryQuery,
 } from "./queries";
 
 /**
@@ -371,6 +377,73 @@ export function useOrganizationAuditLog(
   const client = useControlPlaneClient();
   return useQuery({
     ...organizationAuditLogQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of a project's hourly API usage.
+ *
+ * @param projectId Project whose usage should be loaded; null disables the query.
+ * @param filter 1-based page, page size, and optional date range.
+ * @returns TanStack Query result containing a page of usage rows.
+ */
+export function useProjectUsage(projectId: string | null, filter: UsageFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectUsageQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of an organization-wide API usage list (all projects).
+ *
+ * @param organizationId Organization whose usage should be loaded; null disables the query.
+ * @param filter 1-based page, page size, and optional date range.
+ * @returns TanStack Query result containing a page of usage rows.
+ */
+export function useOrganizationUsage(organizationId: string | null, filter: UsageFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationUsageQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads a project's usage summary (totals and environment breakdown) over a date range.
+ *
+ * @param projectId Project whose usage should be aggregated; null disables the query.
+ * @param filter Optional date range; unbounded when omitted.
+ * @returns TanStack Query result containing the usage summary.
+ */
+export function useProjectUsageSummary(projectId: string | null, filter: UsageSummaryFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectUsageSummaryQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads an organization's usage summary (totals and environment breakdown) over a date range.
+ *
+ * @param organizationId Organization whose usage should be aggregated; null disables the query.
+ * @param filter Optional date range; unbounded when omitted.
+ * @returns TanStack Query result containing the usage summary.
+ */
+export function useOrganizationUsageSummary(
+  organizationId: string | null,
+  filter: UsageSummaryFilter = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationUsageSummaryQuery(client, organizationId ?? "pending", filter),
     enabled: Boolean(organizationId),
     placeholderData: keepPreviousData,
   });

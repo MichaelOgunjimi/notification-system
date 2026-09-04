@@ -560,4 +560,97 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("lists a project's usage page with camel-cased entries and forwarded filters", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            project_id: "project-1",
+            api_key_id: "key-1",
+            api_key_name: "Production key",
+            api_key_environment: "live",
+            endpoint: "/api/v1/events",
+            hour_bucket: "2026-09-04T14:00:00Z",
+            request_count: 42,
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 50,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.usage.forProject("project-1", {
+        from: "2026-09-01T00:00:00Z",
+        to: "2026-09-30T00:00:00Z",
+      }),
+    ).resolves.toEqual({
+      items: [
+        {
+          projectId: "project-1",
+          apiKeyId: "key-1",
+          apiKeyName: "Production key",
+          apiKeyEnvironment: "live",
+          endpoint: "/api/v1/events",
+          hourBucket: "2026-09-04T14:00:00Z",
+          requestCount: 42,
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      totalPages: 1,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/usage?from=2026-09-01T00%3A00%3A00Z&to=2026-09-30T00%3A00%3A00Z",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("summarizes an organization's usage with camel-cased totals and environment breakdown", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        total_requests: 100,
+        successful_requests: 90,
+        failed_requests: 10,
+        project_count: 2,
+        api_key_count: 3,
+        by_environment: [
+          {
+            environment: "live",
+            total_requests: 80,
+            successful_requests: 75,
+            failed_requests: 5,
+          },
+        ],
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.usage.summaryForOrganization("organization-1", { from: "2026-09-01T00:00:00Z" }),
+    ).resolves.toEqual({
+      totalRequests: 100,
+      successfulRequests: 90,
+      failedRequests: 10,
+      projectCount: 2,
+      apiKeyCount: 3,
+      byEnvironment: [
+        {
+          environment: "live",
+          totalRequests: 80,
+          successfulRequests: 75,
+          failedRequests: 5,
+        },
+      ],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1/usage/summary?from=2026-09-01T00%3A00%3A00Z",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

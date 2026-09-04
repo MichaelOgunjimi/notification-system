@@ -1,6 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ControlPlaneError } from "../error";
-import type { AuditLogFilter, ControlPlaneClient, ProjectApiKeyListOptions } from "../types";
+import type {
+  AuditLogFilter,
+  ControlPlaneClient,
+  ProjectApiKeyListOptions,
+  UsageFilter,
+  UsageSummaryFilter,
+} from "../types";
 
 /** Hierarchical TanStack Query keys for control-plane cache invalidation. */
 export const controlPlaneQueryKeys = {
@@ -19,6 +25,13 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "projects", projectId, "audit-log"] as const,
   organizationAuditLog: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "audit-log"] as const,
+  projectUsage: (projectId: string) => ["control-plane", "projects", projectId, "usage"] as const,
+  organizationUsage: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "usage"] as const,
+  projectUsageSummary: (projectId: string) =>
+    ["control-plane", "projects", projectId, "usage", "summary"] as const,
+  organizationUsageSummary: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "usage", "summary"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -141,12 +154,13 @@ export function projectApiKeysQuery(
 }
 
 /**
- * Keeps the activity log feeling live without a streaming transport: poll a
- * visible tab every 20s (TanStack pauses this for a hidden tab) and catch up
- * immediately on window focus. `staleTime` is short so those refetches actually
- * hit the network. The real observability pages will move to Redis pub/sub → SSE.
+ * Keeps the tenant observability views (activity log, usage) feeling live
+ * without a streaming transport: poll a visible tab every 20s (TanStack pauses
+ * this for a hidden tab) and catch up immediately on window focus. `staleTime`
+ * is short so those refetches actually hit the network. The real-time
+ * operational pages (Events, Delivery) will move to Redis pub/sub → SSE.
  */
-const auditLogLiveness = {
+const tenantLiveness = {
   refetchInterval: 20 * 1000,
   refetchOnWindowFocus: true,
   staleTime: 5 * 1000,
@@ -189,7 +203,7 @@ export function projectAuditLogQuery(
     queryKey: [...controlPlaneQueryKeys.projectAuditLog(projectId), ...key] as const,
     queryFn: () => client.auditLog.forProject(projectId, args),
     retry: retryTransientFailure,
-    ...auditLogLiveness,
+    ...tenantLiveness,
   });
 }
 
@@ -211,6 +225,113 @@ export function organizationAuditLogQuery(
     queryKey: [...controlPlaneQueryKeys.organizationAuditLog(organizationId), ...key] as const,
     queryFn: () => client.auditLog.forOrganization(organizationId, args),
     retry: retryTransientFailure,
-    ...auditLogLiveness,
+    ...tenantLiveness,
+  });
+}
+
+function usageKeyParts(filter: UsageFilter) {
+  const { page = 1, perPage = 50, from, to } = filter;
+  return {
+    args: { page, perPage, from, to },
+    key: [page, perPage, from ?? null, to ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for one page of a project's hourly usage buckets.
+ *
+ * Page and filters are part of the cache key so paging or filtering keeps
+ * earlier pages; `projectUsage(projectId)` is the invalidation boundary.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose usage should be loaded.
+ * @param filter 1-based page, page size, and optional date range.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectUsageQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: UsageFilter,
+) {
+  const { args, key } = usageKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectUsage(projectId), ...key] as const,
+    queryFn: () => client.usage.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one page of an organization-wide usage list.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose usage (across all projects) should load.
+ * @param filter 1-based page, page size, and optional date range.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationUsageQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: UsageFilter,
+) {
+  const { args, key } = usageKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationUsage(organizationId), ...key] as const,
+    queryFn: () => client.usage.forOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for a project's usage summary over a date range.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose usage should be aggregated.
+ * @param filter Optional date range; unbounded when omitted.
+ * @returns TanStack Query options scoped to the project and date range.
+ */
+export function projectUsageSummaryQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: UsageSummaryFilter,
+) {
+  const { from, to } = filter;
+  return queryOptions({
+    queryKey: [
+      ...controlPlaneQueryKeys.projectUsageSummary(projectId),
+      from ?? null,
+      to ?? null,
+    ] as const,
+    queryFn: () => client.usage.summaryForProject(projectId, { from, to }),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for an organization's usage summary over a date range.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose usage should be aggregated.
+ * @param filter Optional date range; unbounded when omitted.
+ * @returns TanStack Query options scoped to the organization and date range.
+ */
+export function organizationUsageSummaryQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: UsageSummaryFilter,
+) {
+  const { from, to } = filter;
+  return queryOptions({
+    queryKey: [
+      ...controlPlaneQueryKeys.organizationUsageSummary(organizationId),
+      from ?? null,
+      to ?? null,
+    ] as const,
+    queryFn: () => client.usage.summaryForOrganization(organizationId, { from, to }),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
   });
 }

@@ -6,9 +6,13 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationUsageQuery,
+  organizationUsageSummaryQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectUsageQuery,
+  projectUsageSummaryQuery,
 } from "./queries";
 
 const emptyPage = { items: [], total: 0, page: 1, perPage: 20, totalPages: 0 };
@@ -56,6 +60,12 @@ describe("control-plane queries", () => {
       auditLog: {
         forProject: vi.fn().mockResolvedValue(emptyPage),
         forOrganization: vi.fn().mockResolvedValue(emptyPage),
+      },
+      usage: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        forOrganization: vi.fn().mockResolvedValue(emptyPage),
+        summaryForProject: vi.fn(),
+        summaryForOrganization: vi.fn(),
       },
     };
 
@@ -190,6 +200,93 @@ describe("control-plane queries", () => {
       category: "operational",
       from: undefined,
       to: "2026-09-30T00:00:00Z",
+    });
+  });
+
+  it("scopes usage queries by target, page, and date range", async () => {
+    const summary = {
+      totalRequests: 0,
+      successfulRequests: 0,
+      failedRequests: 0,
+      projectCount: 0,
+      apiKeyCount: 0,
+      byEnvironment: [],
+    };
+    const client = {
+      usage: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        forOrganization: vi.fn().mockResolvedValue(emptyPage),
+        summaryForProject: vi.fn().mockResolvedValue(summary),
+        summaryForOrganization: vi.fn().mockResolvedValue(summary),
+      },
+    } as unknown as ControlPlaneClient;
+
+    const project = projectUsageQuery(client, "project-1", {});
+    const organization = organizationUsageQuery(client, "organization-1", {
+      page: 2,
+      perPage: 100,
+      from: "2026-09-01T00:00:00Z",
+      to: "2026-09-30T00:00:00Z",
+    });
+    const projectSummary = projectUsageSummaryQuery(client, "project-1", {});
+    const organizationSummary = organizationUsageSummaryQuery(client, "organization-1", {
+      from: "2026-09-01T00:00:00Z",
+    });
+
+    expect(project.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectUsage("project-1"),
+      1,
+      50,
+      null,
+      null,
+    ]);
+    expect(organization.queryKey).toEqual([
+      ...controlPlaneQueryKeys.organizationUsage("organization-1"),
+      2,
+      100,
+      "2026-09-01T00:00:00Z",
+      "2026-09-30T00:00:00Z",
+    ]);
+    expect(projectSummary.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectUsageSummary("project-1"),
+      null,
+      null,
+    ]);
+    expect(organizationSummary.queryKey).toEqual([
+      ...controlPlaneQueryKeys.organizationUsageSummary("organization-1"),
+      "2026-09-01T00:00:00Z",
+      null,
+    ]);
+
+    for (const options of [project, organization]) {
+      expect(options.refetchInterval).toBe(20 * 1000);
+      expect(options.refetchOnWindowFocus).toBe(true);
+      expect(options.staleTime).toBe(5 * 1000);
+    }
+
+    await project.queryFn?.({} as never);
+    await organization.queryFn?.({} as never);
+    await projectSummary.queryFn?.({} as never);
+    await organizationSummary.queryFn?.({} as never);
+    expect(client.usage.forProject).toHaveBeenCalledWith("project-1", {
+      page: 1,
+      perPage: 50,
+      from: undefined,
+      to: undefined,
+    });
+    expect(client.usage.forOrganization).toHaveBeenCalledWith("organization-1", {
+      page: 2,
+      perPage: 100,
+      from: "2026-09-01T00:00:00Z",
+      to: "2026-09-30T00:00:00Z",
+    });
+    expect(client.usage.summaryForProject).toHaveBeenCalledWith("project-1", {
+      from: undefined,
+      to: undefined,
+    });
+    expect(client.usage.summaryForOrganization).toHaveBeenCalledWith("organization-1", {
+      from: "2026-09-01T00:00:00Z",
+      to: undefined,
     });
   });
 });

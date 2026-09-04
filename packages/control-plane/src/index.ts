@@ -26,4 +26,9 @@ export type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  UsageEntry,
+  UsageEnvironmentSummary,
+  UsageFilter,
+  UsageSummary,
+  UsageSummaryFilter,
 } from "./types";

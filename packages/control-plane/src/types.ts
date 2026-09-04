@@ -249,6 +249,54 @@ export type AuditLogFilter = Readonly<{
   to?: string;
 }>;
 
+/** One hour-bucketed request count for a single API key and endpoint. */
+export type UsageEntry = Readonly<{
+  projectId: string;
+  apiKeyId: string;
+  /** Name of the key that made these requests. */
+  apiKeyName: string;
+  /** Environment (live / test) of the key that made these requests. */
+  apiKeyEnvironment: string;
+  endpoint: string;
+  /** ISO timestamp for the start of the hour this row aggregates. */
+  hourBucket: string;
+  requestCount: number;
+}>;
+
+/** Request totals for one API key environment (live / test). */
+export type UsageEnvironmentSummary = Readonly<{
+  environment: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+}>;
+
+/** Aggregate request volume and outcome over a tenant scope and time window. */
+export type UsageSummary = Readonly<{
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  projectCount: number;
+  apiKeyCount: number;
+  byEnvironment: readonly UsageEnvironmentSummary[];
+}>;
+
+/** Pagination and date range for {@link ControlPlaneClient.usage} list queries. */
+export type UsageFilter = Readonly<{
+  page?: number;
+  perPage?: number;
+  /** ISO timestamp; only buckets at or after this moment are returned. */
+  from?: string;
+  /** ISO timestamp; only buckets at or before this moment are returned. */
+  to?: string;
+}>;
+
+/** Date range for {@link ControlPlaneClient.usage} summary queries. */
+export type UsageSummaryFilter = Readonly<{
+  from?: string;
+  to?: string;
+}>;
+
 /**
  * Configuration for a browser-facing control-plane client.
  *
@@ -497,6 +545,48 @@ export interface ControlPlaneClient {
       filter?: AuditLogFilter,
     ): Promise<Paginated<AuditLogEntry>>;
   };
+  /** Read-only tenant API usage — request volume per key, endpoint, and hour. */
+  readonly usage: {
+    /**
+     * Lists a project's hourly usage buckets, newest first.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional page, page size (1-200, default 50), and date range.
+     * @returns One page of usage rows with resolved API key names.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    forProject(projectId: string, filter?: UsageFilter): Promise<Paginated<UsageEntry>>;
+    /**
+     * Lists usage buckets across an organization and all its projects, newest first.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional page, page size (1-200, default 50), and date range.
+     * @returns One page of usage rows with resolved API key names.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    forOrganization(organizationId: string, filter?: UsageFilter): Promise<Paginated<UsageEntry>>;
+    /**
+     * Aggregates a project's request volume and outcome over a date range.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional date range; unbounded when omitted.
+     * @returns Totals and a breakdown by API key environment.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    summaryForProject(projectId: string, filter?: UsageSummaryFilter): Promise<UsageSummary>;
+    /**
+     * Aggregates an organization's request volume and outcome over a date range.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional date range; unbounded when omitted.
+     * @returns Totals and a breakdown by API key environment.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    summaryForOrganization(
+      organizationId: string,
+      filter?: UsageSummaryFilter,
+    ): Promise<UsageSummary>;
+  };
 }
 
 /** Raw organization payload returned by the FastAPI control-plane endpoint. */
@@ -583,6 +673,35 @@ export type ApiAuditLogEntry = {
   metadata: Record<string, unknown>;
   ip_address: string | null;
   created_at: string;
+};
+
+/** Raw usage row returned by FastAPI. */
+export type ApiUsageEntry = {
+  project_id: string;
+  api_key_id: string;
+  api_key_name: string;
+  api_key_environment: string;
+  endpoint: string;
+  hour_bucket: string;
+  request_count: number;
+};
+
+/** Raw per-environment usage summary returned by FastAPI. */
+export type ApiUsageEnvironmentSummary = {
+  environment: string;
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+};
+
+/** Raw usage summary returned by FastAPI. */
+export type ApiUsageSummary = {
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  project_count: number;
+  api_key_count: number;
+  by_environment: ApiUsageEnvironmentSummary[];
 };
 
 /** Raw project API key payload returned by FastAPI. */

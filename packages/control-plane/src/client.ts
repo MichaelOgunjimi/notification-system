@@ -8,6 +8,8 @@ import type {
   ApiPaginated,
   ApiProject,
   ApiProjectApiKey,
+  ApiUsageEntry,
+  ApiUsageSummary,
   AuditLogEntry,
   AuditLogFilter,
   ControlPlaneClient,
@@ -20,6 +22,10 @@ import type {
   Paginated,
   Project,
   ProjectApiKey,
+  UsageEntry,
+  UsageFilter,
+  UsageSummary,
+  UsageSummaryFilter,
 } from "./types";
 import { controlPlaneErrorFromResponse, controlPlaneNetworkError } from "./error";
 
@@ -146,6 +152,52 @@ function auditLogQuery(filter: AuditLogFilter): string {
   if (filter.action) params.set("action", filter.action);
   if (filter.actor) params.set("actor", filter.actor);
   if (filter.category) params.set("category", filter.category);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapUsageEntry(entry: ApiUsageEntry): UsageEntry {
+  return {
+    projectId: entry.project_id,
+    apiKeyId: entry.api_key_id,
+    apiKeyName: entry.api_key_name,
+    apiKeyEnvironment: entry.api_key_environment,
+    endpoint: entry.endpoint,
+    hourBucket: entry.hour_bucket,
+    requestCount: entry.request_count,
+  };
+}
+
+function mapUsageSummary(summary: ApiUsageSummary): UsageSummary {
+  return {
+    totalRequests: summary.total_requests,
+    successfulRequests: summary.successful_requests,
+    failedRequests: summary.failed_requests,
+    projectCount: summary.project_count,
+    apiKeyCount: summary.api_key_count,
+    byEnvironment: summary.by_environment.map((row) => ({
+      environment: row.environment,
+      totalRequests: row.total_requests,
+      successfulRequests: row.successful_requests,
+      failedRequests: row.failed_requests,
+    })),
+  };
+}
+
+function usageQuery(filter: UsageFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function usageSummaryQuery(filter: UsageSummaryFilter): string {
+  const params = new URLSearchParams();
   if (filter.from) params.set("from", filter.from);
   if (filter.to) params.set("to", filter.to);
   const query = params.toString();
@@ -369,6 +421,45 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       );
       return mapPage(page, mapAuditLogEntry);
     },
+  };
+
+  readonly usage = {
+    forProject: async (
+      projectId: string,
+      filter: UsageFilter = {},
+    ): Promise<Paginated<UsageEntry>> => {
+      const page = await this.get<ApiPaginated<ApiUsageEntry>>(
+        `/projects/${encodeURIComponent(projectId)}/usage${usageQuery(filter)}`,
+      );
+      return mapPage(page, mapUsageEntry);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: UsageFilter = {},
+    ): Promise<Paginated<UsageEntry>> => {
+      const page = await this.get<ApiPaginated<ApiUsageEntry>>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage${usageQuery(filter)}`,
+      );
+      return mapPage(page, mapUsageEntry);
+    },
+    summaryForProject: async (
+      projectId: string,
+      filter: UsageSummaryFilter = {},
+    ): Promise<UsageSummary> =>
+      mapUsageSummary(
+        await this.get<ApiUsageSummary>(
+          `/projects/${encodeURIComponent(projectId)}/usage/summary${usageSummaryQuery(filter)}`,
+        ),
+      ),
+    summaryForOrganization: async (
+      organizationId: string,
+      filter: UsageSummaryFilter = {},
+    ): Promise<UsageSummary> =>
+      mapUsageSummary(
+        await this.get<ApiUsageSummary>(
+          `/organizations/${encodeURIComponent(organizationId)}/usage/summary${usageSummaryQuery(filter)}`,
+        ),
+      ),
   };
 
   /**
