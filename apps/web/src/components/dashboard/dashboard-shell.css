@@ -599,6 +599,17 @@
   margin-top: 5px;
 }
 
+.dashboard-stage__crumb span a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.dashboard-stage__crumb span a:hover,
+.dashboard-stage__crumb span a:focus-visible {
+  color: var(--dashboard-ink);
+  text-decoration: underline;
+}
+
 .dashboard-overview {
   min-height: calc(100dvh - 72px);
   overflow: hidden;

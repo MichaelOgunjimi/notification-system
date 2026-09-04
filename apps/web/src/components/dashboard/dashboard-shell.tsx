@@ -318,8 +318,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
             >
               <List size={19} />
             </button>
-            <div>
-              <span>Project / {project.slug}</span>
+            <div className="dashboard-stage__crumb">
+              <span>
+                Project /{" "}
+                <Link href={currentDashboardPath} title="Back to project overview">
+                  {project.slug}
+                </Link>
+              </span>
               <strong>{stageTitle}</strong>
             </div>
           </div>
