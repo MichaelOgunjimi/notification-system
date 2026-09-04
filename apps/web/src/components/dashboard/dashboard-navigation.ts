@@ -51,7 +51,6 @@ export const CONFIGURE_NAV: readonly DashboardNavItem[] = [
     icon: ListBullets,
     path: "settings/activity",
     capability: "project:audit:read",
-    comingSoon: true,
   },
 ];
 
