@@ -281,21 +281,93 @@ export type UsageSummary = Readonly<{
   byEnvironment: readonly UsageEnvironmentSummary[];
 }>;
 
-/** Pagination and date range for {@link ControlPlaneClient.usage} list queries. */
+/** Pagination, key, and date range for {@link ControlPlaneClient.usage} list queries. */
 export type UsageFilter = Readonly<{
   page?: number;
   perPage?: number;
+  /** Narrow to one API key; omit for every key in scope. */
+  apiKeyId?: string;
   /** ISO timestamp; only buckets at or after this moment are returned. */
   from?: string;
   /** ISO timestamp; only buckets at or before this moment are returned. */
   to?: string;
 }>;
 
-/** Date range for {@link ControlPlaneClient.usage} summary queries. */
+/** Key and date range for {@link ControlPlaneClient.usage} summary queries. */
 export type UsageSummaryFilter = Readonly<{
+  apiKeyId?: string;
   from?: string;
   to?: string;
 }>;
+
+/** Request volume for one hour of the day (0-23, UTC), summed across every
+ * matching day in the queried range. */
+export type UsageHourlyPoint = Readonly<{
+  hour: number;
+  requestCount: number;
+}>;
+
+/** An endpoint's request count, as one row of a top-endpoints ranking. */
+export type UsageEndpointStat = Readonly<{
+  endpoint: string;
+  requestCount: number;
+}>;
+
+/** Notification outcome counts for one delivery channel. */
+export type ChannelStat = Readonly<{
+  channel: string;
+  delivered: number;
+  failed: number;
+  pending: number;
+  deadLetter: number;
+}>;
+
+/** Delivery metrics and channel mix over a date range (defaults to today). */
+export type AnalyticsSummary = Readonly<{
+  eventsToday: number;
+  eventsCompleted: number;
+  eventsFailed: number;
+  eventsProcessing: number;
+  notificationsDelivered: number;
+  notificationsFailed: number;
+  notificationsProcessing: number;
+  notificationsQueued: number;
+  dlqActive: number;
+  /** Percentage of terminal notifications that delivered successfully. */
+  successRate: number;
+  /** Average time from queued to delivered, in milliseconds; null with no data. */
+  avgDeliveryLatencyMs: number | null;
+  channelStats: readonly ChannelStat[];
+}>;
+
+/** Notification status counts for one time bucket. */
+export type TrendPoint = Readonly<{
+  /** ISO timestamp for the start of this bucket. */
+  timestamp: string;
+  delivered: number;
+  failed: number;
+  queued: number;
+  processing: number;
+}>;
+
+/** A delivery-status time series over the queried range. */
+export type Trends = Readonly<{
+  points: readonly TrendPoint[];
+}>;
+
+/** Key and date range for {@link ControlPlaneClient.usage} analytics queries. */
+export type AnalyticsFilter = Readonly<{
+  apiKeyId?: string;
+  from?: string;
+  to?: string;
+}>;
+
+/** {@link AnalyticsFilter} plus the trend bucket size. */
+export type TrendsFilter = AnalyticsFilter &
+  Readonly<{
+    /** Bucket size: `"hour"` or `"day"` (default). */
+    granularity?: "hour" | "day";
+  }>;
 
 /**
  * Configuration for a browser-facing control-plane client.
@@ -586,6 +658,90 @@ export interface ControlPlaneClient {
       organizationId: string,
       filter?: UsageSummaryFilter,
     ): Promise<UsageSummary>;
+    /**
+     * Buckets a project's usage by hour of day (0-23, UTC) over a date range.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional key filter and date range; unbounded when omitted.
+     * @returns All 24 hours, zero-filled where there was no traffic.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    hourlyForProject(projectId: string, filter?: UsageFilter): Promise<readonly UsageHourlyPoint[]>;
+    /**
+     * Buckets an organization's usage by hour of day (0-23, UTC) over a date range.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional key filter and date range; unbounded when omitted.
+     * @returns All 24 hours, zero-filled where there was no traffic.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    hourlyForOrganization(
+      organizationId: string,
+      filter?: UsageFilter,
+    ): Promise<readonly UsageHourlyPoint[]>;
+    /**
+     * Ranks a project's endpoints by request count over a date range.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional key filter, date range, and result limit (default 8, max 20).
+     * @returns Endpoints sorted by request count, descending.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    topEndpointsForProject(
+      projectId: string,
+      filter?: UsageFilter & Readonly<{ limit?: number }>,
+    ): Promise<readonly UsageEndpointStat[]>;
+    /**
+     * Ranks an organization's endpoints by request count over a date range.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional key filter, date range, and result limit (default 8, max 20).
+     * @returns Endpoints sorted by request count, descending.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    topEndpointsForOrganization(
+      organizationId: string,
+      filter?: UsageFilter & Readonly<{ limit?: number }>,
+    ): Promise<readonly UsageEndpointStat[]>;
+    /**
+     * Delivery metrics and channel mix for a project over a date range.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional key filter and date range (defaults to today).
+     * @returns Event/notification counts, success rate, latency, and channel stats.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    analyticsForProject(projectId: string, filter?: AnalyticsFilter): Promise<AnalyticsSummary>;
+    /**
+     * Delivery metrics and channel mix for an organization over a date range.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional key filter and date range (defaults to today).
+     * @returns Event/notification counts, success rate, latency, and channel stats.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    analyticsForOrganization(
+      organizationId: string,
+      filter?: AnalyticsFilter,
+    ): Promise<AnalyticsSummary>;
+    /**
+     * Delivery-status time series for a project over a date range.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+     * @returns Delivered/failed/queued/processing counts per bucket.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    trendsForProject(projectId: string, filter?: TrendsFilter): Promise<Trends>;
+    /**
+     * Delivery-status time series for an organization over a date range.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+     * @returns Delivered/failed/queued/processing counts per bucket.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    trendsForOrganization(organizationId: string, filter?: TrendsFilter): Promise<Trends>;
   };
 }
 
@@ -702,6 +858,57 @@ export type ApiUsageSummary = {
   project_count: number;
   api_key_count: number;
   by_environment: ApiUsageEnvironmentSummary[];
+};
+
+/** Raw hourly usage bucket returned by FastAPI. */
+export type ApiUsageHourlyPoint = {
+  hour: number;
+  request_count: number;
+};
+
+/** Raw endpoint usage ranking row returned by FastAPI. */
+export type ApiUsageEndpointStat = {
+  endpoint: string;
+  request_count: number;
+};
+
+/** Raw channel stat returned by FastAPI. */
+export type ApiChannelStat = {
+  channel: string;
+  delivered: number;
+  failed: number;
+  pending: number;
+  dead_letter: number;
+};
+
+/** Raw analytics summary returned by FastAPI. */
+export type ApiAnalyticsSummary = {
+  events_today: number;
+  events_completed: number;
+  events_failed: number;
+  events_processing: number;
+  notifications_delivered: number;
+  notifications_failed: number;
+  notifications_processing: number;
+  notifications_queued: number;
+  dlq_active: number;
+  success_rate: number;
+  avg_delivery_latency_ms: number | null;
+  channel_stats: ApiChannelStat[];
+};
+
+/** Raw trend point returned by FastAPI. */
+export type ApiTrendPoint = {
+  timestamp: string;
+  delivered: number;
+  failed: number;
+  queued: number;
+  processing: number;
+};
+
+/** Raw trend series returned by FastAPI. */
+export type ApiTrends = {
+  points: ApiTrendPoint[];
 };
 
 /** Raw project API key payload returned by FastAPI. */

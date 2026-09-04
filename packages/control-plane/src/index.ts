@@ -1,9 +1,12 @@
 export { controlPlaneClient, createControlPlaneClient } from "./client";
 export { ControlPlaneError, type ControlPlaneErrorCode } from "./error";
 export type {
+  AnalyticsFilter,
+  AnalyticsSummary,
   ApiKeyScope,
   AuditLogEntry,
   AuditLogFilter,
+  ChannelStat,
   ControlPlaneClient,
   ControlPlaneClientOptions,
   CreatedProjectApiKey,
@@ -26,9 +29,14 @@ export type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  TrendPoint,
+  Trends,
+  TrendsFilter,
+  UsageEndpointStat,
   UsageEntry,
   UsageEnvironmentSummary,
   UsageFilter,
+  UsageHourlyPoint,
   UsageSummary,
   UsageSummaryFilter,
 } from "./types";

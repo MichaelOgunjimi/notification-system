@@ -1,5 +1,9 @@
 import type {
+  AnalyticsFilter,
+  AnalyticsSummary,
+  ApiAnalyticsSummary,
   ApiAuditLogEntry,
+  ApiChannelStat,
   ApiCreatedProjectApiKey,
   ApiOrganization,
   ApiOrganizationInvitation,
@@ -8,10 +12,15 @@ import type {
   ApiPaginated,
   ApiProject,
   ApiProjectApiKey,
+  ApiTrendPoint,
+  ApiTrends,
+  ApiUsageEndpointStat,
   ApiUsageEntry,
+  ApiUsageHourlyPoint,
   ApiUsageSummary,
   AuditLogEntry,
   AuditLogFilter,
+  ChannelStat,
   ControlPlaneClient,
   ControlPlaneClientOptions,
   CreatedProjectApiKey,
@@ -22,8 +31,13 @@ import type {
   Paginated,
   Project,
   ProjectApiKey,
+  TrendPoint,
+  Trends,
+  TrendsFilter,
+  UsageEndpointStat,
   UsageEntry,
   UsageFilter,
+  UsageHourlyPoint,
   UsageSummary,
   UsageSummaryFilter,
 } from "./types";
@@ -190,6 +204,7 @@ function usageQuery(filter: UsageFilter): string {
   const params = new URLSearchParams();
   if (filter.page !== undefined) params.set("page", String(filter.page));
   if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
   if (filter.from) params.set("from", filter.from);
   if (filter.to) params.set("to", filter.to);
   const query = params.toString();
@@ -198,10 +213,89 @@ function usageQuery(filter: UsageFilter): string {
 
 function usageSummaryQuery(filter: UsageSummaryFilter): string {
   const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
   if (filter.from) params.set("from", filter.from);
   if (filter.to) params.set("to", filter.to);
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function topEndpointsQuery(filter: UsageFilter & Readonly<{ limit?: number }>): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.limit !== undefined) params.set("limit", String(filter.limit));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function analyticsQuery(filter: AnalyticsFilter): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function trendsQuery(filter: TrendsFilter): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.granularity) params.set("granularity", filter.granularity);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapUsageHourlyPoint(point: ApiUsageHourlyPoint): UsageHourlyPoint {
+  return { hour: point.hour, requestCount: point.request_count };
+}
+
+function mapUsageEndpointStat(row: ApiUsageEndpointStat): UsageEndpointStat {
+  return { endpoint: row.endpoint, requestCount: row.request_count };
+}
+
+function mapChannelStat(row: ApiChannelStat): ChannelStat {
+  return {
+    channel: row.channel,
+    delivered: row.delivered,
+    failed: row.failed,
+    pending: row.pending,
+    deadLetter: row.dead_letter,
+  };
+}
+
+function mapAnalyticsSummary(summary: ApiAnalyticsSummary): AnalyticsSummary {
+  return {
+    eventsToday: summary.events_today,
+    eventsCompleted: summary.events_completed,
+    eventsFailed: summary.events_failed,
+    eventsProcessing: summary.events_processing,
+    notificationsDelivered: summary.notifications_delivered,
+    notificationsFailed: summary.notifications_failed,
+    notificationsProcessing: summary.notifications_processing,
+    notificationsQueued: summary.notifications_queued,
+    dlqActive: summary.dlq_active,
+    successRate: summary.success_rate,
+    avgDeliveryLatencyMs: summary.avg_delivery_latency_ms,
+    channelStats: summary.channel_stats.map(mapChannelStat),
+  };
+}
+
+function mapTrendPoint(point: ApiTrendPoint): TrendPoint {
+  return {
+    timestamp: point.timestamp,
+    delivered: point.delivered,
+    failed: point.failed,
+    queued: point.queued,
+    processing: point.processing,
+  };
+}
+
+function mapTrends(trends: ApiTrends): Trends {
+  return { points: trends.points.map(mapTrendPoint) };
 }
 
 /** HTTP implementation that communicates through an application's same-origin boundary. */
@@ -458,6 +552,75 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       mapUsageSummary(
         await this.get<ApiUsageSummary>(
           `/organizations/${encodeURIComponent(organizationId)}/usage/summary${usageSummaryQuery(filter)}`,
+        ),
+      ),
+    hourlyForProject: async (
+      projectId: string,
+      filter: UsageFilter = {},
+    ): Promise<readonly UsageHourlyPoint[]> => {
+      const points = await this.get<ApiUsageHourlyPoint[]>(
+        `/projects/${encodeURIComponent(projectId)}/usage/hourly${usageQuery(filter)}`,
+      );
+      return points.map(mapUsageHourlyPoint);
+    },
+    hourlyForOrganization: async (
+      organizationId: string,
+      filter: UsageFilter = {},
+    ): Promise<readonly UsageHourlyPoint[]> => {
+      const points = await this.get<ApiUsageHourlyPoint[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage/hourly${usageQuery(filter)}`,
+      );
+      return points.map(mapUsageHourlyPoint);
+    },
+    topEndpointsForProject: async (
+      projectId: string,
+      filter: UsageFilter & Readonly<{ limit?: number }> = {},
+    ): Promise<readonly UsageEndpointStat[]> => {
+      const rows = await this.get<ApiUsageEndpointStat[]>(
+        `/projects/${encodeURIComponent(projectId)}/usage/top-endpoints${topEndpointsQuery(filter)}`,
+      );
+      return rows.map(mapUsageEndpointStat);
+    },
+    topEndpointsForOrganization: async (
+      organizationId: string,
+      filter: UsageFilter & Readonly<{ limit?: number }> = {},
+    ): Promise<readonly UsageEndpointStat[]> => {
+      const rows = await this.get<ApiUsageEndpointStat[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage/top-endpoints${topEndpointsQuery(filter)}`,
+      );
+      return rows.map(mapUsageEndpointStat);
+    },
+    analyticsForProject: async (
+      projectId: string,
+      filter: AnalyticsFilter = {},
+    ): Promise<AnalyticsSummary> =>
+      mapAnalyticsSummary(
+        await this.get<ApiAnalyticsSummary>(
+          `/projects/${encodeURIComponent(projectId)}/analytics${analyticsQuery(filter)}`,
+        ),
+      ),
+    analyticsForOrganization: async (
+      organizationId: string,
+      filter: AnalyticsFilter = {},
+    ): Promise<AnalyticsSummary> =>
+      mapAnalyticsSummary(
+        await this.get<ApiAnalyticsSummary>(
+          `/organizations/${encodeURIComponent(organizationId)}/analytics${analyticsQuery(filter)}`,
+        ),
+      ),
+    trendsForProject: async (projectId: string, filter: TrendsFilter = {}): Promise<Trends> =>
+      mapTrends(
+        await this.get<ApiTrends>(
+          `/projects/${encodeURIComponent(projectId)}/analytics/trends${trendsQuery(filter)}`,
+        ),
+      ),
+    trendsForOrganization: async (
+      organizationId: string,
+      filter: TrendsFilter = {},
+    ): Promise<Trends> =>
+      mapTrends(
+        await this.get<ApiTrends>(
+          `/organizations/${encodeURIComponent(organizationId)}/analytics/trends${trendsQuery(filter)}`,
         ),
       ),
   };

@@ -1,9 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ControlPlaneError } from "../error";
 import type {
+  AnalyticsFilter,
   AuditLogFilter,
   ControlPlaneClient,
   ProjectApiKeyListOptions,
+  TrendsFilter,
   UsageFilter,
   UsageSummaryFilter,
 } from "../types";
@@ -32,6 +34,22 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "projects", projectId, "usage", "summary"] as const,
   organizationUsageSummary: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "usage", "summary"] as const,
+  projectUsageHourly: (projectId: string) =>
+    ["control-plane", "projects", projectId, "usage", "hourly"] as const,
+  organizationUsageHourly: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "usage", "hourly"] as const,
+  projectTopEndpoints: (projectId: string) =>
+    ["control-plane", "projects", projectId, "usage", "top-endpoints"] as const,
+  organizationTopEndpoints: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "usage", "top-endpoints"] as const,
+  projectAnalytics: (projectId: string) =>
+    ["control-plane", "projects", projectId, "analytics"] as const,
+  organizationAnalytics: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "analytics"] as const,
+  projectTrends: (projectId: string) =>
+    ["control-plane", "projects", projectId, "analytics", "trends"] as const,
+  organizationTrends: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "analytics", "trends"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -230,10 +248,10 @@ export function organizationAuditLogQuery(
 }
 
 function usageKeyParts(filter: UsageFilter) {
-  const { page = 1, perPage = 50, from, to } = filter;
+  const { page = 1, perPage = 50, apiKeyId, from, to } = filter;
   return {
-    args: { page, perPage, from, to },
-    key: [page, perPage, from ?? null, to ?? null] as const,
+    args: { page, perPage, apiKeyId, from, to },
+    key: [page, perPage, apiKeyId ?? null, from ?? null, to ?? null] as const,
   };
 }
 
@@ -297,14 +315,15 @@ export function projectUsageSummaryQuery(
   projectId: string,
   filter: UsageSummaryFilter,
 ) {
-  const { from, to } = filter;
+  const { apiKeyId, from, to } = filter;
   return queryOptions({
     queryKey: [
       ...controlPlaneQueryKeys.projectUsageSummary(projectId),
+      apiKeyId ?? null,
       from ?? null,
       to ?? null,
     ] as const,
-    queryFn: () => client.usage.summaryForProject(projectId, { from, to }),
+    queryFn: () => client.usage.summaryForProject(projectId, { apiKeyId, from, to }),
     retry: retryTransientFailure,
     ...tenantLiveness,
   });
@@ -323,14 +342,223 @@ export function organizationUsageSummaryQuery(
   organizationId: string,
   filter: UsageSummaryFilter,
 ) {
-  const { from, to } = filter;
+  const { apiKeyId, from, to } = filter;
   return queryOptions({
     queryKey: [
       ...controlPlaneQueryKeys.organizationUsageSummary(organizationId),
+      apiKeyId ?? null,
       from ?? null,
       to ?? null,
     ] as const,
-    queryFn: () => client.usage.summaryForOrganization(organizationId, { from, to }),
+    queryFn: () => client.usage.summaryForOrganization(organizationId, { apiKeyId, from, to }),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+function usageHourlyKeyParts(filter: UsageFilter) {
+  const { apiKeyId, from, to } = filter;
+  return {
+    args: { apiKeyId, from, to },
+    key: [apiKeyId ?? null, from ?? null, to ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for a project's usage bucketed by hour of day.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose usage should be bucketed.
+ * @param filter Optional key filter and date range; unbounded when omitted.
+ * @returns TanStack Query options scoped to the project and filters.
+ */
+export function projectUsageHourlyQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: UsageFilter,
+) {
+  const { args, key } = usageHourlyKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectUsageHourly(projectId), ...key] as const,
+    queryFn: () => client.usage.hourlyForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for an organization's usage bucketed by hour of day.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose usage should be bucketed.
+ * @param filter Optional key filter and date range; unbounded when omitted.
+ * @returns TanStack Query options scoped to the organization and filters.
+ */
+export function organizationUsageHourlyQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: UsageFilter,
+) {
+  const { args, key } = usageHourlyKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationUsageHourly(organizationId), ...key] as const,
+    queryFn: () => client.usage.hourlyForOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+function topEndpointsKeyParts(filter: UsageFilter & Readonly<{ limit?: number }>) {
+  const { apiKeyId, from, to, limit } = filter;
+  return {
+    args: { apiKeyId, from, to, limit },
+    key: [apiKeyId ?? null, from ?? null, to ?? null, limit ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for a project's top endpoints by request count.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose endpoints should be ranked.
+ * @param filter Optional key filter, date range, and result limit.
+ * @returns TanStack Query options scoped to the project and filters.
+ */
+export function projectTopEndpointsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: UsageFilter & Readonly<{ limit?: number }>,
+) {
+  const { args, key } = topEndpointsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectTopEndpoints(projectId), ...key] as const,
+    queryFn: () => client.usage.topEndpointsForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for an organization's top endpoints by request count.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose endpoints should be ranked.
+ * @param filter Optional key filter, date range, and result limit.
+ * @returns TanStack Query options scoped to the organization and filters.
+ */
+export function organizationTopEndpointsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: UsageFilter & Readonly<{ limit?: number }>,
+) {
+  const { args, key } = topEndpointsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationTopEndpoints(organizationId), ...key] as const,
+    queryFn: () => client.usage.topEndpointsForOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+function analyticsKeyParts(filter: AnalyticsFilter) {
+  const { apiKeyId, from, to } = filter;
+  return {
+    args: { apiKeyId, from, to },
+    key: [apiKeyId ?? null, from ?? null, to ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for a project's delivery analytics summary.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose analytics should be aggregated.
+ * @param filter Optional key filter and date range (defaults to today).
+ * @returns TanStack Query options scoped to the project and filters.
+ */
+export function projectAnalyticsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: AnalyticsFilter,
+) {
+  const { args, key } = analyticsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectAnalytics(projectId), ...key] as const,
+    queryFn: () => client.usage.analyticsForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for an organization's delivery analytics summary.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose analytics should be aggregated.
+ * @param filter Optional key filter and date range (defaults to today).
+ * @returns TanStack Query options scoped to the organization and filters.
+ */
+export function organizationAnalyticsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: AnalyticsFilter,
+) {
+  const { args, key } = analyticsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationAnalytics(organizationId), ...key] as const,
+    queryFn: () => client.usage.analyticsForOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+function trendsKeyParts(filter: TrendsFilter) {
+  const { apiKeyId, from, to, granularity } = filter;
+  return {
+    args: { apiKeyId, from, to, granularity },
+    key: [apiKeyId ?? null, from ?? null, to ?? null, granularity ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for a project's delivery-status trend.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose trend should be loaded.
+ * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+ * @returns TanStack Query options scoped to the project and filters.
+ */
+export function projectTrendsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: TrendsFilter,
+) {
+  const { args, key } = trendsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectTrends(projectId), ...key] as const,
+    queryFn: () => client.usage.trendsForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for an organization's delivery-status trend.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose trend should be loaded.
+ * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+ * @returns TanStack Query options scoped to the organization and filters.
+ */
+export function organizationTrendsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: TrendsFilter,
+) {
+  const { args, key } = trendsKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationTrends(organizationId), ...key] as const,
+    queryFn: () => client.usage.trendsForOrganization(organizationId, args),
     retry: retryTransientFailure,
     ...tenantLiveness,
   });

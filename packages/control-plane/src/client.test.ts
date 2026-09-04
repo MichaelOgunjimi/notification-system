@@ -653,4 +653,101 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("buckets a project's usage by hour of day and forwards the key filter", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        Array.from({ length: 24 }, (_, hour) => ({ hour, request_count: hour === 14 ? 42 : 0 })),
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const points = await client.usage.hourlyForProject("project-1", { apiKeyId: "key-1" });
+
+    expect(points).toHaveLength(24);
+    expect(points[14]).toEqual({ hour: 14, requestCount: 42 });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/usage/hourly?api_key_id=key-1",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("ranks a project's top endpoints with a limit", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json([{ endpoint: "/api/v1/events", request_count: 20 }]),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.usage.topEndpointsForProject("project-1", { limit: 3 })).resolves.toEqual([
+      { endpoint: "/api/v1/events", requestCount: 20 },
+    ]);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/usage/top-endpoints?limit=3",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("camel-cases a project's analytics summary and forwards filters", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        events_today: 4,
+        events_completed: 3,
+        events_failed: 1,
+        events_processing: 0,
+        notifications_delivered: 5,
+        notifications_failed: 1,
+        notifications_processing: 0,
+        notifications_queued: 0,
+        dlq_active: 1,
+        success_rate: 83.3,
+        avg_delivery_latency_ms: 412.5,
+        channel_stats: [{ channel: "email", delivered: 5, failed: 1, pending: 0, dead_letter: 0 }],
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.usage.analyticsForProject("project-1", { apiKeyId: "key-1" }),
+    ).resolves.toEqual({
+      eventsToday: 4,
+      eventsCompleted: 3,
+      eventsFailed: 1,
+      eventsProcessing: 0,
+      notificationsDelivered: 5,
+      notificationsFailed: 1,
+      notificationsProcessing: 0,
+      notificationsQueued: 0,
+      dlqActive: 1,
+      successRate: 83.3,
+      avgDeliveryLatencyMs: 412.5,
+      channelStats: [{ channel: "email", delivered: 5, failed: 1, pending: 0, deadLetter: 0 }],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/analytics?api_key_id=key-1",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("camel-cases a project's delivery trend and forwards granularity", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        points: [
+          { timestamp: "2026-09-04T00:00:00", delivered: 5, failed: 1, queued: 0, processing: 0 },
+        ],
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.usage.trendsForProject("project-1", { granularity: "hour" }),
+    ).resolves.toEqual({
+      points: [
+        { timestamp: "2026-09-04T00:00:00", delivered: 5, failed: 1, queued: 0, processing: 0 },
+      ],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/analytics/trends?granularity=hour",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

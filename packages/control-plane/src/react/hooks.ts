@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AnalyticsFilter,
   AuditLogFilter,
   OrganizationCreate,
   OrganizationInvitationCreate,
@@ -12,6 +13,7 @@ import type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  TrendsFilter,
   UsageFilter,
   UsageSummaryFilter,
 } from "../types";
@@ -19,15 +21,23 @@ import { useControlPlaneClient } from "./provider";
 import {
   controlPlaneQueryKeys,
   invitationPreviewQuery,
+  organizationAnalyticsQuery,
   organizationAuditLogQuery,
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationTopEndpointsQuery,
+  organizationTrendsQuery,
+  organizationUsageHourlyQuery,
   organizationUsageQuery,
   organizationUsageSummaryQuery,
+  projectAnalyticsQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectTopEndpointsQuery,
+  projectTrendsQuery,
+  projectUsageHourlyQuery,
   projectUsageQuery,
   projectUsageSummaryQuery,
 } from "./queries";
@@ -444,6 +454,148 @@ export function useOrganizationUsageSummary(
   const client = useControlPlaneClient();
   return useQuery({
     ...organizationUsageSummaryQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads a project's usage bucketed by hour of day (0-23, UTC).
+ *
+ * @param projectId Project whose usage should be bucketed; null disables the query.
+ * @param filter Optional key filter and date range; unbounded when omitted.
+ * @returns TanStack Query result containing all 24 hours, zero-filled.
+ */
+export function useProjectUsageHourly(projectId: string | null, filter: UsageFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectUsageHourlyQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads an organization's usage bucketed by hour of day (0-23, UTC).
+ *
+ * @param organizationId Organization whose usage should be bucketed; null disables the query.
+ * @param filter Optional key filter and date range; unbounded when omitted.
+ * @returns TanStack Query result containing all 24 hours, zero-filled.
+ */
+export function useOrganizationUsageHourly(
+  organizationId: string | null,
+  filter: UsageFilter = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationUsageHourlyQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads a project's top endpoints by request count.
+ *
+ * @param projectId Project whose endpoints should be ranked; null disables the query.
+ * @param filter Optional key filter, date range, and result limit.
+ * @returns TanStack Query result containing endpoints sorted by request count, descending.
+ */
+export function useProjectTopEndpoints(
+  projectId: string | null,
+  filter: UsageFilter & Readonly<{ limit?: number }> = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectTopEndpointsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads an organization's top endpoints by request count.
+ *
+ * @param organizationId Organization whose endpoints should be ranked; null disables the query.
+ * @param filter Optional key filter, date range, and result limit.
+ * @returns TanStack Query result containing endpoints sorted by request count, descending.
+ */
+export function useOrganizationTopEndpoints(
+  organizationId: string | null,
+  filter: UsageFilter & Readonly<{ limit?: number }> = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationTopEndpointsQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads a project's delivery analytics summary (event/notification counts,
+ * success rate, latency, and channel mix).
+ *
+ * @param projectId Project whose analytics should be aggregated; null disables the query.
+ * @param filter Optional key filter and date range (defaults to today).
+ * @returns TanStack Query result containing the analytics summary.
+ */
+export function useProjectAnalytics(projectId: string | null, filter: AnalyticsFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectAnalyticsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads an organization's delivery analytics summary (event/notification
+ * counts, success rate, latency, and channel mix).
+ *
+ * @param organizationId Organization whose analytics should be aggregated; null disables the query.
+ * @param filter Optional key filter and date range (defaults to today).
+ * @returns TanStack Query result containing the analytics summary.
+ */
+export function useOrganizationAnalytics(
+  organizationId: string | null,
+  filter: AnalyticsFilter = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationAnalyticsQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads a project's delivery-status trend.
+ *
+ * @param projectId Project whose trend should be loaded; null disables the query.
+ * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+ * @returns TanStack Query result containing the delivered/failed/queued/processing series.
+ */
+export function useProjectTrends(projectId: string | null, filter: TrendsFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectTrendsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads an organization's delivery-status trend.
+ *
+ * @param organizationId Organization whose trend should be loaded; null disables the query.
+ * @param filter Optional key filter, date range, and bucket granularity (defaults to today, by day).
+ * @returns TanStack Query result containing the delivered/failed/queued/processing series.
+ */
+export function useOrganizationTrends(organizationId: string | null, filter: TrendsFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationTrendsQuery(client, organizationId ?? "pending", filter),
     enabled: Boolean(organizationId),
     placeholderData: keepPreviousData,
   });

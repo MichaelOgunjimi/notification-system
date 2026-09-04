@@ -2,15 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 import type { ControlPlaneClient } from "../types";
 import {
   controlPlaneQueryKeys,
+  organizationAnalyticsQuery,
   organizationAuditLogQuery,
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationTopEndpointsQuery,
+  organizationTrendsQuery,
+  organizationUsageHourlyQuery,
   organizationUsageQuery,
   organizationUsageSummaryQuery,
+  projectAnalyticsQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectTopEndpointsQuery,
+  projectTrendsQuery,
+  projectUsageHourlyQuery,
   projectUsageQuery,
   projectUsageSummaryQuery,
 } from "./queries";
@@ -66,6 +74,14 @@ describe("control-plane queries", () => {
         forOrganization: vi.fn().mockResolvedValue(emptyPage),
         summaryForProject: vi.fn(),
         summaryForOrganization: vi.fn(),
+        hourlyForProject: vi.fn().mockResolvedValue([]),
+        hourlyForOrganization: vi.fn().mockResolvedValue([]),
+        topEndpointsForProject: vi.fn().mockResolvedValue([]),
+        topEndpointsForOrganization: vi.fn().mockResolvedValue([]),
+        analyticsForProject: vi.fn(),
+        analyticsForOrganization: vi.fn(),
+        trendsForProject: vi.fn(),
+        trendsForOrganization: vi.fn(),
       },
     };
 
@@ -203,7 +219,7 @@ describe("control-plane queries", () => {
     });
   });
 
-  it("scopes usage queries by target, page, and date range", async () => {
+  it("scopes usage queries by target, page, key, and date range", async () => {
     const summary = {
       totalRequests: 0,
       successfulRequests: 0,
@@ -225,11 +241,13 @@ describe("control-plane queries", () => {
     const organization = organizationUsageQuery(client, "organization-1", {
       page: 2,
       perPage: 100,
+      apiKeyId: "key-1",
       from: "2026-09-01T00:00:00Z",
       to: "2026-09-30T00:00:00Z",
     });
     const projectSummary = projectUsageSummaryQuery(client, "project-1", {});
     const organizationSummary = organizationUsageSummaryQuery(client, "organization-1", {
+      apiKeyId: "key-1",
       from: "2026-09-01T00:00:00Z",
     });
 
@@ -239,11 +257,13 @@ describe("control-plane queries", () => {
       50,
       null,
       null,
+      null,
     ]);
     expect(organization.queryKey).toEqual([
       ...controlPlaneQueryKeys.organizationUsage("organization-1"),
       2,
       100,
+      "key-1",
       "2026-09-01T00:00:00Z",
       "2026-09-30T00:00:00Z",
     ]);
@@ -251,9 +271,11 @@ describe("control-plane queries", () => {
       ...controlPlaneQueryKeys.projectUsageSummary("project-1"),
       null,
       null,
+      null,
     ]);
     expect(organizationSummary.queryKey).toEqual([
       ...controlPlaneQueryKeys.organizationUsageSummary("organization-1"),
+      "key-1",
       "2026-09-01T00:00:00Z",
       null,
     ]);
@@ -271,22 +293,118 @@ describe("control-plane queries", () => {
     expect(client.usage.forProject).toHaveBeenCalledWith("project-1", {
       page: 1,
       perPage: 50,
+      apiKeyId: undefined,
       from: undefined,
       to: undefined,
     });
     expect(client.usage.forOrganization).toHaveBeenCalledWith("organization-1", {
       page: 2,
       perPage: 100,
+      apiKeyId: "key-1",
       from: "2026-09-01T00:00:00Z",
       to: "2026-09-30T00:00:00Z",
     });
     expect(client.usage.summaryForProject).toHaveBeenCalledWith("project-1", {
+      apiKeyId: undefined,
       from: undefined,
       to: undefined,
     });
     expect(client.usage.summaryForOrganization).toHaveBeenCalledWith("organization-1", {
+      apiKeyId: "key-1",
       from: "2026-09-01T00:00:00Z",
       to: undefined,
+    });
+  });
+
+  it("scopes hourly usage and top-endpoints queries by key, date range, and limit", async () => {
+    const client = {
+      usage: {
+        hourlyForProject: vi.fn().mockResolvedValue([]),
+        hourlyForOrganization: vi.fn().mockResolvedValue([]),
+        topEndpointsForProject: vi.fn().mockResolvedValue([]),
+        topEndpointsForOrganization: vi.fn().mockResolvedValue([]),
+      },
+    } as unknown as ControlPlaneClient;
+
+    const hourly = projectUsageHourlyQuery(client, "project-1", { apiKeyId: "key-1" });
+    const orgHourly = organizationUsageHourlyQuery(client, "organization-1", {});
+    const top = projectTopEndpointsQuery(client, "project-1", { limit: 3 });
+    const orgTop = organizationTopEndpointsQuery(client, "organization-1", {});
+
+    expect(hourly.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectUsageHourly("project-1"),
+      "key-1",
+      null,
+      null,
+    ]);
+    expect(top.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectTopEndpoints("project-1"),
+      null,
+      null,
+      null,
+      3,
+    ]);
+
+    await hourly.queryFn?.({} as never);
+    await orgHourly.queryFn?.({} as never);
+    await top.queryFn?.({} as never);
+    await orgTop.queryFn?.({} as never);
+    expect(client.usage.hourlyForProject).toHaveBeenCalledWith("project-1", {
+      apiKeyId: "key-1",
+      from: undefined,
+      to: undefined,
+    });
+    expect(client.usage.topEndpointsForProject).toHaveBeenCalledWith("project-1", {
+      apiKeyId: undefined,
+      from: undefined,
+      to: undefined,
+      limit: 3,
+    });
+  });
+
+  it("scopes analytics and trend queries by key, date range, and granularity", async () => {
+    const client = {
+      usage: {
+        analyticsForProject: vi.fn(),
+        analyticsForOrganization: vi.fn(),
+        trendsForProject: vi.fn(),
+        trendsForOrganization: vi.fn(),
+      },
+    } as unknown as ControlPlaneClient;
+
+    const analytics = projectAnalyticsQuery(client, "project-1", { apiKeyId: "key-1" });
+    const orgAnalytics = organizationAnalyticsQuery(client, "organization-1", {});
+    const trends = projectTrendsQuery(client, "project-1", { granularity: "hour" });
+    const orgTrends = organizationTrendsQuery(client, "organization-1", {});
+
+    expect(analytics.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectAnalytics("project-1"),
+      "key-1",
+      null,
+      null,
+    ]);
+    expect(trends.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectTrends("project-1"),
+      null,
+      null,
+      null,
+      "hour",
+    ]);
+
+    await analytics.queryFn?.({} as never);
+    await orgAnalytics.queryFn?.({} as never);
+    await trends.queryFn?.({} as never);
+    await orgTrends.queryFn?.({} as never);
+    expect(client.usage.analyticsForProject).toHaveBeenCalledWith("project-1", {
+      apiKeyId: "key-1",
+      from: undefined,
+      to: undefined,
+    });
+    expect(client.usage.trendsForProject).toHaveBeenCalledWith("project-1", {
+      apiKeyId: undefined,
+      from: undefined,
+      to: undefined,
+      granularity: "hour",
     });
   });
 });
