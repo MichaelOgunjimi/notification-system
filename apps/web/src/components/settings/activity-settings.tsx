@@ -14,7 +14,6 @@ type ActivitySettingsProps = Readonly<{
 type Scope = "project" | "organization";
 type ActorFilter = "" | "user" | "api_key";
 type TimeRange = "all" | "24h" | "7d" | "30d" | "since";
-type BadgeTone = "positive" | "negative" | "caution" | "neutral";
 
 const PER_PAGE = 20;
 
@@ -35,17 +34,11 @@ const TIME_RANGES: ReadonlyArray<{
   { value: "30d", label: "30 days", ms: 2_592_000_000 },
 ];
 
-const POSITIVE_VERBS = new Set(["created", "accepted", "added", "restored"]);
-const NEGATIVE_VERBS = new Set(["revoked", "removed", "deleted", "archived", "rejected"]);
-const CAUTION_VERBS = new Set(["updated", "rotated", "changed", "renamed"]);
+const DESTRUCTIVE_VERBS = new Set(["revoked", "removed", "deleted", "archived", "rejected"]);
 
-/** Colour tone for an action badge, keyed on the trailing verb of the action. */
-function actionTone(action: string): BadgeTone {
-  const verb = action.split(/[._]/).pop() ?? "";
-  if (POSITIVE_VERBS.has(verb)) return "positive";
-  if (NEGATIVE_VERBS.has(verb)) return "negative";
-  if (CAUTION_VERBS.has(verb)) return "caution";
-  return "neutral";
+/** Whether an action took something away — the only distinction worth a colour here. */
+function isDestructiveAction(action: string): boolean {
+  return DESTRUCTIVE_VERBS.has(action.split(/[._]/).pop() ?? "");
 }
 
 /** Turns `organization.member_role_updated` into "Organization member role updated". */
@@ -293,8 +286,7 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
             <span />
             <span>Time</span>
             <span>Action</span>
-            <span>Actor</span>
-            <span>IP address</span>
+            <span>Who</span>
             <span>Details</span>
           </div>
 
@@ -334,20 +326,15 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
                   >
                     {relativeTime(entry.createdAt)}
                   </time>
-                  <span className="activity-settings__cell">
-                    <span
-                      className="activity-settings__badge"
-                      data-tone={actionTone(entry.action)}
-                      title={entry.action}
-                    >
-                      {humanizeAction(entry.action)}
-                    </span>
+                  <span
+                    className="activity-settings__cell activity-settings__cell--action"
+                    data-destructive={isDestructiveAction(entry.action) || undefined}
+                    title={entry.action}
+                  >
+                    {humanizeAction(entry.action)}
                   </span>
-                  <span className="activity-settings__cell activity-settings__cell--strong">
+                  <span className="activity-settings__cell activity-settings__cell--who">
                     {actorLabel(entry)}
-                  </span>
-                  <span className="activity-settings__cell activity-settings__cell--mono">
-                    {entry.ipAddress ?? "—"}
                   </span>
                   <span className="activity-settings__cell activity-settings__cell--details">
                     {detailsSummary(entry)}

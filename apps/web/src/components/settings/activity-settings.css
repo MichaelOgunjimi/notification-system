@@ -180,12 +180,9 @@
 .activity-settings__grid {
   align-items: center;
   display: grid;
-  gap: 16px;
-  grid-template-columns: 22px 116px minmax(160px, 240px) minmax(120px, 190px) 118px minmax(
-      220px,
-      1fr
-    );
-  min-width: 900px;
+  gap: 18px;
+  grid-template-columns: 20px 108px minmax(170px, 280px) minmax(140px, 220px) minmax(200px, 1fr);
+  min-width: 720px;
   padding: 0 18px;
   text-align: left;
   width: 100%;
@@ -201,7 +198,7 @@
   color: var(--dashboard-muted);
   font-family: var(--font-geist-mono);
   font-size: 9px;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
@@ -250,64 +247,27 @@
   white-space: nowrap;
 }
 
-.activity-settings__cell--time,
-.activity-settings__cell--mono {
+.activity-settings__cell--time {
   color: var(--dashboard-muted);
-  font-family: var(--font-geist-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
-.activity-settings__cell--strong {
+.activity-settings__cell--action {
+  color: var(--dashboard-ink);
+  font-weight: 560;
+}
+
+.activity-settings__cell--action[data-destructive] {
+  color: #d88274;
+}
+
+.activity-settings__cell--who {
   color: var(--dashboard-muted-bright);
 }
 
 .activity-settings__cell--details {
   color: var(--dashboard-muted);
   font-size: 11px;
-}
-
-.activity-settings__badge {
-  align-items: center;
-  background: var(--dashboard-overlay);
-  border: 1px solid var(--dashboard-line-strong);
-  border-radius: 999px;
-  color: var(--dashboard-muted-bright);
-  display: inline-flex;
-  font-size: 11px;
-  font-weight: 500;
-  gap: 6px;
-  max-width: 100%;
-  overflow: hidden;
-  padding: 2px 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-settings__badge::before {
-  background: currentColor;
-  border-radius: 999px;
-  content: "";
-  flex-shrink: 0;
-  height: 5px;
-  width: 5px;
-}
-
-.activity-settings__badge[data-tone="positive"] {
-  background: color-mix(in srgb, #68b982 12%, transparent);
-  border-color: color-mix(in srgb, #68b982 34%, transparent);
-  color: #68b982;
-}
-
-.activity-settings__badge[data-tone="negative"] {
-  background: color-mix(in srgb, #d88274 12%, transparent);
-  border-color: color-mix(in srgb, #d88274 34%, transparent);
-  color: #d88274;
-}
-
-.activity-settings__badge[data-tone="caution"] {
-  background: color-mix(in srgb, #d8a35f 12%, transparent);
-  border-color: color-mix(in srgb, #d8a35f 34%, transparent);
-  color: #d8a35f;
 }
 
 .activity-settings__state {
@@ -317,14 +277,14 @@
   font-size: 12px;
   gap: 8px;
   justify-content: center;
-  min-width: 900px;
+  min-width: 720px;
   padding: 40px 18px;
 }
 
 .activity-settings__detail {
   background: var(--dashboard-overlay);
   border-top: 1px dashed var(--dashboard-line-strong);
-  min-width: 900px;
+  min-width: 720px;
   padding: 16px 20px 20px 40px;
 }
 
