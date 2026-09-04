@@ -27,6 +27,7 @@ import {
   useUpdateProjectApiKey,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { TablePager } from "@/components/ui/table-pager";
 import { useToast } from "@/components/ui/toast";
 import { ApiKeyCreateDialog } from "./api-key-create-dialog";
 import { ApiKeyEditDialog } from "./api-key-edit-dialog";
@@ -51,22 +52,6 @@ const STATUS_FILTERS: ReadonlyArray<{ value: "" | ProjectApiKeyStatus; label: st
   { value: "active", label: "Active" },
   { value: "revoked", label: "Revoked" },
 ];
-
-/**
- * Builds a compact page sequence with ellipses: first, last, and a window
- * around the current page.
- */
-function pageWindow(current: number, total: number): Array<number | "gap"> {
-  if (total <= 7) return Array.from({ length: total }, (_unused, index) => index + 1);
-  const pages = new Set<number>([1, total, current, current - 1, current + 1]);
-  const ordered = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
-  const withGaps: Array<number | "gap"> = [];
-  ordered.forEach((page, index) => {
-    if (index > 0 && page - ordered[index - 1] > 1) withGaps.push("gap");
-    withGaps.push(page);
-  });
-  return withGaps;
-}
 
 function CreatedKeyPanel({ apiKey, onDone }: { apiKey: CreatedProjectApiKey; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -375,55 +360,16 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
 
       {!isEmpty && !noMatches && !apiKeys.isPending ? (
         <div className="api-keys__pagination">
-          <nav className="api-keys__pages" aria-label="API key pages">
-            <button
-              type="button"
-              aria-label="Previous page"
-              disabled={page <= 1 || apiKeys.isFetching}
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-            >
-              ‹
-            </button>
-            {pageWindow(page, totalPages).map((entry, index) =>
-              entry === "gap" ? (
-                <span key={`gap-${index}`} className="api-keys__page-gap">
-                  …
-                </span>
-              ) : (
-                <button
-                  key={entry}
-                  type="button"
-                  aria-current={entry === page ? "page" : undefined}
-                  data-active={entry === page || undefined}
-                  disabled={apiKeys.isFetching}
-                  onClick={() => setPage(entry)}
-                >
-                  {entry}
-                </button>
-              ),
-            )}
-            <button
-              type="button"
-              aria-label="Next page"
-              disabled={page >= totalPages || apiKeys.isFetching}
-              onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-            >
-              ›
-            </button>
-          </nav>
-          <label className="api-keys__per-page">
-            Per page
-            <select
-              value={perPage}
-              onChange={(event) => updateFilter(() => setPerPage(Number(event.target.value)))}
-            >
-              {PER_PAGE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+          <TablePager
+            page={page}
+            totalPages={totalPages}
+            total={apiKeys.data?.total ?? items.length}
+            perPage={perPage}
+            perPageOptions={PER_PAGE_OPTIONS}
+            busy={apiKeys.isFetching}
+            onPageChange={setPage}
+            onPerPageChange={(next) => updateFilter(() => setPerPage(next))}
+          />
         </div>
       ) : null}
 
