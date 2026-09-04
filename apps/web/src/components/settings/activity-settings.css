@@ -52,6 +52,33 @@
   white-space: nowrap;
 }
 
+.activity-settings__live {
+  background: #68b982;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0 color-mix(in srgb, #68b982 60%, transparent);
+  flex-shrink: 0;
+  height: 6px;
+  width: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .activity-settings__live {
+    animation: activity-settings-pulse 2.4s ease-out infinite;
+  }
+}
+
+@keyframes activity-settings-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, #68b982 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 .activity-settings__filters {
   display: flex;
   flex-wrap: wrap;

@@ -159,6 +159,12 @@ describe("control-plane queries", () => {
       null,
     ]);
 
+    for (const options of [project, organization]) {
+      expect(options.refetchInterval).toBe(20 * 1000);
+      expect(options.refetchOnWindowFocus).toBe(true);
+      expect(options.staleTime).toBe(5 * 1000);
+    }
+
     await project.queryFn?.({} as never);
     await organization.queryFn?.({} as never);
     expect(client.auditLog.forProject).toHaveBeenCalledWith("project-1", {

@@ -140,6 +140,18 @@ export function projectApiKeysQuery(
   });
 }
 
+/**
+ * Keeps the activity log feeling live without a streaming transport: poll a
+ * visible tab every 20s (TanStack pauses this for a hidden tab) and catch up
+ * immediately on window focus. `staleTime` is short so those refetches actually
+ * hit the network. The real observability pages will move to Redis pub/sub → SSE.
+ */
+const auditLogLiveness = {
+  refetchInterval: 20 * 1000,
+  refetchOnWindowFocus: true,
+  staleTime: 5 * 1000,
+} as const;
+
 function auditLogKeyParts(filter: AuditLogFilter) {
   const { page = 1, perPage = 20, action, actor, from } = filter;
   return {
@@ -169,7 +181,7 @@ export function projectAuditLogQuery(
     queryKey: [...controlPlaneQueryKeys.projectAuditLog(projectId), ...key] as const,
     queryFn: () => client.auditLog.forProject(projectId, args),
     retry: retryTransientFailure,
-    staleTime: 30 * 1000,
+    ...auditLogLiveness,
   });
 }
 
@@ -191,6 +203,6 @@ export function organizationAuditLogQuery(
     queryKey: [...controlPlaneQueryKeys.organizationAuditLog(organizationId), ...key] as const,
     queryFn: () => client.auditLog.forOrganization(organizationId, args),
     retry: retryTransientFailure,
-    staleTime: 30 * 1000,
+    ...auditLogLiveness,
   });
 }

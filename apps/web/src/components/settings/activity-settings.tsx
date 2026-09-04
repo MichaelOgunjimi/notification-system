@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CaretRight, ListBullets, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { CaretRight, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import type { AuditLogEntry, Organization, Project } from "@beaco/control-plane";
 import { useOrganizationAuditLog, useProjectAuditLog } from "@beaco/control-plane/react";
 import "./activity-settings.css";
@@ -205,8 +205,8 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
             Entries are immutable.
           </span>
         </div>
-        <span className="activity-settings__tag">
-          <ListBullets size={15} />
+        <span className="activity-settings__tag" title="Refreshes automatically">
+          <span className="activity-settings__live" aria-hidden />
           {query.data ? `${query.data.total} entries` : "Counting…"}
         </span>
       </header>
