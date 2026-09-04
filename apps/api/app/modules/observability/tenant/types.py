@@ -36,6 +36,21 @@ class UsageSummaryView:
 
 
 @dataclass(frozen=True, slots=True)
+class UsageHourlyPointView:
+    """Request volume for one hour of the day (0-23, UTC), summed across every
+    matching day in the queried range."""
+
+    hour: int
+    request_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class UsageEndpointView:
+    endpoint: str
+    request_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class AuditLogView:
     id: uuid.UUID
     organization_id: uuid.UUID

@@ -15,7 +15,9 @@ from app.modules.identity.models.user import User
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
+    UsageEndpointView,
     UsageEnvironmentSummary,
+    UsageHourlyPointView,
     UsageSummaryView,
     UsageView,
 )
@@ -37,10 +39,38 @@ _CATEGORY_PREFIXES: dict[str, tuple[str, ...]] = {
 }
 
 
+def _scope_usage_query(
+    selected: Any,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    """Applies the project/organization, key, and date-range scoping shared by
+    every query over `ApiKeyUsage` — the caller supplies a query already joined
+    to `ApiKey`."""
+    if organization_id is not None:
+        selected = selected.join(Project, col(Project.id) == col(ApiKey.project_id)).where(
+            col(Project.organization_id) == organization_id
+        )
+    elif project_id is not None:
+        selected = selected.where(col(ApiKey.project_id) == project_id)
+    if api_key_id is not None:
+        selected = selected.where(col(ApiKeyUsage.api_key_id) == api_key_id)
+    if from_ is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) >= to_naive_utc(from_))
+    if to is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) <= to_naive_utc(to))
+    return selected
+
+
 def _usage_query(
     *,
     project_id: uuid.UUID | None,
     organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None = None,
     to: datetime | None = None,
 ) -> Any:
@@ -53,16 +83,14 @@ def _usage_query(
         col(ApiKeyUsage.hour_bucket).label("hour_bucket"),
         func.sum(col(ApiKeyUsage.request_count)).label("request_count"),
     ).join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
-    if organization_id is not None:
-        selected = selected.join(Project, col(Project.id) == col(ApiKey.project_id)).where(
-            col(Project.organization_id) == organization_id
-        )
-    elif project_id is not None:
-        selected = selected.where(col(ApiKey.project_id) == project_id)
-    if from_ is not None:
-        selected = selected.where(col(ApiKeyUsage.hour_bucket) >= to_naive_utc(from_))
-    if to is not None:
-        selected = selected.where(col(ApiKeyUsage.hour_bucket) <= to_naive_utc(to))
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
     return selected.group_by(
         col(ApiKey.project_id),
         col(ApiKeyUsage.api_key_id),
@@ -71,6 +99,56 @@ def _usage_query(
         col(ApiKeyUsage.endpoint),
         col(ApiKeyUsage.hour_bucket),
     )
+
+
+def _usage_hourly_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    hour = func.extract("hour", func.timezone("UTC", col(ApiKeyUsage.hour_bucket))).label("hour")
+    selected: Any = (
+        select(hour, func.sum(col(ApiKeyUsage.request_count)).label("request_count"))
+        .select_from(ApiKeyUsage)
+        .join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+    )
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    return selected.group_by(hour)
+
+
+def _usage_top_endpoints_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    total = func.sum(col(ApiKeyUsage.request_count))
+    selected: Any = (
+        select(col(ApiKeyUsage.endpoint).label("endpoint"), total.label("request_count"))
+        .select_from(ApiKeyUsage)
+        .join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+    )
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    return selected.group_by(col(ApiKeyUsage.endpoint)).order_by(total.desc())
 
 
 async def _usage_page(
@@ -110,6 +188,7 @@ async def get_project_usage(
     project_id: uuid.UUID,
     page: int,
     per_page: int,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None = None,
     to: datetime | None = None,
 ) -> Page[UsageView]:
@@ -121,7 +200,13 @@ async def get_project_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=project_id, organization_id=None, from_=from_, to=to),
+        query=_usage_query(
+            project_id=project_id,
+            organization_id=None,
+            api_key_id=api_key_id,
+            from_=from_,
+            to=to,
+        ),
         page=page,
         per_page=per_page,
     )
@@ -134,6 +219,7 @@ async def get_organization_usage(
     organization_id: uuid.UUID,
     page: int,
     per_page: int,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None = None,
     to: datetime | None = None,
 ) -> Page[UsageView]:
@@ -145,9 +231,165 @@ async def get_organization_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=None, organization_id=organization_id, from_=from_, to=to),
+        query=_usage_query(
+            project_id=None,
+            organization_id=organization_id,
+            api_key_id=api_key_id,
+            from_=from_,
+            to=to,
+        ),
         page=page,
         per_page=per_page,
+    )
+
+
+async def _usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[UsageHourlyPointView]:
+    query = _usage_hourly_query(
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    counts = {int(row.hour): int(row.request_count) for row in (await db.execute(query)).all()}
+    return [
+        UsageHourlyPointView(hour=hour, request_count=counts.get(hour, 0)) for hour in range(24)
+    ]
+
+
+async def get_project_usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> list[UsageHourlyPointView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _usage_hourly_distribution(
+        db,
+        project_id=project_id,
+        organization_id=None,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+async def get_organization_usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> list[UsageHourlyPointView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _usage_hourly_distribution(
+        db,
+        project_id=None,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+async def _usage_top_endpoints(
+    db: AsyncSession,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+    from_: datetime | None,
+    to: datetime | None,
+    limit: int,
+) -> list[UsageEndpointView]:
+    query = _usage_top_endpoints_query(
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    ).limit(limit)
+    rows = (await db.execute(query)).all()
+    return [
+        UsageEndpointView(endpoint=row.endpoint, request_count=int(row.request_count))
+        for row in rows
+    ]
+
+
+async def get_project_top_endpoints(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    limit: int = 8,
+) -> list[UsageEndpointView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _usage_top_endpoints(
+        db,
+        project_id=project_id,
+        organization_id=None,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        limit=limit,
+    )
+
+
+async def get_organization_top_endpoints(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    limit: int = 8,
+) -> list[UsageEndpointView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _usage_top_endpoints(
+        db,
+        project_id=None,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        limit=limit,
     )
 
 
@@ -156,6 +398,7 @@ async def _usage_summary(
     *,
     project_id: uuid.UUID | None,
     organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -164,6 +407,8 @@ async def _usage_summary(
         filters.append(col(ApiKey.project_id) == project_id)
     if organization_id is not None:
         filters.append(col(Project.organization_id) == organization_id)
+    if api_key_id is not None:
+        filters.append(col(ApiKeyUsage.api_key_id) == api_key_id)
     if from_ is not None:
         filters.append(col(ApiKeyUsage.hour_bucket) >= from_)
     if to is not None:
@@ -220,6 +465,7 @@ async def get_project_usage_summary(
     *,
     user_id: uuid.UUID,
     project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -233,6 +479,7 @@ async def get_project_usage_summary(
         db,
         project_id=project_id,
         organization_id=None,
+        api_key_id=api_key_id,
         from_=from_,
         to=to,
     )
@@ -243,6 +490,7 @@ async def get_organization_usage_summary(
     *,
     user_id: uuid.UUID,
     organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -254,6 +502,7 @@ async def get_organization_usage_summary(
     )
     return await _usage_summary(
         db,
+        api_key_id=api_key_id,
         project_id=None,
         organization_id=organization_id,
         from_=from_,

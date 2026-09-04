@@ -33,6 +33,16 @@ class TenantUsageSummaryResponse(BaseModel):
     by_environment: list[UsageEnvironmentSummaryResponse]
 
 
+class TenantUsageHourlyPointResponse(BaseModel):
+    hour: int
+    request_count: int
+
+
+class TenantUsageEndpointResponse(BaseModel):
+    endpoint: str
+    request_count: int
+
+
 class TenantAuditLogResponse(BaseModel):
     id: uuid.UUID
     organization_id: uuid.UUID
