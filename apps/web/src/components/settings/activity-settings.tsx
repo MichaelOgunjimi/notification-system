@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ListBullets, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import type { AuditLogEntry, Organization, Project } from "@beaco/control-plane";
 import { useOrganizationAuditLog, useProjectAuditLog } from "@beaco/control-plane/react";
@@ -80,7 +80,15 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
   const [action, setAction] = useState("");
   const [page, setPage] = useState(1);
 
+  // Debounce the action search box. The first render already has the empty
+  // filter applied, so skip that pass — otherwise any future change that seeds
+  // `page` from the URL would be reset to 1 a beat after mount.
+  const debounceMounted = useRef(false);
   useEffect(() => {
+    if (!debounceMounted.current) {
+      debounceMounted.current = true;
+      return;
+    }
     const handle = window.setTimeout(() => {
       setAction(actionInput.trim());
       setPage(1);
@@ -124,7 +132,7 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
         </div>
         <span className="activity-settings__tag">
           <ListBullets size={15} />
-          {query.data?.total ?? 0} entries
+          {query.data ? `${query.data.total} entries` : "Counting…"}
         </span>
       </header>
 
