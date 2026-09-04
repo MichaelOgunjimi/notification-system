@@ -25,7 +25,16 @@ from app.modules.tenancy.authorization import (
     authorize_organization,
     authorize_project,
 )
+from app.modules.tenancy.models.organization import OrganizationMembership
 from app.modules.tenancy.models.project import Project
+
+# Which action namespaces each activity surface shows. The governance audit log is
+# "who changed the account"; the operational activity view is "what the integration
+# did". Anything outside these prefixes is admin-plane and never tenant-visible.
+_CATEGORY_PREFIXES: dict[str, tuple[str, ...]] = {
+    "governance": ("organization.", "project.", "api_key."),
+    "operational": ("event.", "template.", "scheduled_events.", "notification."),
+}
 
 
 def _usage_query(*, project_id: uuid.UUID | None, organization_id: uuid.UUID | None) -> Any:
@@ -254,6 +263,14 @@ def _actor_filter(actor: str | None) -> Any | None:
     )
 
 
+def _category_filter(category: str | None) -> Any | None:
+    """Restrict to the action namespaces of one activity surface, or nothing."""
+    prefixes = _CATEGORY_PREFIXES.get(category or "")
+    if not prefixes:
+        return None
+    return or_(*(col(AuditLog.action).like(f"{prefix}%") for prefix in prefixes))
+
+
 async def _audit_page(
     db: AsyncSession,
     *,
@@ -263,7 +280,9 @@ async def _audit_page(
     per_page: int,
     action: str | None,
     actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     resolved_project_id = func.coalesce(AuditLog.project_id, ApiKey.project_id)
     resolved_organization_id = func.coalesce(AuditLog.organization_id, Project.organization_id)
@@ -277,9 +296,14 @@ async def _audit_page(
     actor_clause = _actor_filter(actor)
     if actor_clause is not None:
         filters.append(actor_clause)
+    category_clause = _category_filter(category)
+    if category_clause is not None:
+        filters.append(category_clause)
     if from_:
         # created_at is TIMESTAMP WITHOUT TIME ZONE; drop any offset the client sent.
         filters.append(col(AuditLog.created_at) >= to_naive_utc(from_))
+    if to:
+        filters.append(col(AuditLog.created_at) <= to_naive_utc(to))
 
     query: Any = (
         select(
@@ -288,10 +312,19 @@ async def _audit_page(
             resolved_project_id.label("project_id"),
             col(User.name).label("actor_name"),
             col(ApiKey.name).label("api_key_name"),
+            col(ApiKey.environment).label("api_key_environment"),
+            col(OrganizationMembership.role).label("actor_role"),
         )
         .outerjoin(ApiKey, col(ApiKey.id) == col(AuditLog.api_key_id))
         .outerjoin(User, col(User.id) == col(AuditLog.actor_user_id))
         .outerjoin(Project, col(Project.id) == resolved_project_id)
+        .outerjoin(
+            OrganizationMembership,
+            and_(
+                col(OrganizationMembership.user_id) == col(AuditLog.actor_user_id),
+                col(OrganizationMembership.organization_id) == resolved_organization_id,
+            ),
+        )
         .where(and_(*filters))
     )
     total = int(
@@ -309,8 +342,10 @@ async def _audit_page(
             project_id=row_project_id,
             actor_user_id=audit_log.actor_user_id,
             actor_name=actor_name,
+            actor_role=str(actor_role) if actor_role is not None else None,
             api_key_id=audit_log.api_key_id,
             api_key_name=api_key_name,
+            api_key_environment=api_key_environment,
             action=audit_log.action,
             resource_type=audit_log.resource_type,
             resource_id=audit_log.resource_id,
@@ -318,7 +353,15 @@ async def _audit_page(
             ip_address=audit_log.ip_address,
             created_at=audit_log.created_at,
         )
-        for audit_log, row_organization_id, row_project_id, actor_name, api_key_name in result.all()
+        for (
+            audit_log,
+            row_organization_id,
+            row_project_id,
+            actor_name,
+            api_key_name,
+            api_key_environment,
+            actor_role,
+        ) in result.all()
     ]
     return Page(items=items, total=total, page=page, per_page=per_page)
 
@@ -332,7 +375,9 @@ async def get_project_audit_log(
     per_page: int,
     action: str | None,
     actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_project(
         db,
@@ -348,7 +393,9 @@ async def get_project_audit_log(
         per_page=per_page,
         action=action,
         actor=actor,
+        category=category,
         from_=from_,
+        to=to,
     )
 
 
@@ -361,7 +408,9 @@ async def get_organization_audit_log(
     per_page: int,
     action: str | None,
     actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_organization(
         db,
@@ -377,5 +426,7 @@ async def get_organization_audit_log(
         per_page=per_page,
         action=action,
         actor=actor,
+        category=category,
         from_=from_,
+        to=to,
     )

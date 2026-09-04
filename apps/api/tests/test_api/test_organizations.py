@@ -343,7 +343,70 @@ async def test_organization_audit_filters_by_actor_and_names_them(
 
     assert {item["action"] for item in people["items"]} == {"organization.member_invited"}
     assert people["items"][0]["actor_name"] == "Ada Owner"
+    assert people["items"][0]["actor_role"] == "owner"
     assert {item["action"] for item in keys["items"]} == {"event.created"}
     assert keys["items"][0]["api_key_name"] == "Deploy key"
+    assert keys["items"][0]["api_key_environment"] == "live"
     assert keys["items"][0]["actor_name"] is None
+    assert keys["items"][0]["actor_role"] is None
     assert {item["action"] for item in just_owner["items"]} == {"organization.member_invited"}
+
+
+async def test_organization_audit_splits_by_category_and_bounds_by_date(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="audit-cat@example.com", name="Cat Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Cat", slug="cat-cat")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Prod", slug="prod-cat"
+    )
+    old = datetime(2026, 1, 1, 12, 0, 0)
+    recent = datetime(2026, 6, 1, 12, 0, 0)
+    db.add_all(
+        [
+            AuditLog(
+                actor_user_id=owner.id,
+                organization_id=organization.id,
+                project_id=project.id,
+                action="api_key.created",
+                resource_type="api_key",
+                created_at=recent,
+            ),
+            AuditLog(
+                actor_user_id=owner.id,
+                organization_id=organization.id,
+                project_id=project.id,
+                action="event.created",
+                resource_type="event",
+                created_at=recent,
+            ),
+            AuditLog(
+                actor_user_id=owner.id,
+                organization_id=organization.id,
+                project_id=project.id,
+                action="project.updated",
+                resource_type="project",
+                created_at=old,
+            ),
+        ]
+    )
+    await db.commit()
+    headers = await _authorization_header(owner, db, mock_redis)
+    base = f"/api/v1/organizations/{organization.id}/audit-log"
+
+    governance = (await client.get(f"{base}?category=governance", headers=headers)).json()
+    operational = (await client.get(f"{base}?category=operational", headers=headers)).json()
+    windowed = (
+        await client.get(f"{base}?category=governance&from=2026-03-01T00:00:00", headers=headers)
+    ).json()
+
+    assert {item["action"] for item in governance["items"]} == {
+        "api_key.created",
+        "project.updated",
+    }
+    assert {item["action"] for item in operational["items"]} == {"event.created"}
+    assert {item["action"] for item in windowed["items"]} == {"api_key.created"}
