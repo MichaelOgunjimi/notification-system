@@ -54,7 +54,9 @@ const RANGE_PRESETS: ReadonlyArray<{
  * from → to span), and a debounced action search.
  *
  * The search box holds a local draft and commits it 350 ms after typing stops;
- * the first render never commits, so a value seeded from the URL is left alone.
+ * the first render never commits, and a re-run whose draft already equals the
+ * committed value is a no-op, so an unrelated `onChange` identity change (for
+ * example a page change reshaping the URL) never re-commits the search term.
  *
  * @param props See {@link LogFiltersProps}.
  * @returns The filter bar.
@@ -76,9 +78,10 @@ export function LogFilters({
       mounted.current = true;
       return;
     }
+    if (draft.trim() === value.action) return;
     const handle = window.setTimeout(() => onChange({ action: draft.trim() }), 350);
     return () => window.clearTimeout(handle);
-  }, [draft, hideSearch, onChange]);
+  }, [draft, hideSearch, onChange, value.action]);
 
   function pickPreset(key: Exclude<DateRangeKey, "custom">, ms: number) {
     onChange({
