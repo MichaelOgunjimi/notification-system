@@ -106,3 +106,20 @@
   background: #f5e7c6;
   color: #1c1710;
 }
+
+/*
+ * iOS Safari auto-zooms the page on focus for any text input, select, or
+ * textarea whose computed font-size is under 16px. Most of our inputs are
+ * styled smaller than that for density, so pin them to 16px below the site's
+ * mobile breakpoint (680px, matched to the components that use it) — the
+ * !important beats every component's own smaller font-size rule, which
+ * otherwise wins the cascade over this file's earlier, lower-specificity
+ * selectors.
+ */
+@media (max-width: 680px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
