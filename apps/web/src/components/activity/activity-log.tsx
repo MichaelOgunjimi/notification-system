@@ -5,13 +5,20 @@ import type { AuditLogEntry, Organization, Project } from "@beaco/control-plane"
 import { useOrganizationAuditLog, useProjectAuditLog } from "@beaco/control-plane/react";
 import { LogEntryDetail, LogTable, type LogColumn } from "@/components/ui/log-table";
 import { LogFilters } from "@/components/ui/log-filters";
+import { LogPill } from "@/components/ui/log-pill";
 import { TablePager } from "@/components/ui/table-pager";
 import {
   LOG_PER_PAGE_OPTIONS,
   dateWindowFor,
   useLogUrlState,
 } from "@/components/ui/use-log-url-state";
-import { detailsSummary, humanizeAction, relativeTime } from "@/lib/audit-log";
+import {
+  actionTone,
+  detailsSummary,
+  humanizeAction,
+  relativeTime,
+  statusForAction,
+} from "@/lib/audit-log";
 import "./activity-log.css";
 
 /** Props for {@link ActivityLog}. */
@@ -102,12 +109,25 @@ export function ActivityLog({ organization, project, projects }: ActivityLogProp
     {
       key: "action",
       label: "Action",
-      width: "150px",
+      width: "minmax(140px, 170px)",
       render: (entry) => (
-        <span className="activity-log__action" title={entry.action}>
-          {humanizeAction(entry.action)}
+        <span title={entry.action}>
+          <LogPill label={humanizeAction(entry.action)} tone={actionTone(entry.action)} />
         </span>
       ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      width: "120px",
+      render: (entry) => {
+        const status = statusForAction(entry.action);
+        return status ? (
+          <LogPill label={status.label} tone={status.tone} />
+        ) : (
+          <span className="activity-log__muted">—</span>
+        );
+      },
     },
     {
       key: "type",

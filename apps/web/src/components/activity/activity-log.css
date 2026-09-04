@@ -107,11 +107,6 @@
   font-size: 11px;
 }
 
-.activity-log__action {
-  color: var(--dashboard-ink);
-  font-weight: 560;
-}
-
 .activity-log__type {
   color: var(--dashboard-muted-bright);
   font-family: var(--font-geist-mono);

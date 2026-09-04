@@ -1,6 +1,60 @@
 import type { AuditLogEntry } from "@beaco/control-plane";
 
+/** Semantic color a {@link LogPill} can render in — see `components/ui/log-pill.tsx`. */
+export type LogTone = "success" | "info" | "warning" | "danger" | "neutral";
+
 const DESTRUCTIVE_VERBS = new Set(["revoked", "removed", "deleted", "archived", "rejected"]);
+
+const ACTION_TONE_BY_VERB: Readonly<Record<string, LogTone>> = {
+  created: "info",
+  sent: "info",
+  updated: "info",
+  completed: "success",
+  delivered: "success",
+  retried: "warning",
+  failed: "danger",
+  revoked: "danger",
+  removed: "danger",
+  deleted: "danger",
+  archived: "danger",
+  rejected: "danger",
+};
+
+/** Outcome a completed delivery/processing action resolved to, keyed by its full action. */
+const STATUS_BY_ACTION: Readonly<Record<string, { label: string; tone: LogTone }>> = {
+  "event.created": { label: "Processing", tone: "info" },
+  "event.completed": { label: "Completed", tone: "success" },
+  "event.failed": { label: "Failed", tone: "danger" },
+  "notification.sent": { label: "Processing", tone: "info" },
+  "notification.delivered": { label: "Completed", tone: "success" },
+  "notification.failed": { label: "Failed", tone: "danger" },
+  "notification.retried": { label: "Retrying", tone: "warning" },
+};
+
+/**
+ * Picks the color an action's own verb implies — success for a completed
+ * delivery, danger for a failure or a destructive change, and so on.
+ *
+ * @param action Dotted action key, e.g. `notification.delivered`.
+ * @returns The tone to render the action pill in; `"neutral"` when the verb
+ *   carries no outcome (e.g. most governance edits).
+ */
+export function actionTone(action: string): LogTone {
+  const verb = action.split(/[._]/).pop() ?? "";
+  return ACTION_TONE_BY_VERB[verb] ?? "neutral";
+}
+
+/**
+ * Resolves the outcome of a delivery/processing action, for surfaces that show
+ * a dedicated Status column alongside the action itself.
+ *
+ * @param action Dotted action key, e.g. `event.completed`.
+ * @returns The status label and tone, or `null` when the action has no
+ *   terminal outcome to report (e.g. a template edit).
+ */
+export function statusForAction(action: string): { label: string; tone: LogTone } | null {
+  return STATUS_BY_ACTION[action] ?? null;
+}
 
 /**
  * Reports whether an action removed access or data, the one semantic
