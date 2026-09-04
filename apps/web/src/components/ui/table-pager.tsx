@@ -2,22 +2,35 @@
 
 import "./table-pager.css";
 
+/** Props for {@link TablePager}. */
 type TablePagerProps = Readonly<{
+  /** Current 1-based page. */
   page: number;
+  /** Total number of pages. */
   totalPages: number;
+  /** Total number of rows across all pages. */
   total: number;
+  /** Current page size. */
   perPage: number;
+  /** Page sizes offered by the selector; the selector is shown only with `onPerPageChange`. */
   perPageOptions?: readonly number[];
+  /** Requests a page change. */
   onPageChange: (page: number) => void;
+  /** Requests a page-size change; omit to hide the per-page selector. */
   onPerPageChange?: (perPage: number) => void;
+  /** Disables the controls while a fetch is in flight. */
   busy?: boolean;
 }>;
 
 const DEFAULT_PER_PAGE_OPTIONS = [10, 25, 50] as const;
 
 /**
- * Builds a compact page sequence with ellipses: first, last, and a window
- * around the current page.
+ * Builds a compact page sequence — first page, last page, and a window around
+ * the current page — with `"gap"` markers where numbers are skipped.
+ *
+ * @param current Current 1-based page.
+ * @param total Total number of pages.
+ * @returns Page numbers interleaved with `"gap"` sentinels.
  */
 function pageWindow(current: number, total: number): Array<number | "gap"> {
   if (total <= 7) return Array.from({ length: total }, (_unused, index) => index + 1);

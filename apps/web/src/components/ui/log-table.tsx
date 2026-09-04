@@ -18,15 +18,25 @@ export type LogColumn<T> = Readonly<{
   render: (row: T) => ReactNode;
 }>;
 
+/** Props for {@link LogTable}. */
 type LogTableProps<T> = Readonly<{
+  /** Column definitions, left to right. */
   columns: ReadonlyArray<LogColumn<T>>;
+  /** Rows to render, newest first. */
   rows: readonly T[];
+  /** Stable identity for a row, used as its React key and detail-panel id. */
   rowKey: (row: T) => string;
+  /** Content revealed when a row is expanded. */
   renderExpanded: (row: T) => ReactNode;
+  /** Show the loading state (first load, no rows yet). */
   pending?: boolean;
+  /** Dim the body while a background refetch is in flight. */
   busy?: boolean;
+  /** Error message to show in place of rows. */
   error?: string | null;
+  /** Message shown when there are no rows and no error. */
   emptyLabel: string;
+  /** Optional footer, typically a pager. */
   footer?: ReactNode;
 }>;
 

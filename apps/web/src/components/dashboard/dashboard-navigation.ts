@@ -31,6 +31,7 @@ export type DashboardNavItem = Readonly<{
 /** Operational surfaces scoped to the active project. */
 export const OPERATE_NAV: readonly DashboardNavItem[] = [
   { label: "Overview", icon: SquaresFour, path: "" },
+  { label: "Activity", icon: ListBullets, path: "activity", capability: "project:audit:read" },
   { label: "Events", icon: Pulse, path: "events", comingSoon: true },
   { label: "Templates", icon: Code, path: "templates", comingSoon: true },
   { label: "Delivery", icon: PaperPlaneTilt, path: "delivery", comingSoon: true },
