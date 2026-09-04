@@ -490,4 +490,68 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("lists an audit log page with camel-cased entries and forwarded filters", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "entry-1",
+            organization_id: "organization-1",
+            project_id: "project-1",
+            actor_user_id: "user-1",
+            actor_name: "Ada Owner",
+            api_key_id: null,
+            api_key_name: null,
+            action: "organization.member_removed",
+            resource_type: "organization_membership",
+            resource_id: "membership-9",
+            metadata: { role: "member" },
+            ip_address: "203.0.113.5",
+            created_at: "2026-09-04T10:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 2,
+        per_page: 20,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(
+      client.auditLog.forOrganization("organization-1", {
+        page: 2,
+        perPage: 20,
+        actor: "user",
+        from: "2026-09-01T00:00:00Z",
+      }),
+    ).resolves.toEqual({
+      items: [
+        {
+          id: "entry-1",
+          organizationId: "organization-1",
+          projectId: "project-1",
+          actorUserId: "user-1",
+          actorName: "Ada Owner",
+          apiKeyId: null,
+          apiKeyName: null,
+          action: "organization.member_removed",
+          resourceType: "organization_membership",
+          resourceId: "membership-9",
+          metadata: { role: "member" },
+          ipAddress: "203.0.113.5",
+          createdAt: "2026-09-04T10:00:00Z",
+        },
+      ],
+      total: 1,
+      page: 2,
+      perPage: 20,
+      totalPages: 1,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1/audit-log?page=2&per_page=20&actor=user&from=2026-09-01T00%3A00%3A00Z",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

@@ -1,4 +1,5 @@
 import type {
+  ApiAuditLogEntry,
   ApiCreatedProjectApiKey,
   ApiOrganization,
   ApiOrganizationInvitation,
@@ -7,6 +8,8 @@ import type {
   ApiPaginated,
   ApiProject,
   ApiProjectApiKey,
+  AuditLogEntry,
+  AuditLogFilter,
   ControlPlaneClient,
   ControlPlaneClientOptions,
   CreatedProjectApiKey,
@@ -114,6 +117,35 @@ function mapInvitation(invitation: ApiOrganizationInvitation): OrganizationInvit
     revokedAt: invitation.revoked_at,
     createdAt: invitation.created_at,
   };
+}
+
+function mapAuditLogEntry(entry: ApiAuditLogEntry): AuditLogEntry {
+  return {
+    id: entry.id,
+    organizationId: entry.organization_id,
+    projectId: entry.project_id,
+    actorUserId: entry.actor_user_id,
+    actorName: entry.actor_name,
+    apiKeyId: entry.api_key_id,
+    apiKeyName: entry.api_key_name,
+    action: entry.action,
+    resourceType: entry.resource_type,
+    resourceId: entry.resource_id,
+    metadata: entry.metadata ?? {},
+    ipAddress: entry.ip_address,
+    createdAt: entry.created_at,
+  };
+}
+
+function auditLogQuery(filter: AuditLogFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.action) params.set("action", filter.action);
+  if (filter.actor) params.set("actor", filter.actor);
+  if (filter.from) params.set("from", filter.from);
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 /** HTTP implementation that communicates through an application's same-origin boundary. */
@@ -312,6 +344,27 @@ class HttpControlPlaneClient implements ControlPlaneClient {
           "POST",
         ),
       ),
+  };
+
+  readonly auditLog = {
+    forProject: async (
+      projectId: string,
+      filter: AuditLogFilter = {},
+    ): Promise<Paginated<AuditLogEntry>> => {
+      const page = await this.get<ApiPaginated<ApiAuditLogEntry>>(
+        `/projects/${encodeURIComponent(projectId)}/audit-log${auditLogQuery(filter)}`,
+      );
+      return mapPage(page, mapAuditLogEntry);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: AuditLogFilter = {},
+    ): Promise<Paginated<AuditLogEntry>> => {
+      const page = await this.get<ApiPaginated<ApiAuditLogEntry>>(
+        `/organizations/${encodeURIComponent(organizationId)}/audit-log${auditLogQuery(filter)}`,
+      );
+      return mapPage(page, mapAuditLogEntry);
+    },
   };
 
   /**

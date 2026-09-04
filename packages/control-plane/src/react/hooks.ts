@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AuditLogFilter,
   OrganizationCreate,
   OrganizationInvitationCreate,
   OrganizationRole,
@@ -16,10 +17,12 @@ import { useControlPlaneClient } from "./provider";
 import {
   controlPlaneQueryKeys,
   invitationPreviewQuery,
+  organizationAuditLogQuery,
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
   projectApiKeysQuery,
+  projectAuditLogQuery,
   projectsQuery,
 } from "./queries";
 
@@ -334,6 +337,41 @@ export function useProjectApiKeys(
   return useQuery({
     ...projectApiKeysQuery(client, projectId ?? "pending", options),
     enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of a project's activity log.
+ *
+ * @param projectId Project whose activity should be loaded; null disables the query.
+ * @param filter 1-based page, page size, and optional action/actor/from filters.
+ * @returns TanStack Query result containing a page of audit entries.
+ */
+export function useProjectAuditLog(projectId: string | null, filter: AuditLogFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectAuditLogQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of an organization-wide activity log (all projects).
+ *
+ * @param organizationId Organization whose activity should be loaded; null disables the query.
+ * @param filter 1-based page, page size, and optional action/actor/from filters.
+ * @returns TanStack Query result containing a page of audit entries.
+ */
+export function useOrganizationAuditLog(
+  organizationId: string | null,
+  filter: AuditLogFilter = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationAuditLogQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
     placeholderData: keepPreviousData,
   });
 }

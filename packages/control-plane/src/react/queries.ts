@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ControlPlaneError } from "../error";
-import type { ControlPlaneClient, ProjectApiKeyListOptions } from "../types";
+import type { AuditLogFilter, ControlPlaneClient, ProjectApiKeyListOptions } from "../types";
 
 /** Hierarchical TanStack Query keys for control-plane cache invalidation. */
 export const controlPlaneQueryKeys = {
@@ -15,6 +15,10 @@ export const controlPlaneQueryKeys = {
   invitationPreview: (token: string) => ["control-plane", "invitations", "preview", token] as const,
   projectApiKeys: (projectId: string) =>
     ["control-plane", "projects", projectId, "api-keys"] as const,
+  projectAuditLog: (projectId: string) =>
+    ["control-plane", "projects", projectId, "audit-log"] as const,
+  organizationAuditLog: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "audit-log"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -131,6 +135,61 @@ export function projectApiKeysQuery(
       status ?? null,
     ] as const,
     queryFn: () => client.apiKeys.list(projectId, { page, perPage, environment, status }),
+    retry: retryTransientFailure,
+    staleTime: 30 * 1000,
+  });
+}
+
+function auditLogKeyParts(filter: AuditLogFilter) {
+  const { page = 1, perPage = 20, action, actor, from } = filter;
+  return {
+    args: { page, perPage, action, actor, from },
+    key: [page, perPage, action ?? null, actor ?? null, from ?? null] as const,
+  };
+}
+
+/**
+ * Builds query options for one page of a project's activity log.
+ *
+ * Page and filters are part of the cache key so paging or filtering keeps
+ * earlier pages; `projectAuditLog(projectId)` is the invalidation boundary.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose activity should be loaded.
+ * @param filter 1-based page, page size, and optional action/actor/from filters.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectAuditLogQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: AuditLogFilter,
+) {
+  const { args, key } = auditLogKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectAuditLog(projectId), ...key] as const,
+    queryFn: () => client.auditLog.forProject(projectId, args),
+    retry: retryTransientFailure,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Builds query options for one page of an organization-wide activity log.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose activity (across all projects) should load.
+ * @param filter 1-based page, page size, and optional action/actor/from filters.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationAuditLogQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: AuditLogFilter,
+) {
+  const { args, key } = auditLogKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationAuditLog(organizationId), ...key] as const,
+    queryFn: () => client.auditLog.forOrganization(organizationId, args),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });

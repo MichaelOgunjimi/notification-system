@@ -2,6 +2,8 @@ export { controlPlaneClient, createControlPlaneClient } from "./client";
 export { ControlPlaneError, type ControlPlaneErrorCode } from "./error";
 export type {
   ApiKeyScope,
+  AuditLogEntry,
+  AuditLogFilter,
   ControlPlaneClient,
   ControlPlaneClientOptions,
   CreatedProjectApiKey,

@@ -207,6 +207,40 @@ export type ProjectApiKeyUpdate = Readonly<{
   rateLimitPerMin?: number | null;
 }>;
 
+/** One recorded action in the tenant activity log. */
+export type AuditLogEntry = Readonly<{
+  id: string;
+  organizationId: string;
+  projectId: string | null;
+  actorUserId: string | null;
+  /** Display name of the acting user, when the actor was a person. */
+  actorName: string | null;
+  apiKeyId: string | null;
+  /** Name of the acting API key, when the actor was a key. */
+  apiKeyName: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  createdAt: string;
+}>;
+
+/**
+ * Filters and pagination for {@link ControlPlaneClient.auditLog} queries.
+ *
+ * `actor` accepts `"user"` or `"api_key"` to match any entry from that kind of
+ * actor, or a specific user/API-key id.
+ */
+export type AuditLogFilter = Readonly<{
+  page?: number;
+  perPage?: number;
+  action?: string;
+  actor?: string;
+  /** ISO timestamp; only entries at or after this moment are returned. */
+  from?: string;
+}>;
+
 /**
  * Configuration for a browser-facing control-plane client.
  *
@@ -431,6 +465,30 @@ export interface ControlPlaneClient {
      */
     rotate(projectId: string, apiKeyId: string): Promise<CreatedProjectApiKey>;
   };
+  /** Read-only tenant activity log. */
+  readonly auditLog: {
+    /**
+     * Lists a project's recorded actions, newest first.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional page, page size (1-100, default 20), and action/actor/from filters.
+     * @returns One page of audit entries with resolved actor names.
+     * @throws {ControlPlaneError} When the `project:audit:read` capability is unavailable.
+     */
+    forProject(projectId: string, filter?: AuditLogFilter): Promise<Paginated<AuditLogEntry>>;
+    /**
+     * Lists actions across an organization and all its projects, newest first.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional page, page size (1-100, default 20), and action/actor/from filters.
+     * @returns One page of audit entries with resolved actor names.
+     * @throws {ControlPlaneError} When the `organization:audit:read` capability is unavailable.
+     */
+    forOrganization(
+      organizationId: string,
+      filter?: AuditLogFilter,
+    ): Promise<Paginated<AuditLogEntry>>;
+  };
 }
 
 /** Raw organization payload returned by the FastAPI control-plane endpoint. */
@@ -498,6 +556,23 @@ export type ApiPaginated<T> = {
   page: number;
   per_page: number;
   total_pages: number;
+};
+
+/** Raw audit log entry returned by FastAPI. */
+export type ApiAuditLogEntry = {
+  id: string;
+  organization_id: string;
+  project_id: string | null;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  api_key_id: string | null;
+  api_key_name: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown>;
+  ip_address: string | null;
+  created_at: string;
 };
 
 /** Raw project API key payload returned by FastAPI. */
