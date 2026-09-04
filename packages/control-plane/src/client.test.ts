@@ -501,8 +501,10 @@ describe("createControlPlaneClient", () => {
             project_id: "project-1",
             actor_user_id: "user-1",
             actor_name: "Ada Owner",
+            actor_role: "admin",
             api_key_id: null,
             api_key_name: null,
+            api_key_environment: null,
             action: "organization.member_removed",
             resource_type: "organization_membership",
             resource_id: "membership-9",
@@ -524,7 +526,9 @@ describe("createControlPlaneClient", () => {
         page: 2,
         perPage: 20,
         actor: "user",
+        category: "governance",
         from: "2026-09-01T00:00:00Z",
+        to: "2026-09-30T00:00:00Z",
       }),
     ).resolves.toEqual({
       items: [
@@ -534,8 +538,10 @@ describe("createControlPlaneClient", () => {
           projectId: "project-1",
           actorUserId: "user-1",
           actorName: "Ada Owner",
+          actorRole: "admin",
           apiKeyId: null,
           apiKeyName: null,
+          apiKeyEnvironment: null,
           action: "organization.member_removed",
           resourceType: "organization_membership",
           resourceId: "membership-9",
@@ -550,7 +556,7 @@ describe("createControlPlaneClient", () => {
       totalPages: 1,
     });
     expect(fetcher).toHaveBeenCalledWith(
-      "/api/control-plane/organizations/organization-1/audit-log?page=2&per_page=20&actor=user&from=2026-09-01T00%3A00%3A00Z",
+      "/api/control-plane/organizations/organization-1/audit-log?page=2&per_page=20&actor=user&category=governance&from=2026-09-01T00%3A00%3A00Z&to=2026-09-30T00%3A00%3A00Z",
       expect.objectContaining({ method: "GET" }),
     );
   });

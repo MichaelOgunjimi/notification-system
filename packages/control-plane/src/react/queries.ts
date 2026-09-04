@@ -153,10 +153,18 @@ const auditLogLiveness = {
 } as const;
 
 function auditLogKeyParts(filter: AuditLogFilter) {
-  const { page = 1, perPage = 20, action, actor, from } = filter;
+  const { page = 1, perPage = 20, action, actor, category, from, to } = filter;
   return {
-    args: { page, perPage, action, actor, from },
-    key: [page, perPage, action ?? null, actor ?? null, from ?? null] as const,
+    args: { page, perPage, action, actor, category, from, to },
+    key: [
+      page,
+      perPage,
+      action ?? null,
+      actor ?? null,
+      category ?? null,
+      from ?? null,
+      to ?? null,
+    ] as const,
   };
 }
 

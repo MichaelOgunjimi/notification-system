@@ -215,9 +215,13 @@ export type AuditLogEntry = Readonly<{
   actorUserId: string | null;
   /** Display name of the acting user, when the actor was a person. */
   actorName: string | null;
+  /** Current organization role of the acting user (owner / admin / …), when known. */
+  actorRole: string | null;
   apiKeyId: string | null;
   /** Name of the acting API key, when the actor was a key. */
   apiKeyName: string | null;
+  /** Environment (live / test) of the acting API key, when the actor was a key. */
+  apiKeyEnvironment: string | null;
   action: string;
   resourceType: string;
   resourceId: string | null;
@@ -237,8 +241,12 @@ export type AuditLogFilter = Readonly<{
   perPage?: number;
   action?: string;
   actor?: string;
+  /** Restrict to one activity surface's action namespaces. */
+  category?: "governance" | "operational";
   /** ISO timestamp; only entries at or after this moment are returned. */
   from?: string;
+  /** ISO timestamp; only entries at or before this moment are returned. */
+  to?: string;
 }>;
 
 /**
@@ -565,8 +573,10 @@ export type ApiAuditLogEntry = {
   project_id: string | null;
   actor_user_id: string | null;
   actor_name: string | null;
+  actor_role: string | null;
   api_key_id: string | null;
   api_key_name: string | null;
+  api_key_environment: string | null;
   action: string;
   resource_type: string;
   resource_id: string | null;

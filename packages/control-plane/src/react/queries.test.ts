@@ -140,12 +140,16 @@ describe("control-plane queries", () => {
       perPage: 50,
       actor: "api_key",
       action: "event",
+      category: "operational",
+      to: "2026-09-30T00:00:00Z",
     });
 
     expect(project.queryKey).toEqual([
       ...controlPlaneQueryKeys.projectAuditLog("project-1"),
       1,
       20,
+      null,
+      null,
       null,
       null,
       null,
@@ -156,7 +160,9 @@ describe("control-plane queries", () => {
       50,
       "event",
       "api_key",
+      "operational",
       null,
+      "2026-09-30T00:00:00Z",
     ]);
 
     for (const options of [project, organization]) {
@@ -172,14 +178,18 @@ describe("control-plane queries", () => {
       perPage: 20,
       action: undefined,
       actor: undefined,
+      category: undefined,
       from: undefined,
+      to: undefined,
     });
     expect(client.auditLog.forOrganization).toHaveBeenCalledWith("organization-1", {
       page: 2,
       perPage: 50,
       action: "event",
       actor: "api_key",
+      category: "operational",
       from: undefined,
+      to: "2026-09-30T00:00:00Z",
     });
   });
 });

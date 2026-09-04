@@ -126,8 +126,10 @@ function mapAuditLogEntry(entry: ApiAuditLogEntry): AuditLogEntry {
     projectId: entry.project_id,
     actorUserId: entry.actor_user_id,
     actorName: entry.actor_name,
+    actorRole: entry.actor_role,
     apiKeyId: entry.api_key_id,
     apiKeyName: entry.api_key_name,
+    apiKeyEnvironment: entry.api_key_environment,
     action: entry.action,
     resourceType: entry.resource_type,
     resourceId: entry.resource_id,
@@ -143,7 +145,9 @@ function auditLogQuery(filter: AuditLogFilter): string {
   if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
   if (filter.action) params.set("action", filter.action);
   if (filter.actor) params.set("actor", filter.actor);
+  if (filter.category) params.set("category", filter.category);
   if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
   const query = params.toString();
   return query ? `?${query}` : "";
 }
