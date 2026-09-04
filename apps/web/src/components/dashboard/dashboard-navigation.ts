@@ -1,9 +1,12 @@
 import type { Icon } from "@phosphor-icons/react";
 import {
+  BellRinging,
   Broadcast,
   Buildings,
+  ChartLineUp,
   Code,
   FolderSimple,
+  Gauge,
   Key,
   ListBullets,
   PaperPlaneTilt,
@@ -36,6 +39,9 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
   { label: "Events", icon: Pulse, path: "events", comingSoon: true },
   { label: "Templates", icon: Code, path: "templates", comingSoon: true },
   { label: "Delivery", icon: PaperPlaneTilt, path: "delivery", comingSoon: true },
+  { label: "Usage", icon: Gauge, path: "usage", comingSoon: true },
+  { label: "Alerts", icon: BellRinging, path: "alerts", comingSoon: true },
+  { label: "Analytics", icon: ChartLineUp, path: "analytics", comingSoon: true },
 ];
 
 /** Configuration surfaces scoped to the active project and its organization. */
