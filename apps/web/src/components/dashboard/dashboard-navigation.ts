@@ -39,7 +39,7 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
   { label: "Events", icon: Pulse, path: "events", comingSoon: true },
   { label: "Templates", icon: Code, path: "templates", comingSoon: true },
   { label: "Delivery", icon: PaperPlaneTilt, path: "delivery", comingSoon: true },
-  { label: "Usage", icon: Gauge, path: "usage", comingSoon: true },
+  { label: "Usage", icon: Gauge, path: "usage", capability: "project:usage:read" },
   { label: "Alerts", icon: BellRinging, path: "alerts", comingSoon: true },
   { label: "Analytics", icon: ChartLineUp, path: "analytics", comingSoon: true },
 ];
