@@ -144,7 +144,7 @@ async def test_first_magic_link_sign_in_sends_a_welcome_email(
     mock_redis.getdel.return_value = json.dumps({"email": "fresh@example.com"})
 
     with patch(
-        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.post(
             "/api/v1/auth/magic-link/verify", json={"token": "welcome-token"}
@@ -164,7 +164,7 @@ async def test_returning_magic_link_sign_in_sends_no_welcome_email(
     mock_redis.getdel.return_value = json.dumps({"email": "returning@example.com"})
 
     with patch(
-        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.post(
             "/api/v1/auth/magic-link/verify", json={"token": "return-token"}
@@ -193,7 +193,7 @@ async def test_promoting_a_verified_address_notifies_the_previous_primary(
     await db.refresh(secondary)
 
     with patch(
-        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.post(
             f"/api/v1/auth/me/emails/{secondary.id}/primary",
@@ -216,7 +216,7 @@ async def test_promoting_the_current_primary_notifies_no_one(
     ).scalar_one()
 
     with patch(
-        "app.modules.identity.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.post(
             f"/api/v1/auth/me/emails/{primary.id}/primary",
@@ -253,7 +253,7 @@ async def test_removing_a_member_notifies_them(
     _member, membership_id = await _member_of(db, organization.id, "dropped@example.com")
 
     with patch(
-        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.delete(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
@@ -310,7 +310,7 @@ async def test_changing_a_members_role_notifies_the_member_not_the_actor(
     _member, membership_id = await _member_of(db, organization.id, "promoted@example.com")
 
     with patch(
-        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.patch(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
@@ -338,7 +338,7 @@ async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
     )
 
     with patch(
-        "app.modules.tenancy.members.service.send_notification_email", new_callable=AsyncMock
+        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
     ) as notify:
         response = await client.patch(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
@@ -383,7 +383,7 @@ async def test_accepting_an_invitation_notifies_the_inviter(
     joiner = (await db.execute(select(User).where(User.email == joiner_email))).scalar_one()
 
     with patch(
-        "app.modules.tenancy.invitations.service.send_notification_email",
+        "app.modules.delivery.notify.send_notification_email",
         new_callable=AsyncMock,
     ) as notify:
         response = await client.post(
@@ -406,7 +406,7 @@ async def test_inviter_notification_is_silent_when_the_inviter_row_is_gone(
     from app.modules.tenancy.invitations.service import _notify_inviter_of_acceptance
 
     with patch(
-        "app.modules.tenancy.invitations.service.send_notification_email",
+        "app.modules.delivery.notify.send_notification_email",
         new_callable=AsyncMock,
     ) as notify:
         # invited_by_user_id points at no existing user (deleted inviter).

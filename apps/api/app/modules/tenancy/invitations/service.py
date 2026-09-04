@@ -14,12 +14,9 @@ from sqlmodel import col
 from app.core.config import settings
 from app.core.crypto import hash_api_key
 from app.core.datetime import utc_now
+from app.modules.delivery import notify
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.notifications import send_notification_email
-from app.modules.delivery.templates.transactional import (
-    invitation_accepted_email,
-    organization_invitation_email,
-)
+from app.modules.delivery.templates.transactional import organization_invitation_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
@@ -306,16 +303,11 @@ async def _notify_inviter_of_acceptance(
     organization = await db.get(Organization, organization_id)
     if inviter is None or organization is None:
         return
-    await send_notification_email(
-        inviter.email,
-        invitation_accepted_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=inviter.email,
-            recipient_name=inviter.name,
-            organization_name=organization.name,
-            member_email=invitee_email,
-            role=invitee_role,
-        ),
+    await notify.invitation_accepted(
+        inviter,
+        organization=organization,
+        member_email=invitee_email,
+        role=invitee_role,
     )
 
 

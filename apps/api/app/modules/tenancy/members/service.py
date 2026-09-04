@@ -9,13 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from app.core.config import settings
 from app.core.datetime import utc_now
-from app.modules.delivery.notifications import send_notification_email
-from app.modules.delivery.templates.transactional import (
-    member_removed_email,
-    member_role_changed_email,
-)
+from app.modules.delivery import notify
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
 from app.modules.tenancy.authorization import OrganizationCapability, authorize_organization
@@ -146,16 +141,7 @@ async def update_member_role(
     assert member is not None
     await db.commit()
     if previous_role != role:
-        await send_notification_email(
-            member.email,
-            member_role_changed_email(
-                frontend_url=settings.FRONTEND_URL,
-                recipient=member.email,
-                recipient_name=member.name,
-                organization_name=access.organization.name,
-                role=str(role),
-            ),
-        )
+        await notify.member_role_changed(member, organization=access.organization, role=str(role))
     return _member_view(membership, member)
 
 
@@ -198,12 +184,4 @@ async def remove_member(
     await db.delete(membership)
     await db.commit()
     if member is not None:
-        await send_notification_email(
-            member.email,
-            member_removed_email(
-                frontend_url=settings.FRONTEND_URL,
-                recipient=member.email,
-                recipient_name=member.name,
-                organization_name=access.organization.name,
-            ),
-        )
+        await notify.member_removed(member, organization=access.organization)

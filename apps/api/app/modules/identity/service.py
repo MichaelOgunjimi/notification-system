@@ -18,13 +18,11 @@ from sqlmodel import col
 
 from app.core.config import settings
 from app.core.datetime import utc_now
+from app.modules.delivery import notify
 from app.modules.delivery.adapters.email import EmailAdapter
-from app.modules.delivery.notifications import send_notification_email
 from app.modules.delivery.templates.transactional import (
-    email_changed_email,
     email_verification_email,
     magic_link_email,
-    welcome_email,
 )
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
@@ -99,21 +97,6 @@ async def _create_user_with_workspace(
         slug=f"workspace-{str(user.id)[:8]}",
     )
     return user, email_address
-
-
-async def _send_welcome_email(*, email: str, name: str) -> None:
-    """Best-effort welcome, sent after the new user + workspace have committed.
-
-    Takes plain values rather than a ``User`` instance: the caller commits first,
-    which expires ORM attributes, and this runs outside that refresh.
-    """
-    message = welcome_email(
-        frontend_url=settings.FRONTEND_URL,
-        recipient=email,
-        recipient_name=name,
-        workspace_name=f"{name}'s Workspace",
-    )
-    await send_notification_email(email, message)
 
 
 async def _attach_verified_email(
@@ -327,14 +310,8 @@ async def set_primary_email(
     await db.commit()
     await db.refresh(email_address)
     if previous_email != email_address.email:
-        await send_notification_email(
-            previous_email,
-            email_changed_email(
-                frontend_url=settings.FRONTEND_URL,
-                recipient=previous_email,
-                recipient_name=user.name,
-                new_email=email_address.email,
-            ),
+        await notify.primary_email_changed(
+            previous_email, new_email=email_address.email, name=user.name
         )
     return email_address
 
@@ -459,7 +436,7 @@ async def verify_magic_link(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
     if registered_name is not None:
-        await _send_welcome_email(email=email, name=registered_name)
+        await notify.welcome(email=email, name=registered_name)
     return await create_user_tokens(user, db, redis)
 
 
@@ -529,7 +506,7 @@ async def get_or_create_oauth_user(
     )
     await db.commit()
     await db.refresh(user)
-    await _send_welcome_email(email=email, name=registered_name)
+    await notify.welcome(email=email, name=registered_name)
     return user
 
 
