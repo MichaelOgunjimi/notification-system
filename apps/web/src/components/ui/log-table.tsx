@@ -3,7 +3,13 @@
 import { type ReactNode, useState } from "react";
 import { CaretRight, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import type { AuditLogEntry } from "@beaco/control-plane";
-import { absoluteFormatter, formatMetadataValue, metadataEntries } from "@/lib/audit-log";
+import {
+  absoluteFormatter,
+  formatMetadataValue,
+  metadataEntries,
+  statusForAction,
+} from "@/lib/audit-log";
+import { LogPill } from "./log-pill";
 import "./log-table.css";
 
 /** One column in a {@link LogTable}. */
@@ -131,14 +137,16 @@ export function LogTable<T>({
 }
 
 /**
- * The standard expanded panel for an audit entry — timestamp, resource, IP, the
- * raw action key, and every metadata field as a card.
+ * The standard expanded panel for an audit entry — timestamp, resource, the
+ * resolved status (when the action has one), IP, the raw action key, and every
+ * metadata field as a card.
  *
  * @param props The entry to detail.
  * @returns Detail grid plus metadata cards.
  */
 export function LogEntryDetail({ entry }: Readonly<{ entry: AuditLogEntry }>) {
   const detail = metadataEntries(entry.metadata);
+  const status = statusForAction(entry.action);
   return (
     <>
       <dl className="log-table__detail-grid">
@@ -153,6 +161,14 @@ export function LogEntryDetail({ entry }: Readonly<{ entry: AuditLogEntry }>) {
             {entry.resourceId ? ` · ${entry.resourceId}` : ""}
           </dd>
         </div>
+        {status ? (
+          <div>
+            <dt>Status</dt>
+            <dd>
+              <LogPill label={status.label} tone={status.tone} />
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>IP address</dt>
           <dd>{entry.ipAddress ?? "Not recorded"}</dd>
