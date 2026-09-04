@@ -1,14 +1,21 @@
 "use client";
 
-import { useDashboardScope } from "@/components/dashboard/dashboard-scope-context";
-import { ActivitySettings } from "@/components/settings/activity-settings";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 /**
- * Renders the tenant activity log for the resolved dashboard scope.
+ * Legacy alias — the activity log became the governance audit log at
+ * `settings/audit`. Redirects any bookmarked `settings/activity` link.
  *
- * @returns Activity log surface bound to the active project and organization.
+ * @returns Nothing; navigates on mount.
  */
-export default function ActivitySettingsPage() {
-  const { organization, project } = useDashboardScope();
-  return <ActivitySettings key={project.id} organization={organization} project={project} />;
+export default function ActivityLogRedirect() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    router.replace(pathname.replace(/\/settings\/activity$/, "/settings/audit"));
+  }, [router, pathname]);
+
+  return null;
 }

@@ -47,9 +47,9 @@ export const CONFIGURE_NAV: readonly DashboardNavItem[] = [
     capability: "api_key:manage",
   },
   {
-    label: "Activity log",
+    label: "Audit log",
     icon: ListBullets,
-    path: "settings/activity",
+    path: "settings/audit",
     capability: "project:audit:read",
   },
 ];
