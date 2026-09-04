@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ListBullets, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { CaretRight, ListBullets, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import type { AuditLogEntry, Organization, Project } from "@beaco/control-plane";
 import { useOrganizationAuditLog, useProjectAuditLog } from "@beaco/control-plane/react";
 import "./activity-settings.css";
@@ -13,6 +13,7 @@ type ActivitySettingsProps = Readonly<{
 
 type Scope = "project" | "organization";
 type ActorFilter = "" | "user" | "api_key";
+type TimeRange = "all" | "24h" | "7d" | "30d" | "since";
 
 const PER_PAGE = 20;
 
@@ -20,6 +21,17 @@ const ACTOR_FILTERS: ReadonlyArray<{ value: ActorFilter; label: string }> = [
   { value: "", label: "Anyone" },
   { value: "user", label: "People" },
   { value: "api_key", label: "API keys" },
+];
+
+const TIME_RANGES: ReadonlyArray<{
+  value: Exclude<TimeRange, "since">;
+  label: string;
+  ms: number;
+}> = [
+  { value: "all", label: "All time", ms: 0 },
+  { value: "24h", label: "24 hours", ms: 86_400_000 },
+  { value: "7d", label: "7 days", ms: 604_800_000 },
+  { value: "30d", label: "30 days", ms: 2_592_000_000 },
 ];
 
 /** Turns `organization.member_role_updated` into "Organization member role updated". */
@@ -34,6 +46,19 @@ function actorLabel(entry: AuditLogEntry): string {
   if (entry.actorUserId) return "A former member";
   if (entry.apiKeyId) return "A deleted API key";
   return "System";
+}
+
+/** Metadata keys worth surfacing, with empty values dropped. */
+function metadataEntries(metadata: Record<string, unknown>): Array<[string, unknown]> {
+  return Object.entries(metadata).filter(
+    ([, value]) => value !== null && value !== undefined && value !== "",
+  );
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map((item) => String(item)).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 const absoluteFormatter = new Intl.DateTimeFormat(undefined, {
@@ -59,10 +84,11 @@ function relativeTime(iso: string): string {
 }
 
 /**
- * Renders the tenant activity log with scope, actor, and action filters.
+ * Renders the tenant activity log with scope, actor, action, and time filters.
  *
- * Backend capabilities remain authoritative: the organization scope is offered
- * only when the caller holds `organization:audit:read`.
+ * Every row expands to the recorded detail — resource, IP address, and the raw
+ * metadata payload. Backend capabilities remain authoritative: the organization
+ * scope is offered only when the caller holds `organization:audit:read`.
  *
  * @param props Active organization and project scope.
  * @returns Paginated, filterable audit-log surface.
@@ -78,7 +104,13 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
   const [actor, setActor] = useState<ActorFilter>("");
   const [actionInput, setActionInput] = useState("");
   const [action, setAction] = useState("");
+  const [range, setRange] = useState<TimeRange>("all");
+  const [sinceDate, setSinceDate] = useState("");
+  // Frozen when a range is picked — never derived inline, or a fresh ISO string
+  // on every render would churn the query key and refetch forever.
+  const [sinceIso, setSinceIso] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Debounce the action search box. The first render already has the empty
   // filter applied, so skip that pass — otherwise any future change that seeds
@@ -101,6 +133,7 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
     perPage: PER_PAGE,
     action: action || undefined,
     actor: actor || undefined,
+    from: sinceIso,
   };
   const projectQuery = useProjectAuditLog(scope === "project" ? project.id : null, filter);
   const organizationQuery = useOrganizationAuditLog(
@@ -111,10 +144,25 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
 
   const entries = query.data?.items ?? [];
   const totalPages = query.data ? Math.max(1, query.data.totalPages) : 1;
-  const filtersActive = actor !== "" || action !== "";
+  const filtersActive = actor !== "" || action !== "" || sinceIso !== undefined;
 
   function changeScope(next: Scope) {
     setScope(next);
+    setPage(1);
+    setExpandedId(null);
+  }
+
+  function changeRange(next: Exclude<TimeRange, "since">, ms: number) {
+    setRange(next);
+    setSinceDate("");
+    setSinceIso(ms === 0 ? undefined : new Date(Date.now() - ms).toISOString());
+    setPage(1);
+  }
+
+  function changeSinceDate(value: string) {
+    setSinceDate(value);
+    setRange(value ? "since" : "all");
+    setSinceIso(value ? new Date(`${value}T00:00:00`).toISOString() : undefined);
     setPage(1);
   }
 
@@ -172,6 +220,29 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
           ))}
         </div>
 
+        <div className="activity-settings__chips" role="group" aria-label="Time range">
+          {TIME_RANGES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              data-active={range === option.value || undefined}
+              onClick={() => changeRange(option.value, option.ms)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <label className="activity-settings__since">
+          <span>Since</span>
+          <input
+            type="date"
+            value={sinceDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => changeSinceDate(event.target.value)}
+          />
+        </label>
+
         <input
           type="search"
           className="activity-settings__search"
@@ -200,21 +271,78 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
             {filtersActive ? "No entries match these filters." : "No activity recorded yet."}
           </li>
         ) : null}
-        {entries.map((entry) => (
-          <li key={entry.id} className="activity-settings__row">
-            <div className="activity-settings__row-main">
-              <strong title={entry.action}>{humanizeAction(entry.action)}</strong>
-              <span className="activity-settings__meta">by {actorLabel(entry)}</span>
-            </div>
-            <time
-              className="activity-settings__time"
-              dateTime={entry.createdAt}
-              title={absoluteFormatter.format(new Date(entry.createdAt))}
-            >
-              {relativeTime(entry.createdAt)}
-            </time>
-          </li>
-        ))}
+        {entries.map((entry) => {
+          const open = expandedId === entry.id;
+          const detail = metadataEntries(entry.metadata);
+          return (
+            <li key={entry.id} className="activity-settings__row">
+              <button
+                type="button"
+                className="activity-settings__row-summary"
+                aria-expanded={open}
+                aria-controls={`activity-detail-${entry.id}`}
+                onClick={() => setExpandedId(open ? null : entry.id)}
+              >
+                <CaretRight
+                  className="activity-settings__caret"
+                  data-open={open || undefined}
+                  size={11}
+                  weight="bold"
+                />
+                <span className="activity-settings__row-main">
+                  <strong title={entry.action}>{humanizeAction(entry.action)}</strong>
+                  <span className="activity-settings__meta">by {actorLabel(entry)}</span>
+                </span>
+                <time
+                  className="activity-settings__time"
+                  dateTime={entry.createdAt}
+                  title={absoluteFormatter.format(new Date(entry.createdAt))}
+                >
+                  {relativeTime(entry.createdAt)}
+                </time>
+              </button>
+              {open ? (
+                <div className="activity-settings__detail" id={`activity-detail-${entry.id}`}>
+                  <dl className="activity-settings__detail-grid">
+                    <div>
+                      <dt>When</dt>
+                      <dd>{absoluteFormatter.format(new Date(entry.createdAt))}</dd>
+                    </div>
+                    <div>
+                      <dt>Resource</dt>
+                      <dd>
+                        {entry.resourceType}
+                        {entry.resourceId ? ` · ${entry.resourceId}` : ""}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>IP address</dt>
+                      <dd>{entry.ipAddress ?? "Not recorded"}</dd>
+                    </div>
+                    <div>
+                      <dt>Action key</dt>
+                      <dd>{entry.action}</dd>
+                    </div>
+                  </dl>
+                  {detail.length > 0 ? (
+                    <div className="activity-settings__metadata">
+                      {detail.map(([key, value]) => (
+                        <div key={key}>
+                          <span>{key.replace(/_/g, " ")}</span>
+                          <code>{formatMetadataValue(value)}</code>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="activity-settings__metadata-empty">
+                      No additional details recorded.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
 
       {totalPages > 1 ? (
