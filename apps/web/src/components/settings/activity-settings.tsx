@@ -14,6 +14,7 @@ type ActivitySettingsProps = Readonly<{
 type Scope = "project" | "organization";
 type ActorFilter = "" | "user" | "api_key";
 type TimeRange = "all" | "24h" | "7d" | "30d" | "since";
+type BadgeTone = "positive" | "negative" | "caution" | "neutral";
 
 const PER_PAGE = 20;
 
@@ -34,6 +35,19 @@ const TIME_RANGES: ReadonlyArray<{
   { value: "30d", label: "30 days", ms: 2_592_000_000 },
 ];
 
+const POSITIVE_VERBS = new Set(["created", "accepted", "added", "restored"]);
+const NEGATIVE_VERBS = new Set(["revoked", "removed", "deleted", "archived", "rejected"]);
+const CAUTION_VERBS = new Set(["updated", "rotated", "changed", "renamed"]);
+
+/** Colour tone for an action badge, keyed on the trailing verb of the action. */
+function actionTone(action: string): BadgeTone {
+  const verb = action.split(/[._]/).pop() ?? "";
+  if (POSITIVE_VERBS.has(verb)) return "positive";
+  if (NEGATIVE_VERBS.has(verb)) return "negative";
+  if (CAUTION_VERBS.has(verb)) return "caution";
+  return "neutral";
+}
+
 /** Turns `organization.member_role_updated` into "Organization member role updated". */
 function humanizeAction(action: string): string {
   const spaced = action.replace(/[._]/g, " ").trim();
@@ -48,10 +62,11 @@ function actorLabel(entry: AuditLogEntry): string {
   return "System";
 }
 
-/** Metadata keys worth surfacing, with empty values dropped. */
+/** Metadata keys worth surfacing, with empty and bookkeeping values dropped. */
 function metadataEntries(metadata: Record<string, unknown>): Array<[string, unknown]> {
   return Object.entries(metadata).filter(
-    ([, value]) => value !== null && value !== undefined && value !== "",
+    ([key, value]) =>
+      value !== null && value !== undefined && value !== "" && key !== "seed" && key !== "index",
   );
 }
 
@@ -59,6 +74,17 @@ function formatMetadataValue(value: unknown): string {
   if (Array.isArray(value)) return value.map((item) => String(item)).join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+/** One-line "resource · key: value · key: value" summary for the Details column. */
+function detailsSummary(entry: AuditLogEntry): string {
+  const resource = entry.resourceId
+    ? `${entry.resourceType} ${entry.resourceId.slice(0, 8)}`
+    : entry.resourceType;
+  const meta = metadataEntries(entry.metadata)
+    .map(([key, value]) => `${key.replace(/_/g, " ")}: ${formatMetadataValue(value)}`)
+    .join("  ·  ");
+  return meta ? `${resource}  ·  ${meta}` : resource;
 }
 
 const absoluteFormatter = new Intl.DateTimeFormat(undefined, {
@@ -84,11 +110,12 @@ function relativeTime(iso: string): string {
 }
 
 /**
- * Renders the tenant activity log with scope, actor, action, and time filters.
+ * Renders the tenant activity log as a full-width, filterable log table.
  *
- * Every row expands to the recorded detail — resource, IP address, and the raw
- * metadata payload. Backend capabilities remain authoritative: the organization
- * scope is offered only when the caller holds `organization:audit:read`.
+ * Every row expands in place to the recorded detail — resource, IP address, and
+ * the raw metadata payload. Backend capabilities remain authoritative: the
+ * organization scope is offered only when the caller holds
+ * `organization:audit:read`.
  *
  * @param props Active organization and project scope.
  * @returns Paginated, filterable audit-log surface.
@@ -254,118 +281,147 @@ export function ActivitySettings({ organization, project }: ActivitySettingsProp
       </div>
 
       {query.isError ? (
-        <p className="activity-settings__message" data-tone="error" role="alert">
+        <p className="activity-settings__message" role="alert">
           <WarningCircle size={15} />
           {query.error.message}
         </p>
       ) : null}
 
-      <ol className="activity-settings__list" aria-busy={query.isFetching || undefined}>
-        {query.isPending ? (
-          <li className="activity-settings__empty">
-            <SpinnerGap size={16} className="animate-spin" /> Loading activity
-          </li>
-        ) : null}
-        {!query.isPending && entries.length === 0 ? (
-          <li className="activity-settings__empty">
-            {filtersActive ? "No entries match these filters." : "No activity recorded yet."}
-          </li>
-        ) : null}
-        {entries.map((entry) => {
-          const open = expandedId === entry.id;
-          const detail = metadataEntries(entry.metadata);
-          return (
-            <li key={entry.id} className="activity-settings__row">
+      <div className="activity-settings__table" aria-busy={query.isFetching || undefined}>
+        <div className="activity-settings__scroll">
+          <div className="activity-settings__grid activity-settings__grid--head">
+            <span />
+            <span>Time</span>
+            <span>Action</span>
+            <span>Actor</span>
+            <span>IP address</span>
+            <span>Details</span>
+          </div>
+
+          {query.isPending ? (
+            <div className="activity-settings__state">
+              <SpinnerGap size={16} className="animate-spin" /> Loading activity
+            </div>
+          ) : null}
+          {!query.isPending && entries.length === 0 ? (
+            <div className="activity-settings__state">
+              {filtersActive ? "No entries match these filters." : "No activity recorded yet."}
+            </div>
+          ) : null}
+
+          {entries.map((entry) => {
+            const open = expandedId === entry.id;
+            const detail = metadataEntries(entry.metadata);
+            return (
+              <div className="activity-settings__entry" key={entry.id}>
+                <button
+                  type="button"
+                  className="activity-settings__grid activity-settings__row"
+                  aria-expanded={open}
+                  aria-controls={`activity-detail-${entry.id}`}
+                  onClick={() => setExpandedId(open ? null : entry.id)}
+                >
+                  <CaretRight
+                    className="activity-settings__caret"
+                    data-open={open || undefined}
+                    size={11}
+                    weight="bold"
+                  />
+                  <time
+                    className="activity-settings__cell activity-settings__cell--time"
+                    dateTime={entry.createdAt}
+                    title={absoluteFormatter.format(new Date(entry.createdAt))}
+                  >
+                    {relativeTime(entry.createdAt)}
+                  </time>
+                  <span className="activity-settings__cell">
+                    <span
+                      className="activity-settings__badge"
+                      data-tone={actionTone(entry.action)}
+                      title={entry.action}
+                    >
+                      {humanizeAction(entry.action)}
+                    </span>
+                  </span>
+                  <span className="activity-settings__cell activity-settings__cell--strong">
+                    {actorLabel(entry)}
+                  </span>
+                  <span className="activity-settings__cell activity-settings__cell--mono">
+                    {entry.ipAddress ?? "—"}
+                  </span>
+                  <span className="activity-settings__cell activity-settings__cell--details">
+                    {detailsSummary(entry)}
+                  </span>
+                </button>
+                {open ? (
+                  <div className="activity-settings__detail" id={`activity-detail-${entry.id}`}>
+                    <dl className="activity-settings__detail-grid">
+                      <div>
+                        <dt>When</dt>
+                        <dd>{absoluteFormatter.format(new Date(entry.createdAt))}</dd>
+                      </div>
+                      <div>
+                        <dt>Resource</dt>
+                        <dd>
+                          {entry.resourceType}
+                          {entry.resourceId ? ` · ${entry.resourceId}` : ""}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>IP address</dt>
+                        <dd>{entry.ipAddress ?? "Not recorded"}</dd>
+                      </div>
+                      <div>
+                        <dt>Action key</dt>
+                        <dd>{entry.action}</dd>
+                      </div>
+                    </dl>
+                    {detail.length > 0 ? (
+                      <div className="activity-settings__metadata">
+                        {detail.map(([key, value]) => (
+                          <div key={key}>
+                            <span>{key.replace(/_/g, " ")}</span>
+                            <code>{formatMetadataValue(value)}</code>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="activity-settings__metadata-empty">
+                        No additional details recorded.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        {totalPages > 1 ? (
+          <div className="activity-settings__pager">
+            <span>
+              Page {page} of {totalPages}
+              {query.data ? ` · ${query.data.total} entries` : ""}
+            </span>
+            <div className="activity-settings__pager-buttons">
               <button
                 type="button"
-                className="activity-settings__row-summary"
-                aria-expanded={open}
-                aria-controls={`activity-detail-${entry.id}`}
-                onClick={() => setExpandedId(open ? null : entry.id)}
+                disabled={page <= 1 || query.isFetching}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
               >
-                <CaretRight
-                  className="activity-settings__caret"
-                  data-open={open || undefined}
-                  size={11}
-                  weight="bold"
-                />
-                <span className="activity-settings__row-main">
-                  <strong title={entry.action}>{humanizeAction(entry.action)}</strong>
-                  <span className="activity-settings__meta">by {actorLabel(entry)}</span>
-                </span>
-                <time
-                  className="activity-settings__time"
-                  dateTime={entry.createdAt}
-                  title={absoluteFormatter.format(new Date(entry.createdAt))}
-                >
-                  {relativeTime(entry.createdAt)}
-                </time>
+                Previous
               </button>
-              {open ? (
-                <div className="activity-settings__detail" id={`activity-detail-${entry.id}`}>
-                  <dl className="activity-settings__detail-grid">
-                    <div>
-                      <dt>When</dt>
-                      <dd>{absoluteFormatter.format(new Date(entry.createdAt))}</dd>
-                    </div>
-                    <div>
-                      <dt>Resource</dt>
-                      <dd>
-                        {entry.resourceType}
-                        {entry.resourceId ? ` · ${entry.resourceId}` : ""}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>IP address</dt>
-                      <dd>{entry.ipAddress ?? "Not recorded"}</dd>
-                    </div>
-                    <div>
-                      <dt>Action key</dt>
-                      <dd>{entry.action}</dd>
-                    </div>
-                  </dl>
-                  {detail.length > 0 ? (
-                    <div className="activity-settings__metadata">
-                      {detail.map(([key, value]) => (
-                        <div key={key}>
-                          <span>{key.replace(/_/g, " ")}</span>
-                          <code>{formatMetadataValue(value)}</code>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="activity-settings__metadata-empty">
-                      No additional details recorded.
-                    </p>
-                  )}
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
-
-      {totalPages > 1 ? (
-        <div className="activity-settings__pager">
-          <button
-            type="button"
-            disabled={page <= 1 || query.isFetching}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages || query.isFetching}
-            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-          >
-            Next
-          </button>
-        </div>
-      ) : null}
+              <button
+                type="button"
+                disabled={page >= totalPages || query.isFetching}
+                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

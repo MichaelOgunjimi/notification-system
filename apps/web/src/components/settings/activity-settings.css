@@ -1,6 +1,4 @@
 .activity-settings {
-  margin: 0 auto;
-  max-width: 900px;
   min-height: calc(100dvh - 72px);
   padding: clamp(28px, 4vw, 52px);
 }
@@ -134,84 +132,179 @@
   margin-top: 18px;
 }
 
-.activity-settings__list {
-  border-top: 1px solid var(--dashboard-line);
-  list-style: none;
-  margin: 22px 0 0;
-  padding: 0;
+/* Log table -------------------------------------------------------------- */
+
+.activity-settings__table {
+  border: 1px solid var(--dashboard-line);
+  border-radius: 12px;
+  margin-top: 24px;
+  overflow: hidden;
 }
 
-.activity-settings__list[aria-busy] {
-  opacity: 0.6;
+.activity-settings__table[aria-busy] .activity-settings__scroll {
+  opacity: 0.55;
 }
 
-.activity-settings__empty {
+.activity-settings__scroll {
+  overflow-x: auto;
+  transition: opacity 120ms ease;
+}
+
+.activity-settings__grid {
   align-items: center;
-  color: var(--dashboard-muted);
-  display: flex;
-  font-size: 11px;
-  gap: 8px;
-  padding: 20px 4px;
-}
-
-.activity-settings__row {
-  border-bottom: 1px solid var(--dashboard-line);
-}
-
-.activity-settings__row-summary {
-  align-items: baseline;
-  background: none;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  display: flex;
-  font: inherit;
-  gap: 12px;
-  padding: 14px 6px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 22px 116px minmax(160px, 240px) minmax(120px, 190px) 118px minmax(
+      220px,
+      1fr
+    );
+  min-width: 900px;
+  padding: 0 18px;
   text-align: left;
   width: 100%;
 }
 
-.activity-settings__row-summary:hover {
+.activity-settings__grid--head {
+  background: var(--dashboard-overlay);
+  border-bottom: 1px solid var(--dashboard-line);
+  min-height: 38px;
+}
+
+.activity-settings__grid--head span {
+  color: var(--dashboard-muted);
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.activity-settings__entry {
+  border-bottom: 1px solid var(--dashboard-line);
+}
+
+.activity-settings__entry:last-child {
+  border-bottom: 0;
+}
+
+.activity-settings__row {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-height: 46px;
+  padding-bottom: 8px;
+  padding-top: 8px;
+  transition: background 120ms ease;
+}
+
+.activity-settings__row:hover {
   background: var(--dashboard-overlay);
 }
 
-.activity-settings__row-summary:focus-visible {
+.activity-settings__row:focus-visible {
   outline: 1px solid var(--dashboard-accent);
-  outline-offset: -1px;
+  outline-offset: -2px;
 }
 
 .activity-settings__caret {
   color: var(--dashboard-muted);
-  flex-shrink: 0;
-  transform: translateY(1px);
   transition: transform 130ms ease;
 }
 
 .activity-settings__caret[data-open] {
-  transform: translateY(1px) rotate(90deg);
+  transform: rotate(90deg);
 }
 
-.activity-settings__row-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.activity-settings__row-main strong {
-  display: block;
+.activity-settings__cell {
   font-size: 12px;
-  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-settings__cell--time,
+.activity-settings__cell--mono {
+  color: var(--dashboard-muted);
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+}
+
+.activity-settings__cell--strong {
+  color: var(--dashboard-muted-bright);
+}
+
+.activity-settings__cell--details {
+  color: var(--dashboard-muted);
+  font-size: 11px;
+}
+
+.activity-settings__badge {
+  align-items: center;
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 999px;
+  color: var(--dashboard-muted-bright);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-settings__badge::before {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  flex-shrink: 0;
+  height: 5px;
+  width: 5px;
+}
+
+.activity-settings__badge[data-tone="positive"] {
+  background: color-mix(in srgb, #68b982 12%, transparent);
+  border-color: color-mix(in srgb, #68b982 34%, transparent);
+  color: #68b982;
+}
+
+.activity-settings__badge[data-tone="negative"] {
+  background: color-mix(in srgb, #d88274 12%, transparent);
+  border-color: color-mix(in srgb, #d88274 34%, transparent);
+  color: #d88274;
+}
+
+.activity-settings__badge[data-tone="caution"] {
+  background: color-mix(in srgb, #d8a35f 12%, transparent);
+  border-color: color-mix(in srgb, #d8a35f 34%, transparent);
+  color: #d8a35f;
+}
+
+.activity-settings__state {
+  align-items: center;
+  color: var(--dashboard-muted);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  justify-content: center;
+  min-width: 900px;
+  padding: 40px 18px;
 }
 
 .activity-settings__detail {
+  background: var(--dashboard-overlay);
   border-top: 1px dashed var(--dashboard-line-strong);
-  padding: 14px 6px 18px 30px;
+  min-width: 900px;
+  padding: 16px 20px 20px 40px;
 }
 
 .activity-settings__detail-grid {
   display: grid;
   gap: 12px 26px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   margin: 0;
 }
 
@@ -233,12 +326,12 @@
 .activity-settings__metadata {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   margin-top: 14px;
 }
 
 .activity-settings__metadata > div {
-  background: var(--dashboard-overlay);
+  background: var(--dashboard-panel);
   border: 1px solid var(--dashboard-line);
   border-radius: 8px;
   padding: 7px 10px;
@@ -269,30 +362,13 @@
   margin: 14px 0 0;
 }
 
-.activity-settings__meta {
-  color: var(--dashboard-muted);
-  display: block;
-  font-size: 10px;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-settings__time {
-  color: var(--dashboard-muted);
-  flex-shrink: 0;
-  font-family: var(--font-geist-mono);
-  font-size: 9px;
-  white-space: nowrap;
-}
-
 .activity-settings__pager {
   align-items: center;
+  border-top: 1px solid var(--dashboard-line);
   display: flex;
   gap: 14px;
-  justify-content: center;
-  margin-top: 22px;
+  justify-content: space-between;
+  padding: 10px 18px;
 }
 
 .activity-settings__pager span {
@@ -301,14 +377,19 @@
   font-size: 10px;
 }
 
+.activity-settings__pager-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .activity-settings__pager button {
   background: var(--dashboard-overlay);
   border: 1px solid var(--dashboard-line-strong);
   border-radius: 8px;
   color: var(--dashboard-muted-bright);
   font-size: 11px;
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: 30px;
+  padding: 0 13px;
 }
 
 .activity-settings__pager button:hover:not(:disabled) {
@@ -331,14 +412,5 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 16px;
-  }
-
-  .activity-settings__row-summary {
-    flex-wrap: wrap;
-    gap: 4px 10px;
-  }
-
-  .activity-settings__detail-grid {
-    gap: 10px 18px;
   }
 }
