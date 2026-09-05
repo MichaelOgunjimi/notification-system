@@ -12,6 +12,7 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.observability.router import router as observability_router
 from app.modules.suppressions.router import router as suppressions_router
 from app.modules.templates.router import router as templates_router
+from app.modules.templates.tenant_router import router as templates_tenant_router
 from app.modules.tenancy.router import router as organizations_router
 
 api_v1_router = APIRouter()
@@ -22,6 +23,7 @@ api_v1_router.include_router(notifications_router)
 api_v1_router.include_router(organizations_router)
 api_v1_router.include_router(project_api_keys_router)
 api_v1_router.include_router(templates_router)
+api_v1_router.include_router(templates_tenant_router)
 api_v1_router.include_router(delivery_router)
 api_v1_router.include_router(suppressions_router)
 api_v1_router.include_router(observability_router)
