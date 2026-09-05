@@ -132,7 +132,8 @@
   margin-top: 8px;
 }
 
-.form-dialog__body input {
+.form-dialog__body input,
+.form-dialog__body textarea {
   background: var(--fd-overlay);
   border: 1px solid var(--fd-line-strong);
   border-radius: 8px;
@@ -143,7 +144,15 @@
   width: 100%;
 }
 
-.form-dialog__body input:focus-visible {
+.form-dialog__body textarea {
+  font-family: var(--font-geist-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.form-dialog__body input:focus-visible,
+.form-dialog__body textarea:focus-visible {
   border-color: var(--fd-accent);
   outline: none;
 }
