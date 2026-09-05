@@ -9,8 +9,11 @@ export type OrganizationCapability =
   | "project:create"
   | "project:manage"
   | "api_key:manage"
+  | "project:templates:read"
+  | "project:templates:manage"
   | "project:usage:read"
   | "project:audit:read"
+  | "organization:templates:read"
   | "organization:usage:read"
   | "organization:audit:read"
   | "organization:billing:manage"
@@ -369,6 +372,57 @@ export type TrendsFilter = AnalyticsFilter &
     granularity?: "hour" | "day";
   }>;
 
+/** Delivery channel a template renders for. */
+export type TemplateChannel = "email" | "sms" | "webhook";
+
+/**
+ * A project's own template, or a system default when `projectId` is null.
+ * Every key in a project shares one template pool — ownership is at the
+ * project level, not the individual key.
+ */
+export type Template = Readonly<{
+  id: string;
+  projectId: string | null;
+  apiKeyId: string | null;
+  name: string;
+  channel: TemplateChannel;
+  subject: string | null;
+  body: string;
+  variables: readonly string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+/** Optional pagination and channel filter for listing templates. */
+export type TemplateListOptions = Readonly<{
+  page?: number;
+  perPage?: number;
+  channel?: TemplateChannel;
+}>;
+
+/** {@link TemplateListOptions} plus an optional project to narrow an organization-wide list. */
+export type OrganizationTemplateListOptions = TemplateListOptions &
+  Readonly<{ projectId?: string }>;
+
+/** Fields accepted when creating a template. */
+export type TemplateCreate = Readonly<{
+  name: string;
+  channel: TemplateChannel;
+  subject?: string | null;
+  body: string;
+  variables?: readonly string[];
+}>;
+
+/** Fields accepted when updating a template; omitted fields remain unchanged. */
+export type TemplateUpdate = Readonly<{
+  name?: string;
+  channel?: TemplateChannel;
+  subject?: string | null;
+  body?: string;
+  variables?: readonly string[];
+}>;
+
 /**
  * Configuration for a browser-facing control-plane client.
  *
@@ -625,7 +679,7 @@ export interface ControlPlaneClient {
      * @param projectId Stable project identifier.
      * @param filter Optional page, page size (1-200, default 50), and date range.
      * @returns One page of usage rows with resolved API key names.
-     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     * @throws {ControlPlaneError} When the `project:templates:read` capability is unavailable.
      */
     forProject(projectId: string, filter?: UsageFilter): Promise<Paginated<UsageEntry>>;
     /**
@@ -643,7 +697,7 @@ export interface ControlPlaneClient {
      * @param projectId Stable project identifier.
      * @param filter Optional date range; unbounded when omitted.
      * @returns Totals and a breakdown by API key environment.
-     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     * @throws {ControlPlaneError} When the `project:templates:read` capability is unavailable.
      */
     summaryForProject(projectId: string, filter?: UsageSummaryFilter): Promise<UsageSummary>;
     /**
@@ -652,7 +706,7 @@ export interface ControlPlaneClient {
      * @param organizationId Stable organization identifier.
      * @param filter Optional date range; unbounded when omitted.
      * @returns Totals and a breakdown by API key environment.
-     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     * @throws {ControlPlaneError} When the `organization:templates:read` capability is unavailable.
      */
     summaryForOrganization(
       organizationId: string,
@@ -673,7 +727,7 @@ export interface ControlPlaneClient {
      * @param organizationId Stable organization identifier.
      * @param filter Optional key filter and date range; unbounded when omitted.
      * @returns All 24 hours, zero-filled where there was no traffic.
-     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     * @throws {ControlPlaneError} When the `organization:templates:read` capability is unavailable.
      */
     hourlyForOrganization(
       organizationId: string,
@@ -742,6 +796,101 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
      */
     trendsForOrganization(organizationId: string, filter?: TrendsFilter): Promise<Trends>;
+  };
+  /** A project's shared template library — every key in the project uses the same pool. */
+  readonly templates: {
+    /**
+     * Fetches one template usable by this project: its own, or a system default.
+     *
+     * @param projectId Stable project identifier.
+     * @param templateId Stable template identifier.
+     * @returns The template.
+     * @throws {ControlPlaneError} When the template isn't visible to this project, or access is denied.
+     */
+    get(projectId: string, templateId: string): Promise<Template>;
+    /**
+     * Lists templates strictly owned by this project — never a system default.
+     *
+     * @param projectId Stable project identifier.
+     * @param options Optional page, page size (1-100, default 20), and channel filter.
+     * @returns One page of this project's own templates.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    forProject(projectId: string, options?: TemplateListOptions): Promise<Paginated<Template>>;
+    /**
+     * Lists the shared system default templates available to every project.
+     *
+     * @param projectId Stable project identifier (used only to authorize the request).
+     * @param options Optional page, page size (1-100, default 20), and channel filter.
+     * @returns One page of system default templates.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    defaultsForProject(
+      projectId: string,
+      options?: TemplateListOptions,
+    ): Promise<Paginated<Template>>;
+    /**
+     * Lists templates across every project in an organization.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param options Optional page, page size, channel filter, and a project id to narrow without switching scope.
+     * @returns One page of templates spanning the organization's projects.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    forOrganization(
+      organizationId: string,
+      options?: OrganizationTemplateListOptions,
+    ): Promise<Paginated<Template>>;
+    /**
+     * Lists the shared system default templates (organization-scoped view).
+     *
+     * @param organizationId Stable organization identifier (used only to authorize the request).
+     * @param options Optional page, page size (1-100, default 20), and channel filter.
+     * @returns One page of system default templates.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    defaultsForOrganization(
+      organizationId: string,
+      options?: TemplateListOptions,
+    ): Promise<Paginated<Template>>;
+    /**
+     * Creates a template owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param input Name, channel, body, and optional subject/variables.
+     * @returns The new template.
+     * @throws {ControlPlaneError} When a template with the same name and channel already exists in this project, or `project:templates:manage` is unavailable.
+     */
+    create(projectId: string, input: TemplateCreate): Promise<Template>;
+    /**
+     * Updates a template owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param templateId Stable template identifier.
+     * @param changes Fields to update; omitted fields remain unchanged.
+     * @returns The updated template.
+     * @throws {ControlPlaneError} When the template isn't owned by this project, or access is denied.
+     */
+    update(projectId: string, templateId: string, changes: TemplateUpdate): Promise<Template>;
+    /**
+     * Soft-deletes a template owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param templateId Stable template identifier.
+     * @returns Promise resolved after the delete succeeds.
+     * @throws {ControlPlaneError} When the template isn't owned by this project, or access is denied.
+     */
+    delete(projectId: string, templateId: string): Promise<void>;
+    /**
+     * Copies a system default into a new template owned by this project. The
+     * original default is never modified.
+     *
+     * @param projectId Stable project identifier.
+     * @param templateId Stable identifier of the system default to fork.
+     * @returns The new, independently-editable copy.
+     * @throws {ControlPlaneError} When the source isn't a system default, or access is denied.
+     */
+    fork(projectId: string, templateId: string): Promise<Template>;
   };
 }
 
@@ -909,6 +1058,21 @@ export type ApiTrendPoint = {
 /** Raw trend series returned by FastAPI. */
 export type ApiTrends = {
   points: ApiTrendPoint[];
+};
+
+/** Raw template payload returned by FastAPI. */
+export type ApiTemplate = {
+  id: string;
+  project_id: string | null;
+  api_key_id: string | null;
+  name: string;
+  channel: TemplateChannel;
+  subject: string | null;
+  body: string;
+  variables: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 /** Raw project API key payload returned by FastAPI. */

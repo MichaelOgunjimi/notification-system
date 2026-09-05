@@ -7,6 +7,8 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationTemplateDefaultsQuery,
+  organizationTemplatesQuery,
   organizationTopEndpointsQuery,
   organizationTrendsQuery,
   organizationUsageHourlyQuery,
@@ -16,6 +18,9 @@ import {
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectTemplateDefaultsQuery,
+  projectTemplateQuery,
+  projectTemplatesQuery,
   projectTopEndpointsQuery,
   projectTrendsQuery,
   projectUsageHourlyQuery,
@@ -82,6 +87,17 @@ describe("control-plane queries", () => {
         analyticsForOrganization: vi.fn(),
         trendsForProject: vi.fn(),
         trendsForOrganization: vi.fn(),
+      },
+      templates: {
+        get: vi.fn(),
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        defaultsForProject: vi.fn().mockResolvedValue(emptyPage),
+        forOrganization: vi.fn().mockResolvedValue(emptyPage),
+        defaultsForOrganization: vi.fn().mockResolvedValue(emptyPage),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        fork: vi.fn(),
       },
     };
 
@@ -406,5 +422,76 @@ describe("control-plane queries", () => {
       to: undefined,
       granularity: "hour",
     });
+  });
+
+  it("scopes template queries by target, page, channel, and narrowing project", async () => {
+    const client = {
+      templates: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        defaultsForProject: vi.fn().mockResolvedValue(emptyPage),
+        forOrganization: vi.fn().mockResolvedValue(emptyPage),
+        defaultsForOrganization: vi.fn().mockResolvedValue(emptyPage),
+      },
+    } as unknown as ControlPlaneClient;
+
+    const owned = projectTemplatesQuery(client, "project-1", { page: 2, channel: "email" });
+    const defaults = projectTemplateDefaultsQuery(client, "project-1", {});
+    const orgWide = organizationTemplatesQuery(client, "organization-1", {
+      page: 1,
+      perPage: 20,
+      projectId: "project-1",
+    });
+    const orgDefaults = organizationTemplateDefaultsQuery(client, "organization-1", {});
+
+    expect(owned.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectTemplates("project-1"),
+      2,
+      20,
+      "email",
+    ]);
+    expect(orgWide.queryKey).toEqual([
+      ...controlPlaneQueryKeys.organizationTemplates("organization-1"),
+      1,
+      20,
+      null,
+      "project-1",
+    ]);
+
+    for (const options of [owned, defaults, orgWide, orgDefaults]) {
+      expect(options.refetchInterval).toBeUndefined();
+      expect(options.staleTime).toBe(30 * 1000);
+    }
+
+    await owned.queryFn?.({} as never);
+    await defaults.queryFn?.({} as never);
+    await orgWide.queryFn?.({} as never);
+    await orgDefaults.queryFn?.({} as never);
+    expect(client.templates.forProject).toHaveBeenCalledWith("project-1", {
+      page: 2,
+      perPage: 20,
+      channel: "email",
+    });
+    expect(client.templates.forOrganization).toHaveBeenCalledWith("organization-1", {
+      page: 1,
+      perPage: 20,
+      channel: undefined,
+      projectId: "project-1",
+    });
+  });
+
+  it("scopes a single template query by project and template id", async () => {
+    const client = {
+      templates: { get: vi.fn().mockResolvedValue({ id: "template-1" }) },
+    } as unknown as ControlPlaneClient;
+
+    const single = projectTemplateQuery(client, "project-1", "template-1");
+
+    expect(single.queryKey).toEqual(
+      controlPlaneQueryKeys.projectTemplate("project-1", "template-1"),
+    );
+    expect(single.refetchInterval).toBeUndefined();
+    expect(single.staleTime).toBe(30 * 1000);
+    await single.queryFn?.({} as never);
+    expect(client.templates.get).toHaveBeenCalledWith("project-1", "template-1");
   });
 });

@@ -750,4 +750,200 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("fetches a single template usable by a project", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        id: "template-1",
+        project_id: null,
+        api_key_id: null,
+        name: "Welcome",
+        channel: "email",
+        subject: null,
+        body: "Default body",
+        variables: [],
+        is_active: true,
+        created_at: "2026-09-01T00:00:00Z",
+        updated_at: "2026-09-01T00:00:00Z",
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.templates.get("project-1", "template-1")).resolves.toMatchObject({
+      id: "template-1",
+      projectId: null,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates/template-1",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("lists a project's own templates as a camel-cased page", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "template-1",
+            project_id: "project-1",
+            api_key_id: null,
+            name: "Receipt",
+            channel: "email",
+            subject: "Thanks {{ name }}",
+            body: "Hi {{ name }}",
+            variables: ["name"],
+            is_active: true,
+            created_at: "2026-09-01T00:00:00Z",
+            updated_at: "2026-09-01T00:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 20,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const page = await client.templates.forProject("project-1", { channel: "email" });
+
+    expect(page.items).toEqual([
+      {
+        id: "template-1",
+        projectId: "project-1",
+        apiKeyId: null,
+        name: "Receipt",
+        channel: "email",
+        subject: "Thanks {{ name }}",
+        body: "Hi {{ name }}",
+        variables: ["name"],
+        isActive: true,
+        createdAt: "2026-09-01T00:00:00Z",
+        updatedAt: "2026-09-01T00:00:00Z",
+      },
+    ]);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates?channel=email",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("lists an organization's templates narrowed to one project", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({ items: [], total: 0, page: 1, per_page: 20, total_pages: 0 }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.templates.forOrganization("organization-1", { projectId: "project-1" });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1/templates?project_id=project-1",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("creates a template scoped to the project", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "template-2",
+          project_id: "project-1",
+          api_key_id: null,
+          name: "Receipt",
+          channel: "email",
+          subject: null,
+          body: "Thanks {{ name }}",
+          variables: ["name"],
+          is_active: true,
+          created_at: "2026-09-01T00:00:00Z",
+          updated_at: "2026-09-01T00:00:00Z",
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const created = await client.templates.create("project-1", {
+      name: "Receipt",
+      channel: "email",
+      body: "Thanks {{ name }}",
+      variables: ["name"],
+    });
+
+    expect(created).toMatchObject({ id: "template-2", projectId: "project-1" });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Receipt",
+          channel: "email",
+          body: "Thanks {{ name }}",
+          variables: ["name"],
+        }),
+      }),
+    );
+  });
+
+  it("updates only the supplied template fields and deletes with an empty response", async () => {
+    const fetcher = fetchAdapter((input, init) => {
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      return Response.json({
+        id: "template-1",
+        project_id: "project-1",
+        api_key_id: null,
+        name: "Receipt",
+        channel: "email",
+        subject: null,
+        body: "Updated body",
+        variables: [],
+        is_active: true,
+        created_at: "2026-09-01T00:00:00Z",
+        updated_at: "2026-09-02T00:00:00Z",
+      });
+    });
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.templates.update("project-1", "template-1", { body: "Updated body" });
+    await client.templates.delete("project-1", "template-1");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates/template-1",
+      expect.objectContaining({ method: "PUT", body: JSON.stringify({ body: "Updated body" }) }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates/template-1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("forks a system default into a project-owned copy", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "template-3",
+          project_id: "project-1",
+          api_key_id: null,
+          name: "Welcome",
+          channel: "email",
+          subject: null,
+          body: "Default body",
+          variables: [],
+          is_active: true,
+          created_at: "2026-09-01T00:00:00Z",
+          updated_at: "2026-09-01T00:00:00Z",
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const forked = await client.templates.fork("project-1", "default-1");
+
+    expect(forked).toMatchObject({ id: "template-3", projectId: "project-1" });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/templates/default-1/fork",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });

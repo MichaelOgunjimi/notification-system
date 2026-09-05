@@ -7,12 +7,16 @@ import type {
   OrganizationCreate,
   OrganizationInvitationCreate,
   OrganizationRole,
+  OrganizationTemplateListOptions,
   OrganizationUpdate,
   ProjectApiKeyCreate,
   ProjectApiKeyListOptions,
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  TemplateCreate,
+  TemplateListOptions,
+  TemplateUpdate,
   TrendsFilter,
   UsageFilter,
   UsageSummaryFilter,
@@ -26,6 +30,8 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationTemplateDefaultsQuery,
+  organizationTemplatesQuery,
   organizationTopEndpointsQuery,
   organizationTrendsQuery,
   organizationUsageHourlyQuery,
@@ -35,6 +41,9 @@ import {
   projectApiKeysQuery,
   projectAuditLogQuery,
   projectsQuery,
+  projectTemplateDefaultsQuery,
+  projectTemplateQuery,
+  projectTemplatesQuery,
   projectTopEndpointsQuery,
   projectTrendsQuery,
   projectUsageHourlyQuery,
@@ -678,6 +687,178 @@ export function useRotateProjectApiKey() {
     onSuccess: (_apiKey, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projectApiKeys(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Loads one template usable by a project: its own, or a system default.
+ *
+ * @param projectId Project whose access should authorize the request; null disables the query.
+ * @param templateId Template to load; null disables the query.
+ * @returns TanStack Query result containing the template.
+ */
+export function useProjectTemplate(projectId: string | null, templateId: string | null) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectTemplateQuery(client, projectId ?? "pending", templateId ?? "pending"),
+    enabled: Boolean(projectId) && Boolean(templateId),
+  });
+}
+
+/**
+ * Loads templates strictly owned by a project — never a system default.
+ *
+ * @param projectId Project whose templates should be loaded; null disables the query.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query result containing one page of the project's own templates.
+ */
+export function useProjectTemplates(projectId: string | null, options: TemplateListOptions = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectTemplatesQuery(client, projectId ?? "pending", options),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads the shared system default templates available to every project.
+ *
+ * @param projectId Project used only to authorize the request; null disables the query.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query result containing one page of system default templates.
+ */
+export function useProjectTemplateDefaults(
+  projectId: string | null,
+  options: TemplateListOptions = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectTemplateDefaultsQuery(client, projectId ?? "pending", options),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads templates across every project in an organization.
+ *
+ * @param organizationId Organization whose templates should be loaded; null disables the query.
+ * @param options Page, page size, channel filter, and an optional project id to narrow without switching scope.
+ * @returns TanStack Query result containing one page of templates spanning the organization's projects.
+ */
+export function useOrganizationTemplates(
+  organizationId: string | null,
+  options: OrganizationTemplateListOptions = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationTemplatesQuery(client, organizationId ?? "pending", options),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads the shared system default templates (organization-scoped view).
+ *
+ * @param organizationId Organization used only to authorize the request; null disables the query.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query result containing one page of system default templates.
+ */
+export function useOrganizationTemplateDefaults(
+  organizationId: string | null,
+  options: TemplateListOptions = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationTemplateDefaultsQuery(client, organizationId ?? "pending", options),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Creates a template owned by a project and refreshes its template cache.
+ *
+ * @returns TanStack mutation accepting a project identifier and template fields.
+ */
+export function useCreateProjectTemplate() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: TemplateCreate }) =>
+      client.templates.create(projectId, input),
+    onSuccess: (_template, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Updates a template owned by a project and refreshes its template cache.
+ *
+ * @returns TanStack mutation accepting the project and template identifiers and field changes.
+ */
+export function useUpdateProjectTemplate() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      templateId,
+      changes,
+    }: {
+      projectId: string;
+      templateId: string;
+      changes: TemplateUpdate;
+    }) => client.templates.update(projectId, templateId, changes),
+    onSuccess: (_template, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectTemplate(variables.projectId, variables.templateId),
+      });
+    },
+  });
+}
+
+/**
+ * Soft-deletes a template owned by a project and refreshes its template cache.
+ *
+ * @returns TanStack mutation accepting the project and template identifiers.
+ */
+export function useDeleteProjectTemplate() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, templateId }: { projectId: string; templateId: string }) =>
+      client.templates.delete(projectId, templateId),
+    onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Copies a system default into a new template owned by a project, and
+ * refreshes its template cache. The original default is never modified.
+ *
+ * @returns TanStack mutation accepting the project identifier and the source template identifier.
+ */
+export function useForkProjectTemplate() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, templateId }: { projectId: string; templateId: string }) =>
+      client.templates.fork(projectId, templateId),
+    onSuccess: (_template, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
       }),
   });
 }

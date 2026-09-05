@@ -4,7 +4,9 @@ import type {
   AnalyticsFilter,
   AuditLogFilter,
   ControlPlaneClient,
+  OrganizationTemplateListOptions,
   ProjectApiKeyListOptions,
+  TemplateListOptions,
   TrendsFilter,
   UsageFilter,
   UsageSummaryFilter,
@@ -50,6 +52,16 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "projects", projectId, "analytics", "trends"] as const,
   organizationTrends: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "analytics", "trends"] as const,
+  projectTemplate: (projectId: string, templateId: string) =>
+    ["control-plane", "projects", projectId, "templates", templateId] as const,
+  projectTemplates: (projectId: string) =>
+    ["control-plane", "projects", projectId, "templates"] as const,
+  projectTemplateDefaults: (projectId: string) =>
+    ["control-plane", "projects", projectId, "templates", "defaults"] as const,
+  organizationTemplates: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "templates"] as const,
+  organizationTemplateDefaults: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "templates", "defaults"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -182,6 +194,11 @@ const tenantLiveness = {
   refetchInterval: 20 * 1000,
   refetchOnWindowFocus: true,
   staleTime: 5 * 1000,
+} as const;
+
+/** Configuration resources refresh after mutations or normal focus-based staleness, not polling. */
+const tenantConfiguration = {
+  staleTime: 30 * 1000,
 } as const;
 
 function auditLogKeyParts(filter: AuditLogFilter) {
@@ -561,5 +578,131 @@ export function organizationTrendsQuery(
     queryFn: () => client.usage.trendsForOrganization(organizationId, args),
     retry: retryTransientFailure,
     ...tenantLiveness,
+  });
+}
+
+function templateListKeyParts(options: TemplateListOptions) {
+  const { page = 1, perPage = 20, channel } = options;
+  return { args: { page, perPage, channel }, key: [page, perPage, channel ?? null] as const };
+}
+
+/**
+ * Builds query options for one template usable by a project: its own, or a
+ * system default.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose access should authorize the request.
+ * @param templateId Template to load.
+ * @returns TanStack Query options scoped to the project and template.
+ */
+export function projectTemplateQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  templateId: string,
+) {
+  return queryOptions({
+    queryKey: controlPlaneQueryKeys.projectTemplate(projectId, templateId),
+    queryFn: () => client.templates.get(projectId, templateId),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of a project's own templates.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose templates should be loaded.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectTemplatesQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  options: TemplateListOptions,
+) {
+  const { args, key } = templateListKeyParts(options);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectTemplates(projectId), ...key] as const,
+    queryFn: () => client.templates.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of the shared system default templates.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project used only to authorize the request.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectTemplateDefaultsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  options: TemplateListOptions,
+) {
+  const { args, key } = templateListKeyParts(options);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectTemplateDefaults(projectId), ...key] as const,
+    queryFn: () => client.templates.defaultsForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of templates spanning an organization's projects.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose templates should be loaded.
+ * @param options Page, page size, channel filter, and an optional project id to narrow without switching scope.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationTemplatesQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  options: OrganizationTemplateListOptions,
+) {
+  const { page = 1, perPage = 20, channel, projectId } = options;
+  return queryOptions({
+    queryKey: [
+      ...controlPlaneQueryKeys.organizationTemplates(organizationId),
+      page,
+      perPage,
+      channel ?? null,
+      projectId ?? null,
+    ] as const,
+    queryFn: () =>
+      client.templates.forOrganization(organizationId, { page, perPage, channel, projectId }),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of the shared system default templates
+ * (organization-scoped view).
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization used only to authorize the request.
+ * @param options 1-based page, page size, and optional channel filter.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationTemplateDefaultsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  options: TemplateListOptions,
+) {
+  const { args, key } = templateListKeyParts(options);
+  return queryOptions({
+    queryKey: [
+      ...controlPlaneQueryKeys.organizationTemplateDefaults(organizationId),
+      ...key,
+    ] as const,
+    queryFn: () => client.templates.defaultsForOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
   });
 }

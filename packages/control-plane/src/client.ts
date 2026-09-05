@@ -12,6 +12,7 @@ import type {
   ApiPaginated,
   ApiProject,
   ApiProjectApiKey,
+  ApiTemplate,
   ApiTrendPoint,
   ApiTrends,
   ApiUsageEndpointStat,
@@ -28,9 +29,14 @@ import type {
   OrganizationInvitation,
   OrganizationInvitationPreview,
   OrganizationMember,
+  OrganizationTemplateListOptions,
   Paginated,
   Project,
   ProjectApiKey,
+  Template,
+  TemplateCreate,
+  TemplateListOptions,
+  TemplateUpdate,
   TrendPoint,
   Trends,
   TrendsFilter,
@@ -296,6 +302,32 @@ function mapTrendPoint(point: ApiTrendPoint): TrendPoint {
 
 function mapTrends(trends: ApiTrends): Trends {
   return { points: trends.points.map(mapTrendPoint) };
+}
+
+function mapTemplate(template: ApiTemplate): Template {
+  return {
+    id: template.id,
+    projectId: template.project_id,
+    apiKeyId: template.api_key_id,
+    name: template.name,
+    channel: template.channel,
+    subject: template.subject,
+    body: template.body,
+    variables: [...template.variables],
+    isActive: template.is_active,
+    createdAt: template.created_at,
+    updatedAt: template.updated_at,
+  };
+}
+
+function templateListQuery(options: OrganizationTemplateListOptions): string {
+  const params = new URLSearchParams();
+  if (options.page !== undefined) params.set("page", String(options.page));
+  if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
+  if (options.channel) params.set("channel", options.channel);
+  if (options.projectId) params.set("project_id", options.projectId);
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 /** HTTP implementation that communicates through an application's same-origin boundary. */
@@ -621,6 +653,99 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       mapTrends(
         await this.get<ApiTrends>(
           `/organizations/${encodeURIComponent(organizationId)}/analytics/trends${trendsQuery(filter)}`,
+        ),
+      ),
+  };
+
+  readonly templates = {
+    get: async (projectId: string, templateId: string): Promise<Template> =>
+      mapTemplate(
+        await this.get<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+        ),
+      ),
+    forProject: async (
+      projectId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/projects/${encodeURIComponent(projectId)}/templates${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    defaultsForProject: async (
+      projectId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/projects/${encodeURIComponent(projectId)}/templates/defaults${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    forOrganization: async (
+      organizationId: string,
+      options: OrganizationTemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/organizations/${encodeURIComponent(organizationId)}/templates${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    defaultsForOrganization: async (
+      organizationId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/organizations/${encodeURIComponent(organizationId)}/templates/defaults${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    create: async (projectId: string, input: TemplateCreate): Promise<Template> => {
+      const body: Record<string, unknown> = {
+        name: input.name,
+        channel: input.channel,
+        body: input.body,
+      };
+      if (input.subject !== undefined) body.subject = input.subject;
+      if (input.variables !== undefined) body.variables = input.variables;
+      return mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates`,
+          "POST",
+          body,
+        ),
+      );
+    },
+    update: async (
+      projectId: string,
+      templateId: string,
+      changes: TemplateUpdate,
+    ): Promise<Template> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.channel !== undefined) body.channel = changes.channel;
+      if (changes.subject !== undefined) body.subject = changes.subject;
+      if (changes.body !== undefined) body.body = changes.body;
+      if (changes.variables !== undefined) body.variables = changes.variables;
+      return mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+          "PUT",
+          body,
+        ),
+      );
+    },
+    delete: async (projectId: string, templateId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+        "DELETE",
+      );
+    },
+    fork: async (projectId: string, templateId: string): Promise<Template> =>
+      mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}/fork`,
+          "POST",
         ),
       ),
   };
