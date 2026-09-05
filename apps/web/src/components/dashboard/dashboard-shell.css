@@ -100,7 +100,6 @@
 }
 
 .dashboard-sidebar__collapse,
-.dashboard-sidebar__mobile-close,
 .dashboard-stage__menu {
   align-items: center;
   background: transparent;
@@ -123,13 +122,11 @@
   margin-left: auto;
 }
 
-.dashboard-sidebar__mobile-close,
 .dashboard-stage__menu {
   display: none;
 }
 
 .dashboard-sidebar__collapse:hover,
-.dashboard-sidebar__mobile-close:hover,
 .dashboard-stage__menu:hover {
   background: var(--dashboard-overlay-hover);
   border-color: var(--dashboard-line);
@@ -137,13 +134,11 @@
 }
 
 .dashboard-sidebar__collapse:active,
-.dashboard-sidebar__mobile-close:active,
 .dashboard-stage__menu:active {
   transform: translateY(1px);
 }
 
 .dashboard-sidebar__collapse:focus-visible,
-.dashboard-sidebar__mobile-close:focus-visible,
 .dashboard-stage__menu:focus-visible,
 .dashboard-sidebar__edge-peek:focus-visible,
 .dashboard-switcher__trigger:focus-visible,
@@ -781,57 +776,17 @@
     grid-template-columns: 1fr;
   }
 
-  .dashboard-sidebar {
-    border-right: 1px solid var(--dashboard-line-strong);
-    box-shadow: 24px 0 64px rgba(0, 0, 0, 0.42);
-    height: 100dvh;
-    left: 0;
-    padding: 18px 16px;
-    position: fixed;
-    top: 0;
-    transform: translateX(-105%);
-    transition: transform 240ms cubic-bezier(0.2, 0.75, 0.25, 1);
-    width: min(340px, calc(100vw - 24px));
-    z-index: 12;
-  }
-
-  .dashboard-shell[data-mobile-sidebar-open="true"] .dashboard-sidebar {
-    transform: translateX(0);
-  }
-
-  .dashboard-sidebar__backdrop {
-    background: rgba(4, 4, 3, 0.62);
-    border: 0;
-    display: block;
-    inset: 0;
-    opacity: 0;
-    pointer-events: none;
-    position: fixed;
-    transition: opacity 220ms ease;
-    z-index: 11;
-  }
-
-  .dashboard-shell[data-mobile-sidebar-open="true"] .dashboard-sidebar__backdrop {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
+  /* The desktop sidebar and its slide-in drawer are replaced on mobile by
+     MobileNavSheet (a bottom sheet with nested panels). */
+  .dashboard-sidebar,
+  .dashboard-sidebar__backdrop,
   .dashboard-sidebar__collapse,
   .dashboard-sidebar__edge-peek {
     display: none;
   }
 
-  .dashboard-sidebar__mobile-close,
   .dashboard-stage__menu {
     display: inline-flex;
-  }
-
-  .dashboard-sidebar__mobile-close {
-    margin-left: auto;
-  }
-
-  .dashboard-switcher__menu {
-    width: min(320px, calc(100vw - 44px));
   }
 
   .dashboard-stage__header {

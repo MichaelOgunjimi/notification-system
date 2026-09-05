@@ -14,7 +14,6 @@ import {
   List,
   SidebarSimple,
   UserCircle,
-  X,
 } from "@phosphor-icons/react";
 import { ThemeToggle } from "@beaco/theme";
 import { AccountMenu } from "@/components/ui/account-menu";
@@ -32,6 +31,7 @@ import {
   type DashboardNavItem,
 } from "./dashboard-navigation";
 import { useDashboardScope } from "./dashboard-scope-context";
+import { MobileNavSheet } from "./mobile-nav-sheet";
 import "./dashboard-shell.css";
 
 type DashboardShellProps = Readonly<{
@@ -169,6 +169,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
         />
       ) : null}
 
+      <MobileNavSheet
+        open={mobileSidebarOpen}
+        onClose={closeMobileSidebar}
+        user={user}
+        organization={organization}
+        project={project}
+        projects={projects}
+        currentDashboardPath={currentDashboardPath}
+        activeSuffix={activeSuffix}
+        accountSettingsPath={accountSettingsPath}
+      />
+
       <aside
         id={sidebarId}
         className="dashboard-sidebar"
@@ -193,14 +205,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
             onClick={() => updateSidebarCollapsed(!sidebarCollapsed)}
           >
             <SidebarSimple size={17} />
-          </button>
-          <button
-            type="button"
-            className="dashboard-sidebar__mobile-close"
-            aria-label="Close navigation"
-            onClick={closeMobileSidebar}
-          >
-            <X size={17} />
           </button>
         </div>
 
