@@ -36,7 +36,7 @@ export type DashboardNavItem = Readonly<{
 export const OPERATE_NAV: readonly DashboardNavItem[] = [
   { label: "Overview", icon: SquaresFour, path: "" },
   { label: "Activity", icon: Broadcast, path: "activity", capability: "project:audit:read" },
-  { label: "Events", icon: Pulse, path: "events", comingSoon: true },
+  { label: "Events", icon: Pulse, path: "events", capability: "project:usage:read" },
   {
     label: "Templates",
     icon: Code,
