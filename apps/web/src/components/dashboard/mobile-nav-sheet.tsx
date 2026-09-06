@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -63,12 +63,47 @@ export function MobileNavSheet({
   const [panel, setPanel] = useState<Panel>("root");
   const capabilities = new Set(organization.capabilities);
 
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(1);
+
+  /** Distance past which releasing the drag dismisses instead of snapping back. */
+  const dismissThreshold = 120;
+
+  function handleDragStart(event: ReactPointerEvent<HTMLElement>) {
+    dragStartY.current = event.clientY;
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleDragMove(event: ReactPointerEvent<HTMLElement>) {
+    if (dragStartY.current === null) return;
+    setDragY(Math.max(0, event.clientY - dragStartY.current));
+  }
+
+  function handleDragEnd(event: ReactPointerEvent<HTMLElement>) {
+    if (dragStartY.current === null) return;
+    const distance = Math.max(0, event.clientY - dragStartY.current);
+    dragStartY.current = null;
+    setDragging(false);
+    setDragY(0);
+    if (distance > dismissThreshold) onClose();
+  }
+
   useEffect(() => {
     if (!open) {
       // Re-arm the root panel for the next open once the slide-down finishes.
-      const timer = window.setTimeout(() => setPanel("root"), 240);
+      const timer = window.setTimeout(() => {
+        setPanel("root");
+        setDragY(0);
+        setDragging(false);
+        dragStartY.current = null;
+      }, 240);
       return () => window.clearTimeout(timer);
     }
+    if (surfaceRef.current) setSheetHeight(surfaceRef.current.offsetHeight);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -121,15 +156,30 @@ export function MobileNavSheet({
         aria-label="Close navigation"
         tabIndex={open ? 0 : -1}
         onClick={onClose}
+        style={dragging ? { opacity: Math.max(0, 1 - dragY / sheetHeight) } : undefined}
       />
       <div
+        ref={surfaceRef}
         className="mobile-nav-sheet__surface"
         role="dialog"
         aria-modal="true"
         aria-label="Navigation"
         aria-hidden={!open}
+        style={
+          dragY > 0
+            ? { transform: `translateY(${dragY}px)`, transition: dragging ? "none" : undefined }
+            : undefined
+        }
       >
-        <span className="mobile-nav-sheet__grabber" aria-hidden />
+        <div
+          className="mobile-nav-sheet__handle"
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+        >
+          <span className="mobile-nav-sheet__grabber" aria-hidden />
+        </div>
         <div className="mobile-nav-sheet__viewport">
           <div className="mobile-nav-sheet__track" data-panel={panel}>
             <section
