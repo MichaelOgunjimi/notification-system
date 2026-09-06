@@ -1,3 +1,52 @@
+.scope-picker {
+  display: grid;
+  gap: 16px;
+}
+
+.scope-picker__presets {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.scope-picker__presets > span {
+  color: var(--dashboard-muted, var(--workspace-muted, var(--muted-foreground)));
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  margin-right: 3px;
+  text-transform: uppercase;
+}
+
+.scope-picker__presets button {
+  background: var(--dashboard-overlay, var(--secondary));
+  border: 1px solid var(--dashboard-line-strong, var(--border));
+  border-radius: 7px;
+  color: var(--dashboard-muted-bright, var(--workspace-muted-bright, var(--foreground)));
+  font-size: 10.5px;
+  font-weight: 570;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.scope-picker__presets button:hover,
+.scope-picker__presets button[data-active] {
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-accent, var(--workspace-accent, var(--primary))) 55%,
+    var(--dashboard-line-strong, var(--border))
+  );
+  color: var(--dashboard-accent, var(--workspace-accent, var(--primary)));
+}
+
+.scope-picker__presets .scope-picker__clear {
+  background: transparent;
+  border-color: transparent;
+  color: var(--dashboard-muted, var(--workspace-muted, var(--muted-foreground)));
+  margin-left: auto;
+}
+
 .scope-grid {
   display: grid;
   gap: 12px 18px;
@@ -26,4 +75,10 @@
   accent-color: var(--dashboard-accent, var(--workspace-accent, var(--primary)));
   height: 13px;
   width: 13px;
+}
+
+@media (max-width: 520px) {
+  .scope-picker__presets .scope-picker__clear {
+    margin-left: 0;
+  }
 }

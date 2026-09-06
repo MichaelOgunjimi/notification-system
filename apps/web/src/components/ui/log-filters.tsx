@@ -48,6 +48,17 @@ const RANGE_PRESETS: ReadonlyArray<{
   { key: "30d", label: "30d", ms: 2_592_000_000 },
 ];
 
+function rangePatchForPreset(
+  key: Exclude<DateRangeKey, "custom">,
+  ms: number,
+): Pick<LogFilterValue, "range" | "from" | "to"> {
+  return {
+    range: key,
+    from: ms === 0 ? "" : new Date(new Date().getTime() - ms).toISOString(),
+    to: "",
+  };
+}
+
 /**
  * Shared, fully-controlled filter strip for the log surfaces: a project select,
  * a slot for surface-specific chips, a date range (presets or a custom
@@ -84,11 +95,7 @@ export function LogFilters({
   }, [draft, hideSearch, onChange, value.action]);
 
   function pickPreset(key: Exclude<DateRangeKey, "custom">, ms: number) {
-    onChange({
-      range: key,
-      from: ms === 0 ? "" : new Date(Date.now() - ms).toISOString(),
-      to: "",
-    });
+    onChange(rangePatchForPreset(key, ms));
   }
 
   const today = new Date().toISOString().slice(0, 10);

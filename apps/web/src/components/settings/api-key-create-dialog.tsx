@@ -52,15 +52,6 @@ export function ApiKeyCreateDialog({
   const [rateLimit, setRateLimit] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  function toggleScope(scope: ApiKeyScope) {
-    setScopes((current) => {
-      const next = new Set(current);
-      if (next.has(scope)) next.delete(scope);
-      else next.add(scope);
-      return next;
-    });
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -155,7 +146,7 @@ export function ApiKeyCreateDialog({
       <span className="form-dialog__field-label">
         Scopes {scopes.size ? `· ${scopes.size} selected` : ""}
       </span>
-      <ScopeGrid value={scopes} onToggle={toggleScope} />
+      <ScopeGrid value={scopes} onChange={(next) => setScopes(new Set(next))} />
 
       {formError || createKey.isError ? (
         <p className="form-dialog__error" role="alert">

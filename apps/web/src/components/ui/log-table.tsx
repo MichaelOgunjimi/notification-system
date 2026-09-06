@@ -7,7 +7,7 @@ import {
   absoluteFormatter,
   formatMetadataValue,
   metadataEntries,
-  statusForAction,
+  resultForAction,
 } from "@/lib/audit-log";
 import { LogPill } from "./log-pill";
 import "./log-table.css";
@@ -138,7 +138,7 @@ export function LogTable<T>({
 
 /**
  * The standard expanded panel for an audit entry — timestamp, resource, the
- * resolved status (when the action has one), IP, the raw action key, and every
+ * recorded result (when the action has one), IP, the raw action key, and every
  * metadata field as a card.
  *
  * @param props The entry to detail.
@@ -146,7 +146,7 @@ export function LogTable<T>({
  */
 export function LogEntryDetail({ entry }: Readonly<{ entry: AuditLogEntry }>) {
   const detail = metadataEntries(entry.metadata);
-  const status = statusForAction(entry.action);
+  const result = resultForAction(entry.action);
   return (
     <>
       <dl className="log-table__detail-grid">
@@ -161,11 +161,11 @@ export function LogEntryDetail({ entry }: Readonly<{ entry: AuditLogEntry }>) {
             {entry.resourceId ? ` · ${entry.resourceId}` : ""}
           </dd>
         </div>
-        {status ? (
+        {result ? (
           <div>
-            <dt>Status</dt>
+            <dt>Result at this step</dt>
             <dd>
-              <LogPill label={status.label} tone={status.tone} />
+              <LogPill label={result.label} tone={result.tone} />
             </dd>
           </div>
         ) : null}

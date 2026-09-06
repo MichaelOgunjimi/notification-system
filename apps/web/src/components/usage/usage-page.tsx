@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Organization, Project, UsageEntry } from "@beaco/control-plane";
 import {
   useOrganizationAnalytics,
@@ -85,6 +85,13 @@ function successRate(successful: number, total: number): string {
  */
 export function UsagePage({ organization, project, projects }: UsagePageProps) {
   const { state, patch } = useLogUrlState();
+  const [defaultAnalyticsWindow] = useState(() => {
+    const now = new Date();
+    return {
+      from: new Date(now.getTime() - TREND_DEFAULT_SPAN_MS).toISOString(),
+      to: now.toISOString(),
+    };
+  });
   const canReadOrganization = useMemo(
     () => new Set(organization.capabilities).has("organization:usage:read"),
     [organization.capabilities],
@@ -97,10 +104,10 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
   const trendWindowCapped = state.range === "all";
   const analyticsWindow = useMemo(
     () => ({
-      from: dateWindow.from ?? new Date(Date.now() - TREND_DEFAULT_SPAN_MS).toISOString(),
-      to: dateWindow.to ?? new Date().toISOString(),
+      from: dateWindow.from ?? defaultAnalyticsWindow.from,
+      to: dateWindow.to ?? defaultAnalyticsWindow.to,
     }),
-    [dateWindow.from, dateWindow.to],
+    [dateWindow.from, dateWindow.to, defaultAnalyticsWindow],
   );
   const granularity: "hour" | "day" = state.range === "24h" ? "hour" : "day";
 

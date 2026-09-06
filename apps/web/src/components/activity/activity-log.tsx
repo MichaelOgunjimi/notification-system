@@ -17,7 +17,7 @@ import {
   detailsSummary,
   humanizeAction,
   relativeTime,
-  statusForAction,
+  resultForAction,
 } from "@/lib/audit-log";
 import "./activity-log.css";
 
@@ -148,13 +148,13 @@ export function ActivityLog({ organization, project, projects }: ActivityLogProp
       render: (entry) => <span className="activity-log__details">{detailsSummary(entry)}</span>,
     },
     {
-      key: "status",
-      label: "Status",
-      width: "120px",
+      key: "result",
+      label: "Result",
+      width: "130px",
       render: (entry) => {
-        const status = statusForAction(entry.action);
-        return status ? (
-          <LogPill label={status.label} tone={status.tone} />
+        const result = resultForAction(entry.action);
+        return result ? (
+          <LogPill label={result.label} tone={result.tone} />
         ) : (
           <span className="activity-log__muted">—</span>
         );

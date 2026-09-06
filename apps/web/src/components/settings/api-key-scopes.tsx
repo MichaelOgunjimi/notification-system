@@ -16,6 +16,16 @@ export const SCOPE_GROUPS: ReadonlyArray<{ label: string; scopes: readonly ApiKe
   { label: "Settings", scopes: ["settings:read"] },
 ];
 
+/** Every API-key scope supported by the notification API. */
+export const ALL_API_KEY_SCOPES: readonly ApiKeyScope[] = SCOPE_GROUPS.flatMap(
+  (group) => group.scopes,
+);
+
+/** Every non-mutating API-key scope supported by the notification API. */
+export const READ_ONLY_API_KEY_SCOPES: readonly ApiKeyScope[] = ALL_API_KEY_SCOPES.filter((scope) =>
+  scope.endsWith(":read"),
+);
+
 /** The action half of a scope (`events:read` → `read`). */
 export function scopeAction(scope: ApiKeyScope): string {
   return scope.split(":")[1] ?? scope;
@@ -29,24 +39,73 @@ export function scopeAction(scope: ApiKeyScope): string {
  */
 export function ScopeGrid({
   value,
-  onToggle,
+  onChange,
 }: {
   value: ReadonlySet<ApiKeyScope>;
-  onToggle: (scope: ApiKeyScope) => void;
+  onChange: (scopes: ReadonlySet<ApiKeyScope>) => void;
 }) {
+  function replaceScopes(scopes: readonly ApiKeyScope[]) {
+    onChange(new Set(scopes));
+  }
+
+  function toggleScope(scope: ApiKeyScope) {
+    const next = new Set(value);
+    if (next.has(scope)) next.delete(scope);
+    else next.add(scope);
+    onChange(next);
+  }
+
+  const readOnlySelected =
+    value.size === READ_ONLY_API_KEY_SCOPES.length &&
+    READ_ONLY_API_KEY_SCOPES.every((scope) => value.has(scope));
+  const allSelected =
+    value.size === ALL_API_KEY_SCOPES.length &&
+    ALL_API_KEY_SCOPES.every((scope) => value.has(scope));
+
   return (
-    <div className="scope-grid">
-      {SCOPE_GROUPS.map((group) => (
-        <div key={group.label} className="scope-grid__group">
-          <p>{group.label}</p>
-          {group.scopes.map((scope) => (
-            <label key={scope}>
-              <input type="checkbox" checked={value.has(scope)} onChange={() => onToggle(scope)} />
-              {scopeAction(scope)}
-            </label>
-          ))}
-        </div>
-      ))}
+    <div className="scope-picker">
+      <div className="scope-picker__presets" aria-label="Scope presets">
+        <span>Quick select</span>
+        <button
+          type="button"
+          aria-pressed={readOnlySelected}
+          data-active={readOnlySelected || undefined}
+          onClick={() => replaceScopes(READ_ONLY_API_KEY_SCOPES)}
+        >
+          Read only
+        </button>
+        <button
+          type="button"
+          aria-pressed={allSelected}
+          data-active={allSelected || undefined}
+          onClick={() => replaceScopes(ALL_API_KEY_SCOPES)}
+        >
+          All scopes
+        </button>
+        {value.size > 0 ? (
+          <button type="button" className="scope-picker__clear" onClick={() => replaceScopes([])}>
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      <div className="scope-grid">
+        {SCOPE_GROUPS.map((group) => (
+          <div key={group.label} className="scope-grid__group">
+            <p>{group.label}</p>
+            {group.scopes.map((scope) => (
+              <label key={scope}>
+                <input
+                  type="checkbox"
+                  checked={value.has(scope)}
+                  onChange={() => toggleScope(scope)}
+                />
+                {scopeAction(scope)}
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

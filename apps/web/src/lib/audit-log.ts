@@ -20,15 +20,15 @@ const ACTION_TONE_BY_VERB: Readonly<Record<string, LogTone>> = {
   rejected: "danger",
 };
 
-/** Outcome a completed delivery/processing action resolved to, keyed by its full action. */
-const STATUS_BY_ACTION: Readonly<Record<string, { label: string; tone: LogTone }>> = {
-  "event.created": { label: "Processing", tone: "info" },
+/** Result recorded by an operational action at the time it occurred. */
+const RESULT_BY_ACTION: Readonly<Record<string, { label: string; tone: LogTone }>> = {
+  "event.created": { label: "Accepted", tone: "info" },
   "event.completed": { label: "Completed", tone: "success" },
   "event.failed": { label: "Failed", tone: "danger" },
-  "notification.sent": { label: "Processing", tone: "info" },
-  "notification.delivered": { label: "Completed", tone: "success" },
+  "notification.sent": { label: "Sent", tone: "info" },
+  "notification.delivered": { label: "Delivered", tone: "success" },
   "notification.failed": { label: "Failed", tone: "danger" },
-  "notification.retried": { label: "Retrying", tone: "warning" },
+  "notification.retried": { label: "Retry scheduled", tone: "warning" },
 };
 
 /**
@@ -45,15 +45,16 @@ export function actionTone(action: string): LogTone {
 }
 
 /**
- * Resolves the outcome of a delivery/processing action, for surfaces that show
- * a dedicated Status column alongside the action itself.
+ * Resolves the result recorded by a delivery/processing action at that point
+ * in its history. This deliberately does not claim to be the resource's
+ * current state.
  *
  * @param action Dotted action key, e.g. `event.completed`.
- * @returns The status label and tone, or `null` when the action has no
- *   terminal outcome to report (e.g. a template edit).
+ * @returns The historical result label and tone, or `null` when the action
+ *   records no operational result (e.g. a template edit).
  */
-export function statusForAction(action: string): { label: string; tone: LogTone } | null {
-  return STATUS_BY_ACTION[action] ?? null;
+export function resultForAction(action: string): { label: string; tone: LogTone } | null {
+  return RESULT_BY_ACTION[action] ?? null;
 }
 
 /**

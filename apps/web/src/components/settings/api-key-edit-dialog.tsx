@@ -45,15 +45,6 @@ export function ApiKeyEditDialog({
   );
   const [formError, setFormError] = useState<string | null>(null);
 
-  function toggleScope(scope: ApiKeyScope) {
-    setScopes((current) => {
-      const next = new Set(current);
-      if (next.has(scope)) next.delete(scope);
-      else next.add(scope);
-      return next;
-    });
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -136,7 +127,7 @@ export function ApiKeyEditDialog({
       <span className="form-dialog__field-label">
         Scopes {scopes.size ? `· ${scopes.size} selected` : ""}
       </span>
-      <ScopeGrid value={scopes} onToggle={toggleScope} />
+      <ScopeGrid value={scopes} onChange={(next) => setScopes(new Set(next))} />
 
       {formError || updateKey.isError ? (
         <p className="form-dialog__error" role="alert">

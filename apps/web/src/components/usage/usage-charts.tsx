@@ -217,14 +217,33 @@ export function ChannelDonut({ stats }: Readonly<{ stats: readonly ChannelStat[]
     return <p className="usage-chart__empty">No notifications in this range yet.</p>;
   }
 
-  let cursor = 0;
-  const stops = rows.map((row, index) => {
-    const tone = CHANNEL_TONES[index % CHANNEL_TONES.length];
-    const start = (cursor / grandTotal) * 360;
-    cursor += row.total;
-    const end = (cursor / grandTotal) * 360;
-    return { ...row, tone, start, end };
-  });
+  const { stops } = rows.reduce<{
+    cursor: number;
+    stops: Array<{
+      channel: ChannelStat["channel"];
+      total: number;
+      tone: (typeof CHANNEL_TONES)[number];
+      start: number;
+      end: number;
+    }>;
+  }>(
+    (result, row, index) => {
+      const cursor = result.cursor + row.total;
+      return {
+        cursor,
+        stops: [
+          ...result.stops,
+          {
+            ...row,
+            tone: CHANNEL_TONES[index % CHANNEL_TONES.length],
+            start: (result.cursor / grandTotal) * 360,
+            end: (cursor / grandTotal) * 360,
+          },
+        ],
+      };
+    },
+    { cursor: 0, stops: [] },
+  );
   const gradient = stops
     .map((stop) => `var(--usage-${stop.tone}) ${stop.start}deg ${stop.end}deg`)
     .join(", ");

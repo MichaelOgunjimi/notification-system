@@ -1,5 +1,6 @@
 "use client";
 
+import { AppSelect } from "./app-select";
 import "./table-pager.css";
 
 /** Props for {@link TablePager}. */
@@ -118,19 +119,19 @@ export function TablePager({
         ) : null}
 
         {onPerPageChange ? (
-          <label className="table-pager__per-page">
-            Per page
-            <select
-              value={perPage}
-              onChange={(event) => onPerPageChange(Number(event.target.value))}
-            >
-              {perPageOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="table-pager__per-page">
+            <span>Per page</span>
+            <AppSelect
+              aria-label="Rows per page"
+              value={String(perPage)}
+              onValueChange={(value) => onPerPageChange(Number(value))}
+              options={perPageOptions.map((option) => ({
+                value: String(option),
+                label: String(option),
+              }))}
+              containerClassName="table-pager__select"
+            />
+          </div>
         ) : null}
       </div>
     </div>

@@ -5,6 +5,10 @@
   overflow: hidden;
 }
 
+.log-table:has(.table-pager__select[data-open]) {
+  overflow: visible;
+}
+
 .log-table[aria-busy] .log-table__scroll {
   opacity: 0.55;
 }

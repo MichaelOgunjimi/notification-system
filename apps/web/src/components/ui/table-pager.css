@@ -68,11 +68,21 @@
   gap: 8px;
 }
 
-.table-pager__per-page select {
-  background: var(--dashboard-overlay);
-  border: 1px solid var(--dashboard-line-strong);
-  border-radius: 7px;
-  color: var(--dashboard-ink);
-  font-size: 12px;
-  padding: 5px 8px;
+.table-pager__select {
+  width: 74px;
+}
+
+.table-pager__select .app-select__control {
+  min-height: 32px;
+  padding-left: 10px;
+}
+
+.table-pager__select .app-select__chevron {
+  margin-left: 4px;
+  padding-inline: 8px;
+}
+
+.table-pager__select .app-select__panel {
+  left: auto;
+  right: 0;
 }
