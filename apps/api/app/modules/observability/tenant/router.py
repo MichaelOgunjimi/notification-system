@@ -3,16 +3,19 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.core.http.dependencies import SessionDep
 from app.core.http.schemas import PaginatedResponse
 from app.core.pagination import Page
+from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.identity.dependencies import CurrentUserDep
 from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.tenant import service
 from app.modules.observability.tenant.schemas import (
     TenantAuditLogResponse,
+    TenantEventDetailResponse,
+    TenantEventResponse,
     TenantUsageEndpointResponse,
     TenantUsageHourlyPointResponse,
     TenantUsageResponse,
@@ -20,6 +23,7 @@ from app.modules.observability.tenant.schemas import (
 )
 from app.modules.observability.tenant.types import (
     AuditLogView,
+    EventView,
     UsageEndpointView,
     UsageHourlyPointView,
     UsageSummaryView,
@@ -379,3 +383,81 @@ async def get_organization_trends(
         to=to,
         granularity=granularity,
     )
+
+
+@router.get(
+    "/projects/{project_id}/events",
+    response_model=PaginatedResponse[TenantEventResponse],
+)
+async def get_project_events(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=25, ge=1, le=100),
+    status_: EventStatus | None = Query(default=None, alias="status"),
+    priority: EventPriority | None = Query(default=None),
+    event_type: str | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None, alias="to"),
+) -> Page[EventView]:
+    return await service.get_project_events(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        status=status_,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/organizations/{organization_id}/events",
+    response_model=PaginatedResponse[TenantEventResponse],
+)
+async def get_organization_events(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=25, ge=1, le=100),
+    status_: EventStatus | None = Query(default=None, alias="status"),
+    priority: EventPriority | None = Query(default=None),
+    event_type: str | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None, alias="to"),
+) -> Page[EventView]:
+    return await service.get_organization_events(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        status=status_,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/events/{event_id}",
+    response_model=TenantEventDetailResponse,
+)
+async def get_project_event(
+    project_id: uuid.UUID,
+    event_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> TenantEventDetailResponse:
+    detail = await service.get_project_event(
+        db, user_id=user.id, project_id=project_id, event_id=event_id
+    )
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    return TenantEventDetailResponse.model_validate(detail, from_attributes=True)

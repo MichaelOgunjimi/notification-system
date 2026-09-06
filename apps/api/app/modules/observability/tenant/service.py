@@ -11,13 +11,19 @@ from sqlmodel import col
 from app.core.datetime import to_naive_utc
 from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
+from app.modules.events import service as event_service
+from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.events.model import Event
 from app.modules.identity.models.user import User
+from app.modules.notifications.model import Notification
 from app.modules.observability.analytics import service as analytics_service
 from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
+    EventDetailView,
+    EventNotificationView,
+    EventView,
     UsageEndpointView,
     UsageEnvironmentSummary,
     UsageHourlyPointView,
@@ -825,4 +831,217 @@ async def get_organization_trends(
     )
     return await analytics_service.get_trends(
         db, event_filter, date_from=from_, date_to=to, granularity=granularity
+    )
+
+
+def _event_filters(
+    *,
+    event_filter: Any,
+    status: EventStatus | None,
+    priority: EventPriority | None,
+    event_type: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[Any]:
+    filters: list[Any] = [event_filter]
+    if status is not None:
+        filters.append(col(Event.status) == status)
+    if priority is not None:
+        filters.append(col(Event.priority) == priority)
+    if event_type:
+        escaped = event_type.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        filters.append(col(Event.event_type).ilike(f"%{escaped}%", escape="\\"))
+    if from_ is not None:
+        filters.append(col(Event.created_at) >= to_naive_utc(from_))
+    if to is not None:
+        filters.append(col(Event.created_at) <= to_naive_utc(to))
+    return filters
+
+
+async def _event_page(
+    db: AsyncSession,
+    *,
+    event_filter: Any,
+    status: EventStatus | None,
+    priority: EventPriority | None,
+    event_type: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    filters = _event_filters(
+        event_filter=event_filter,
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+    )
+    total = int(
+        (await db.execute(select(func.count()).select_from(Event).where(*filters))).scalar() or 0
+    )
+    rows = (
+        await db.execute(
+            select(Event, col(ApiKey.name), col(ApiKey.environment))
+            .join(ApiKey, col(ApiKey.id) == col(Event.api_key_id))
+            .where(*filters)
+            .order_by(col(Event.created_at).desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).all()
+    failed = await event_service.bulk_has_failures(db, [event.id for event, _, _ in rows])
+    items = [
+        EventView(
+            id=event.id,
+            event_type=event.event_type,
+            priority=str(event.priority),
+            status=str(event.status),
+            recipient_count=event.recipient_count,
+            api_key_id=event.api_key_id,
+            api_key_name=key_name,
+            api_key_environment=key_environment,
+            has_failures=event.id in failed,
+            created_at=event.created_at,
+        )
+        for event, key_name, key_environment in rows
+    ]
+    return Page(items=items, total=total, page=page, per_page=per_page)
+
+
+async def get_project_events(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    status: EventStatus | None = None,
+    priority: EventPriority | None = None,
+    event_type: str | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _event_page(
+        db,
+        event_filter=_tenant_event_filter(
+            project_id=project_id, organization_id=None, api_key_id=None
+        ),
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_organization_events(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    status: EventStatus | None = None,
+    priority: EventPriority | None = None,
+    event_type: str | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _event_page(
+        db,
+        event_filter=_tenant_event_filter(
+            project_id=None, organization_id=organization_id, api_key_id=None
+        ),
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_project_event(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    event_id: uuid.UUID,
+) -> EventDetailView | None:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    row = (
+        await db.execute(
+            select(Event, col(ApiKey.name), col(ApiKey.environment))
+            .join(ApiKey, col(ApiKey.id) == col(Event.api_key_id))
+            .where(
+                col(Event.id) == event_id,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    event, key_name, key_environment = row
+    notifications = (
+        (
+            await db.execute(
+                select(Notification)
+                .where(col(Notification.event_id) == event_id)
+                .order_by(col(Notification.created_at).asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return EventDetailView(
+        id=event.id,
+        event_type=event.event_type,
+        priority=str(event.priority),
+        status=str(event.status),
+        recipient_count=event.recipient_count,
+        api_key_id=event.api_key_id,
+        api_key_name=key_name,
+        api_key_environment=key_environment,
+        idempotency_key=event.idempotency_key,
+        batch_id=event.batch_id,
+        payload=event.payload,
+        metadata=event.metadata_,
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+        notifications=[
+            EventNotificationView(
+                id=notification.id,
+                channel=str(notification.channel),
+                status=str(notification.status),
+                recipient_address=notification.recipient_address,
+                error_message=notification.error_message,
+                created_at=notification.created_at,
+                delivered_at=notification.delivered_at,
+            )
+            for notification in notifications
+        ],
     )

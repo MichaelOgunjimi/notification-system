@@ -51,6 +51,50 @@ class UsageEndpointView:
 
 
 @dataclass(frozen=True, slots=True)
+class EventView:
+    id: uuid.UUID
+    event_type: str
+    priority: str
+    status: str
+    recipient_count: int
+    api_key_id: uuid.UUID
+    api_key_name: str
+    api_key_environment: str
+    has_failures: bool
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class EventNotificationView:
+    id: uuid.UUID
+    channel: str
+    status: str
+    recipient_address: str
+    error_message: str | None
+    created_at: datetime
+    delivered_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class EventDetailView:
+    id: uuid.UUID
+    event_type: str
+    priority: str
+    status: str
+    recipient_count: int
+    api_key_id: uuid.UUID
+    api_key_name: str
+    api_key_environment: str
+    idempotency_key: str | None
+    batch_id: uuid.UUID | None
+    payload: dict[str, Any]
+    metadata: dict[str, Any] | None
+    created_at: datetime
+    updated_at: datetime
+    notifications: list[EventNotificationView]
+
+
+@dataclass(frozen=True, slots=True)
 class AuditLogView:
     id: uuid.UUID
     organization_id: uuid.UUID

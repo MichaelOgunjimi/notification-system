@@ -43,6 +43,47 @@ class TenantUsageEndpointResponse(BaseModel):
     request_count: int
 
 
+class TenantEventResponse(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    priority: str
+    status: str
+    recipient_count: int
+    api_key_id: uuid.UUID
+    api_key_name: str
+    api_key_environment: str
+    has_failures: bool
+    created_at: datetime
+
+
+class TenantEventNotificationResponse(BaseModel):
+    id: uuid.UUID
+    channel: str
+    status: str
+    recipient_address: str
+    error_message: str | None
+    created_at: datetime
+    delivered_at: datetime | None
+
+
+class TenantEventDetailResponse(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    priority: str
+    status: str
+    recipient_count: int
+    api_key_id: uuid.UUID
+    api_key_name: str
+    api_key_environment: str
+    idempotency_key: str | None
+    batch_id: uuid.UUID | None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] | None = None
+    created_at: datetime
+    updated_at: datetime
+    notifications: list[TenantEventNotificationResponse]
+
+
 class TenantAuditLogResponse(BaseModel):
     id: uuid.UUID
     organization_id: uuid.UUID
