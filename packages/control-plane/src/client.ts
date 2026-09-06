@@ -13,6 +13,9 @@ import type {
   ApiProject,
   ApiProjectApiKey,
   ApiTemplate,
+  ApiTenantEvent,
+  ApiTenantEventDetail,
+  ApiTenantEventNotification,
   ApiTrendPoint,
   ApiTrends,
   ApiUsageEndpointStat,
@@ -25,6 +28,7 @@ import type {
   ControlPlaneClient,
   ControlPlaneClientOptions,
   CreatedProjectApiKey,
+  EventFilter,
   Organization,
   OrganizationInvitation,
   OrganizationInvitationPreview,
@@ -37,6 +41,9 @@ import type {
   TemplateCreate,
   TemplateListOptions,
   TemplateUpdate,
+  TenantEvent,
+  TenantEventDetail,
+  TenantEventNotification,
   TrendPoint,
   Trends,
   TrendsFilter,
@@ -326,6 +333,68 @@ function templateListQuery(options: OrganizationTemplateListOptions): string {
   if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
   if (options.channel) params.set("channel", options.channel);
   if (options.projectId) params.set("project_id", options.projectId);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapTenantEvent(event: ApiTenantEvent): TenantEvent {
+  return {
+    id: event.id,
+    eventType: event.event_type,
+    priority: event.priority,
+    status: event.status,
+    recipientCount: event.recipient_count,
+    apiKeyId: event.api_key_id,
+    apiKeyName: event.api_key_name,
+    apiKeyEnvironment: event.api_key_environment,
+    hasFailures: event.has_failures,
+    createdAt: event.created_at,
+  };
+}
+
+function mapTenantEventNotification(
+  notification: ApiTenantEventNotification,
+): TenantEventNotification {
+  return {
+    id: notification.id,
+    channel: notification.channel,
+    status: notification.status,
+    recipientAddress: notification.recipient_address,
+    errorMessage: notification.error_message,
+    createdAt: notification.created_at,
+    deliveredAt: notification.delivered_at,
+  };
+}
+
+function mapTenantEventDetail(detail: ApiTenantEventDetail): TenantEventDetail {
+  return {
+    id: detail.id,
+    eventType: detail.event_type,
+    priority: detail.priority,
+    status: detail.status,
+    recipientCount: detail.recipient_count,
+    apiKeyId: detail.api_key_id,
+    apiKeyName: detail.api_key_name,
+    apiKeyEnvironment: detail.api_key_environment,
+    idempotencyKey: detail.idempotency_key,
+    batchId: detail.batch_id,
+    payload: detail.payload,
+    metadata: detail.metadata,
+    createdAt: detail.created_at,
+    updatedAt: detail.updated_at,
+    notifications: detail.notifications.map(mapTenantEventNotification),
+  };
+}
+
+function eventQuery(filter: EventFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.status) params.set("status", filter.status);
+  if (filter.priority) params.set("priority", filter.priority);
+  if (filter.eventType) params.set("event_type", filter.eventType);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -746,6 +815,33 @@ class HttpControlPlaneClient implements ControlPlaneClient {
         await this.request<ApiTemplate>(
           `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}/fork`,
           "POST",
+        ),
+      ),
+  };
+
+  readonly events = {
+    forProject: async (
+      projectId: string,
+      filter: EventFilter = {},
+    ): Promise<Paginated<TenantEvent>> => {
+      const page = await this.get<ApiPaginated<ApiTenantEvent>>(
+        `/projects/${encodeURIComponent(projectId)}/events${eventQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantEvent);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: EventFilter = {},
+    ): Promise<Paginated<TenantEvent>> => {
+      const page = await this.get<ApiPaginated<ApiTenantEvent>>(
+        `/organizations/${encodeURIComponent(organizationId)}/events${eventQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantEvent);
+    },
+    get: async (projectId: string, eventId: string): Promise<TenantEventDetail> =>
+      mapTenantEventDetail(
+        await this.get<ApiTenantEventDetail>(
+          `/projects/${encodeURIComponent(projectId)}/events/${encodeURIComponent(eventId)}`,
         ),
       ),
   };

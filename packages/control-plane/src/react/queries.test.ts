@@ -99,6 +99,11 @@ describe("control-plane queries", () => {
         delete: vi.fn(),
         fork: vi.fn(),
       },
+      events: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        forOrganization: vi.fn().mockResolvedValue(emptyPage),
+        get: vi.fn(),
+      },
     };
 
     const organizations = organizationsQuery(client);

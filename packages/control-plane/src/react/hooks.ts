@@ -4,6 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import type {
   AnalyticsFilter,
   AuditLogFilter,
+  EventFilter,
   OrganizationCreate,
   OrganizationInvitationCreate,
   OrganizationRole,
@@ -30,6 +31,7 @@ import {
   organizationInvitationsQuery,
   organizationMembersQuery,
   organizationsQuery,
+  organizationEventsQuery,
   organizationTemplateDefaultsQuery,
   organizationTemplatesQuery,
   organizationTopEndpointsQuery,
@@ -40,6 +42,8 @@ import {
   projectAnalyticsQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
+  projectEventQuery,
+  projectEventsQuery,
   projectsQuery,
   projectTemplateDefaultsQuery,
   projectTemplateQuery,
@@ -860,5 +864,52 @@ export function useForkProjectTemplate() {
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
       }),
+  });
+}
+
+/**
+ * Loads one page of a project's event log.
+ *
+ * @param projectId Project whose events should load; null disables the query.
+ * @param filter 1-based page, page size, status, priority, type search, and date range.
+ * @returns TanStack Query result containing one page of events.
+ */
+export function useProjectEvents(projectId: string | null, filter: EventFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectEventsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of an organization-wide event log.
+ *
+ * @param organizationId Organization whose events should load; null disables the query.
+ * @param filter 1-based page, page size, status, priority, type search, and date range.
+ * @returns TanStack Query result containing one page of events.
+ */
+export function useOrganizationEvents(organizationId: string | null, filter: EventFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationEventsQuery(client, organizationId ?? "pending", filter),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one event's detail, including the notifications it spawned.
+ *
+ * @param projectId Project the event must belong to; null disables the query.
+ * @param eventId Event to load; null disables the query.
+ * @returns TanStack Query result containing the event detail.
+ */
+export function useProjectEvent(projectId: string | null, eventId: string | null) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectEventQuery(client, projectId ?? "pending", eventId ?? "pending"),
+    enabled: Boolean(projectId) && Boolean(eventId),
   });
 }

@@ -372,6 +372,70 @@ export type TrendsFilter = AnalyticsFilter &
     granularity?: "hour" | "day";
   }>;
 
+/** Lifecycle status of an ingested event. */
+export type EventStatus =
+  "accepted" | "processing" | "completed" | "partially_failed" | "failed" | "cancelled";
+
+/** Delivery urgency assigned to an event and its notifications. */
+export type EventPriority = "high" | "medium" | "low";
+
+/** One ingested notification request, as shown in the tenant event log. */
+export type TenantEvent = Readonly<{
+  id: string;
+  eventType: string;
+  priority: EventPriority;
+  status: EventStatus;
+  recipientCount: number;
+  apiKeyId: string;
+  apiKeyName: string;
+  apiKeyEnvironment: string;
+  /** Whether any notification spawned from this event failed or dead-lettered. */
+  hasFailures: boolean;
+  createdAt: string;
+}>;
+
+/** One notification spawned from an event, in the detail fan-out list. */
+export type TenantEventNotification = Readonly<{
+  id: string;
+  channel: string;
+  status: string;
+  recipientAddress: string;
+  errorMessage: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+}>;
+
+/** A single event with its raw payload and fan-out notifications. */
+export type TenantEventDetail = Readonly<{
+  id: string;
+  eventType: string;
+  priority: EventPriority;
+  status: EventStatus;
+  recipientCount: number;
+  apiKeyId: string;
+  apiKeyName: string;
+  apiKeyEnvironment: string;
+  idempotencyKey: string | null;
+  batchId: string | null;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  notifications: readonly TenantEventNotification[];
+}>;
+
+/** Filters and pagination for {@link ControlPlaneClient.events} list queries. */
+export type EventFilter = Readonly<{
+  page?: number;
+  perPage?: number;
+  status?: EventStatus;
+  priority?: EventPriority;
+  /** Case-insensitive substring match on the event type. */
+  eventType?: string;
+  from?: string;
+  to?: string;
+}>;
+
 /** Delivery channel a template renders for. */
 export type TemplateChannel = "email" | "sms" | "webhook";
 
@@ -892,6 +956,37 @@ export interface ControlPlaneClient {
      */
     fork(projectId: string, templateId: string): Promise<Template>;
   };
+  /** Read-only tenant event log — every ingested notification request, by project. */
+  readonly events: {
+    /**
+     * Lists a project's events, newest first.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional page, page size (1-100, default 25), status,
+     *   priority, event-type search, and date range.
+     * @returns One page of events with resolved API key names and a failure flag.
+     * @throws {ControlPlaneError} When the `project:usage:read` capability is unavailable.
+     */
+    forProject(projectId: string, filter?: EventFilter): Promise<Paginated<TenantEvent>>;
+    /**
+     * Lists events across an organization and all its projects, newest first.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param filter Optional page, page size, status, priority, event-type search, and date range.
+     * @returns One page of events with resolved API key names and a failure flag.
+     * @throws {ControlPlaneError} When the `organization:usage:read` capability is unavailable.
+     */
+    forOrganization(organizationId: string, filter?: EventFilter): Promise<Paginated<TenantEvent>>;
+    /**
+     * Fetches one event with its raw payload and every notification it spawned.
+     *
+     * @param projectId Stable project identifier the event must belong to.
+     * @param eventId Stable event identifier.
+     * @returns The event detail including the fan-out notification list.
+     * @throws {ControlPlaneError} When the event isn't visible to this project, or access is denied.
+     */
+    get(projectId: string, eventId: string): Promise<TenantEventDetail>;
+  };
 }
 
 /** Raw organization payload returned by the FastAPI control-plane endpoint. */
@@ -1073,6 +1168,50 @@ export type ApiTemplate = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+/** Raw tenant event payload returned by FastAPI. */
+export type ApiTenantEvent = {
+  id: string;
+  event_type: string;
+  priority: EventPriority;
+  status: EventStatus;
+  recipient_count: number;
+  api_key_id: string;
+  api_key_name: string;
+  api_key_environment: string;
+  has_failures: boolean;
+  created_at: string;
+};
+
+/** Raw fan-out notification payload in an event detail response. */
+export type ApiTenantEventNotification = {
+  id: string;
+  channel: string;
+  status: string;
+  recipient_address: string;
+  error_message: string | null;
+  created_at: string;
+  delivered_at: string | null;
+};
+
+/** Raw tenant event detail payload returned by FastAPI. */
+export type ApiTenantEventDetail = {
+  id: string;
+  event_type: string;
+  priority: EventPriority;
+  status: EventStatus;
+  recipient_count: number;
+  api_key_id: string;
+  api_key_name: string;
+  api_key_environment: string;
+  idempotency_key: string | null;
+  batch_id: string | null;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  notifications: ApiTenantEventNotification[];
 };
 
 /** Raw project API key payload returned by FastAPI. */

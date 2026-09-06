@@ -4,6 +4,7 @@ import type {
   AnalyticsFilter,
   AuditLogFilter,
   ControlPlaneClient,
+  EventFilter,
   OrganizationTemplateListOptions,
   ProjectApiKeyListOptions,
   TemplateListOptions,
@@ -62,6 +63,11 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "organizations", organizationId, "templates"] as const,
   organizationTemplateDefaults: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "templates", "defaults"] as const,
+  projectEvent: (projectId: string, eventId: string) =>
+    ["control-plane", "projects", projectId, "events", eventId] as const,
+  projectEvents: (projectId: string) => ["control-plane", "projects", projectId, "events"] as const,
+  organizationEvents: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "events"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -704,5 +710,82 @@ export function organizationTemplateDefaultsQuery(
     queryFn: () => client.templates.defaultsForOrganization(organizationId, args),
     retry: retryTransientFailure,
     ...tenantConfiguration,
+  });
+}
+
+function eventKeyParts(filter: EventFilter) {
+  const { page = 1, perPage = 25, status, priority, eventType, from, to } = filter;
+  return {
+    args: { page, perPage, status, priority, eventType, from, to },
+    key: [
+      page,
+      perPage,
+      status ?? null,
+      priority ?? null,
+      eventType ?? null,
+      from ?? null,
+      to ?? null,
+    ] as const,
+  };
+}
+
+/**
+ * Builds query options for one page of a project's event log.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose events should be loaded.
+ * @param filter 1-based page, page size, status, priority, type search, and date range.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectEventsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: EventFilter,
+) {
+  const { args, key } = eventKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectEvents(projectId), ...key] as const,
+    queryFn: () => client.events.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one page of an organization-wide event log.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose events (across all projects) should load.
+ * @param filter 1-based page, page size, status, priority, type search, and date range.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationEventsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  filter: EventFilter,
+) {
+  const { args, key } = eventKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationEvents(organizationId), ...key] as const,
+    queryFn: () => client.events.forOrganization(organizationId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one event's detail, including its fan-out notifications.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project the event must belong to.
+ * @param eventId Event to load.
+ * @returns TanStack Query options scoped to the project and event.
+ */
+export function projectEventQuery(client: ControlPlaneClient, projectId: string, eventId: string) {
+  return queryOptions({
+    queryKey: controlPlaneQueryKeys.projectEvent(projectId, eventId),
+    queryFn: () => client.events.get(projectId, eventId),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
   });
 }

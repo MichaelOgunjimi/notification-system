@@ -946,4 +946,100 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("lists a project's events with camel-cased rows and forwarded filters", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "event-1",
+            event_type: "order.paid",
+            priority: "high",
+            status: "completed",
+            recipient_count: 2,
+            api_key_id: "key-1",
+            api_key_name: "Live",
+            api_key_environment: "live",
+            has_failures: false,
+            created_at: "2026-09-04T00:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 25,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const page = await client.events.forProject("project-1", {
+      status: "completed",
+      priority: "high",
+      eventType: "order",
+    });
+
+    expect(page.items[0]).toEqual({
+      id: "event-1",
+      eventType: "order.paid",
+      priority: "high",
+      status: "completed",
+      recipientCount: 2,
+      apiKeyId: "key-1",
+      apiKeyName: "Live",
+      apiKeyEnvironment: "live",
+      hasFailures: false,
+      createdAt: "2026-09-04T00:00:00Z",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/events?status=completed&priority=high&event_type=order",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("fetches one event with its fan-out notifications", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        id: "event-1",
+        event_type: "order.paid",
+        priority: "medium",
+        status: "partially_failed",
+        recipient_count: 2,
+        api_key_id: "key-1",
+        api_key_name: "Live",
+        api_key_environment: "live",
+        idempotency_key: null,
+        batch_id: null,
+        payload: { order_id: "o1" },
+        metadata: null,
+        created_at: "2026-09-04T00:00:00Z",
+        updated_at: "2026-09-04T00:01:00Z",
+        notifications: [
+          {
+            id: "n1",
+            channel: "email",
+            status: "failed",
+            recipient_address: "a@b.com",
+            error_message: "bounced",
+            created_at: "2026-09-04T00:00:00Z",
+            delivered_at: null,
+          },
+        ],
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const detail = await client.events.get("project-1", "event-1");
+
+    expect(detail.payload).toEqual({ order_id: "o1" });
+    expect(detail.notifications[0]).toMatchObject({
+      channel: "email",
+      status: "failed",
+      recipientAddress: "a@b.com",
+      errorMessage: "bounced",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/events/event-1",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });
