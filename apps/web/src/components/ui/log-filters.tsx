@@ -77,7 +77,7 @@ export function LogFilters({
   onChange,
   projects,
   children,
-  actionPlaceholder = "Filter by action or resource id",
+  actionPlaceholder = "Search action, resource id, or who",
   hideSearch = false,
 }: LogFiltersProps) {
   const [draft, setDraft] = useState(value.action);
@@ -180,7 +180,7 @@ export function LogFilters({
             placeholder={actionPlaceholder}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            aria-label="Filter by action or resource id"
+            aria-label="Search action, resource id, or who"
           />
         )}
       </div>

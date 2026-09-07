@@ -570,11 +570,14 @@ async def _audit_page(
     if organization_id is not None:
         filters.append(resolved_organization_id == organization_id)
     if action:
-        # Free-text search: the action key or the affected resource's id.
+        # Free-text search: the action key, the affected resource's id, or
+        # who did it (person name or API key name).
         filters.append(
             or_(
                 col(AuditLog.action).ilike(f"%{action}%"),
                 col(AuditLog.resource_id).ilike(f"%{action}%"),
+                col(User.name).ilike(f"%{action}%"),
+                col(ApiKey.name).ilike(f"%{action}%"),
             )
         )
     actor_clause = _actor_filter(actor)

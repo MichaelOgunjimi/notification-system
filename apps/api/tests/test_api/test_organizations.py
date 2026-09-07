@@ -755,6 +755,11 @@ async def test_organization_audit_filters_by_actor_and_names_them(
     assert keys["items"][0]["actor_role"] is None
     assert {item["action"] for item in just_owner["items"]} == {"organization.member_invited"}
 
+    by_person = (await client.get(f"{base}?action=Ada", headers=headers)).json()
+    by_key = (await client.get(f"{base}?action=Deploy", headers=headers)).json()
+    assert {item["action"] for item in by_person["items"]} == {"organization.member_invited"}
+    assert {item["action"] for item in by_key["items"]} == {"event.created"}
+
 
 async def test_organization_audit_splits_by_category_and_bounds_by_date(
     client: AsyncClient,
