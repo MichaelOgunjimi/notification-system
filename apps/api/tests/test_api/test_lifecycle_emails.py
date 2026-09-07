@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime import utc_now
 from app.modules.delivery.adapters.base import DeliveryResult
-from app.modules.delivery.notifications import send_notification_email
 from app.modules.delivery.templates.transactional import (
     email_changed_email,
     invitation_accepted_email,
@@ -20,6 +19,7 @@ from app.modules.delivery.templates.transactional import (
 )
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
+from app.workers.identity_notifications import _send_lifecycle_notification_email
 
 FRONTEND = "https://app.example.com"
 
@@ -96,7 +96,7 @@ def test_invitation_accepted_email_names_the_new_member() -> None:
     assert "Acme" in message.html
 
 
-async def test_send_notification_email_returns_true_on_success() -> None:
+async def test_send_lifecycle_notification_email_returns_true_on_success() -> None:
     message = member_removed_email(
         frontend_url=FRONTEND,
         recipient="member@example.com",
@@ -104,13 +104,13 @@ async def test_send_notification_email_returns_true_on_success() -> None:
         organization_name="Acme",
     )
     with patch(
-        "app.modules.delivery.notifications.EmailAdapter.send",
+        "app.workers.identity_notifications.EmailAdapter.send",
         return_value=DeliveryResult(success=True),
     ):
-        assert await send_notification_email("member@example.com", message) is True
+        assert await _send_lifecycle_notification_email("member@example.com", message) is True
 
 
-async def test_send_notification_email_swallows_a_provider_failure() -> None:
+async def test_send_lifecycle_notification_email_swallows_a_provider_failure() -> None:
     message = member_removed_email(
         frontend_url=FRONTEND,
         recipient="member@example.com",
@@ -118,13 +118,13 @@ async def test_send_notification_email_swallows_a_provider_failure() -> None:
         organization_name="Acme",
     )
     with patch(
-        "app.modules.delivery.notifications.EmailAdapter.send",
+        "app.workers.identity_notifications.EmailAdapter.send",
         return_value=DeliveryResult(success=False, error_message="smtp down"),
     ):
-        assert await send_notification_email("member@example.com", message) is False
+        assert await _send_lifecycle_notification_email("member@example.com", message) is False
 
 
-async def test_send_notification_email_swallows_an_unexpected_error() -> None:
+async def test_send_lifecycle_notification_email_swallows_an_unexpected_error() -> None:
     message = welcome_email(
         frontend_url=FRONTEND,
         recipient="new@example.com",
@@ -132,10 +132,10 @@ async def test_send_notification_email_swallows_an_unexpected_error() -> None:
         workspace_name="New's Workspace",
     )
     with patch(
-        "app.modules.delivery.notifications.EmailAdapter.send",
+        "app.workers.identity_notifications.EmailAdapter.send",
         side_effect=RuntimeError("boom"),
     ):
-        assert await send_notification_email("new@example.com", message) is False
+        assert await _send_lifecycle_notification_email("new@example.com", message) is False
 
 
 async def test_first_magic_link_sign_in_sends_a_welcome_email(
@@ -143,18 +143,17 @@ async def test_first_magic_link_sign_in_sends_a_welcome_email(
 ) -> None:
     mock_redis.getdel.return_value = json.dumps({"email": "fresh@example.com"})
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.post(
             "/api/v1/auth/magic-link/verify", json={"token": "welcome-token"}
         )
 
     assert response.status_code == 200
-    notify.assert_awaited_once()
-    recipient, message = notify.await_args.args
+    notify.assert_called_once()
+    event, recipient, payload = notify.call_args.kwargs["args"]
+    assert event == "NOTIFY.WELCOME"
     assert recipient == "fresh@example.com"
-    assert message.subject == "Welcome to Beaco"
+    assert payload["recipient_name"] == "fresh"
 
 
 async def test_returning_magic_link_sign_in_sends_no_welcome_email(
@@ -163,15 +162,13 @@ async def test_returning_magic_link_sign_in_sends_no_welcome_email(
     await _verified_user(db, "returning@example.com")
     mock_redis.getdel.return_value = json.dumps({"email": "returning@example.com"})
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.post(
             "/api/v1/auth/magic-link/verify", json={"token": "return-token"}
         )
 
     assert response.status_code == 200
-    notify.assert_not_awaited()
+    notify.assert_not_called()
 
 
 async def _auth(user: User, db: AsyncSession, redis) -> dict[str, str]:
@@ -192,19 +189,18 @@ async def test_promoting_a_verified_address_notifies_the_previous_primary(
     await db.commit()
     await db.refresh(secondary)
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.post(
             f"/api/v1/auth/me/emails/{secondary.id}/primary",
             headers=await _auth(user, db, mock_redis),
         )
 
     assert response.status_code == 200
-    notify.assert_awaited_once()
-    recipient, message = notify.await_args.args
+    notify.assert_called_once()
+    event, recipient, payload = notify.call_args.kwargs["args"]
+    assert event == "NOTIFY.PRIMARY_EMAIL_CHANGED"
     assert recipient == "old-primary@example.com"
-    assert "new-primary@example.com" in message.html
+    assert payload["new_email"] == "new-primary@example.com"
 
 
 async def test_promoting_the_current_primary_notifies_no_one(
@@ -215,16 +211,14 @@ async def test_promoting_the_current_primary_notifies_no_one(
         await db.execute(select(EmailAddress).where(EmailAddress.user_id == user.id))
     ).scalar_one()
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.post(
             f"/api/v1/auth/me/emails/{primary.id}/primary",
             headers=await _auth(user, db, mock_redis),
         )
 
     assert response.status_code == 200
-    notify.assert_not_awaited()
+    notify.assert_not_called()
 
 
 async def _member_of(
@@ -252,19 +246,18 @@ async def test_removing_a_member_notifies_them(
     await db.commit()
     _member, membership_id = await _member_of(db, organization.id, "dropped@example.com")
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.delete(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
             headers=await _auth(owner, db, mock_redis),
         )
 
     assert response.status_code == 204
-    notify.assert_awaited_once()
-    recipient, message = notify.await_args.args
+    notify.assert_called_once()
+    event, recipient, payload = notify.call_args.kwargs["args"]
+    assert event == "NOTIFY.MEMBER_REMOVED"
     assert recipient == "dropped@example.com"
-    assert "Acme" in message.html
+    assert payload["organization_name"] == "Acme"
 
 
 async def test_removing_a_member_succeeds_even_when_the_notification_fails(
@@ -278,9 +271,8 @@ async def test_removing_a_member_succeeds_even_when_the_notification_fails(
     await db.commit()
     _member, membership_id = await _member_of(db, organization.id, "dropped2@example.com")
 
-    # Fail at the provider boundary so the real best-effort helper runs and swallows it.
     with patch(
-        "app.modules.delivery.notifications.EmailAdapter.send",
+        "app.modules.delivery.notify.send_lifecycle_notification.apply_async",
         side_effect=RuntimeError("smtp down"),
     ):
         response = await client.delete(
@@ -309,9 +301,7 @@ async def test_changing_a_members_role_notifies_the_member_not_the_actor(
     await db.commit()
     _member, membership_id = await _member_of(db, organization.id, "promoted@example.com")
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.patch(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
             headers=await _auth(owner, db, mock_redis),
@@ -319,10 +309,11 @@ async def test_changing_a_members_role_notifies_the_member_not_the_actor(
         )
 
     assert response.status_code == 200
-    notify.assert_awaited_once()
-    recipient, message = notify.await_args.args
+    notify.assert_called_once()
+    event, recipient, payload = notify.call_args.kwargs["args"]
+    assert event == "NOTIFY.MEMBER_ROLE_CHANGED"
     assert recipient == "promoted@example.com"
-    assert "Admin" in message.html
+    assert payload["role"] == "admin"
 
 
 async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
@@ -337,9 +328,7 @@ async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
         db, organization.id, "steady@example.com", role="member"
     )
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email", new_callable=AsyncMock
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.patch(
             f"/api/v1/organizations/{organization.id}/members/{membership_id}",
             headers=await _auth(owner, db, mock_redis),
@@ -347,7 +336,7 @@ async def test_setting_a_members_role_to_its_current_value_notifies_no_one(
         )
 
     assert response.status_code == 200
-    notify.assert_not_awaited()
+    notify.assert_not_called()
 
 
 async def _create_invitation(
@@ -382,10 +371,7 @@ async def test_accepting_an_invitation_notifies_the_inviter(
     )
     joiner = (await db.execute(select(User).where(User.email == joiner_email))).scalar_one()
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email",
-        new_callable=AsyncMock,
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         response = await client.post(
             "/api/v1/invitations/accept",
             headers=await _auth(joiner, db, mock_redis),
@@ -393,11 +379,12 @@ async def test_accepting_an_invitation_notifies_the_inviter(
         )
 
     assert response.status_code == 204
-    notify.assert_awaited_once()
-    recipient, message = notify.await_args.args
+    notify.assert_called_once()
+    event, recipient, payload = notify.call_args.kwargs["args"]
+    assert event == "NOTIFY.INVITATION_ACCEPTED"
     assert recipient == owner.email
-    assert joiner_email in message.html
-    assert "Invite Co" in message.html
+    assert payload["member_email"] == joiner_email
+    assert payload["organization_name"] == "Invite Co"
 
 
 async def test_inviter_notification_is_silent_when_the_inviter_row_is_gone(
@@ -405,10 +392,7 @@ async def test_inviter_notification_is_silent_when_the_inviter_row_is_gone(
 ) -> None:
     from app.modules.tenancy.invitations.service import _notify_inviter_of_acceptance
 
-    with patch(
-        "app.modules.delivery.notify.send_notification_email",
-        new_callable=AsyncMock,
-    ) as notify:
+    with patch("app.modules.delivery.notify.send_lifecycle_notification.apply_async") as notify:
         # invited_by_user_id points at no existing user (deleted inviter).
         await _notify_inviter_of_acceptance(
             db,
@@ -426,4 +410,4 @@ async def test_inviter_notification_is_silent_when_the_inviter_row_is_gone(
             invitee_role="member",
         )
 
-    notify.assert_not_awaited()
+    notify.assert_not_called()

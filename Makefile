@@ -66,7 +66,7 @@ worker-dispatcher:
 	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation -l info
 
 worker-email:
-	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low -l info
+	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low,notifications.email.lifecycle -l info
 
 worker-sms:
 	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.sms.high,notifications.sms.medium,notifications.sms.low -l info
@@ -75,7 +75,7 @@ worker-webhook:
 	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 worker-all:
-	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation,notifications.email.high,notifications.email.medium,notifications.email.low,notifications.sms.high,notifications.sms.medium,notifications.sms.low,notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
+	cd $(API_DIR) && uv run celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation,notifications.email.high,notifications.email.medium,notifications.email.low,notifications.email.lifecycle,notifications.sms.high,notifications.sms.medium,notifications.sms.low,notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info
 
 celery-beat:
 	cd $(API_DIR) && uv run celery -A app.workers.celery_app beat -l info --schedule=/tmp/celerybeat-schedule

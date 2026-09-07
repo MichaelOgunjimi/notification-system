@@ -110,7 +110,7 @@ services:
 
   worker-email:
     <<: *worker-common
-    command: celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low -l info -n email@%h --concurrency=4
+    command: celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low,notifications.email.lifecycle -l info -n email@%h --concurrency=4
 
   worker-sms:
     <<: *worker-common

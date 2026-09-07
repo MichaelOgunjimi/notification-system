@@ -29,9 +29,9 @@ _CHANNEL_TASKS: dict[str, str] = {
 }
 
 
-def _scoped_query(api_key_id: uuid.UUID | None):
-    """Base query scoped to the owning API key or unscoped for platform operations."""
-    q = (
+def _scoped_queries(api_key_id: uuid.UUID | None):
+    """Return the DLQ item and count queries scoped to an API key."""
+    query = (
         select(DeadLetterMessage)
         .join(
             Notification,
@@ -40,8 +40,21 @@ def _scoped_query(api_key_id: uuid.UUID | None):
         .join(Event, col(Notification.event_id) == col(Event.id))
     )
     if api_key_id is not None:
-        q = q.where(col(Event.api_key_id) == api_key_id)
-    return q
+        query = query.where(col(Event.api_key_id) == api_key_id)
+
+    count_query = (
+        select(func.count())
+        .select_from(DeadLetterMessage)
+        .join(
+            Notification,
+            col(DeadLetterMessage.notification_id) == col(Notification.id),
+        )
+        .join(Event, col(Notification.event_id) == col(Event.id))
+    )
+    if api_key_id is not None:
+        count_query = count_query.where(col(Event.api_key_id) == api_key_id)
+
+    return query, count_query
 
 
 async def list_dead_letters(
@@ -53,18 +66,7 @@ async def list_dead_letters(
     channel: NotificationChannel | None = None,
 ) -> tuple[list[DeadLetterMessage], int]:
     """List DLQ messages scoped to the API key or all for platform operations."""
-    query = _scoped_query(api_key_id)
-    count_q = (
-        select(func.count())
-        .select_from(DeadLetterMessage)
-        .join(
-            Notification,
-            col(DeadLetterMessage.notification_id) == col(Notification.id),
-        )
-        .join(Event, col(Notification.event_id) == col(Event.id))
-    )
-    if api_key_id is not None:
-        count_q = count_q.where(col(Event.api_key_id) == api_key_id)
+    query, count_q = _scoped_queries(api_key_id)
 
     if status is not None:
         query = query.where(col(DeadLetterMessage.status) == status)
@@ -90,7 +92,8 @@ async def get_dead_letter(
     api_key_id: uuid.UUID | None,
 ) -> DeadLetterMessage | None:
     """Get a single DLQ message by ID, scoped to the API key."""
-    query = _scoped_query(api_key_id).where(col(DeadLetterMessage.id) == dlq_id)
+    query, _ = _scoped_queries(api_key_id)
+    query = query.where(col(DeadLetterMessage.id) == dlq_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -106,7 +109,8 @@ async def retry_dead_letter(
     DLQ record as RETRIED. Returns None if not found or not ACTIVE.
     """
     # SELECT FOR UPDATE to prevent concurrent retries of the same record
-    query = _scoped_query(api_key_id).where(col(DeadLetterMessage.id) == dlq_id).with_for_update()
+    query, _ = _scoped_queries(api_key_id)
+    query = query.where(col(DeadLetterMessage.id) == dlq_id).with_for_update()
     result = await db.execute(query)
     dlq = result.scalar_one_or_none()
     if dlq is None:

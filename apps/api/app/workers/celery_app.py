@@ -33,6 +33,7 @@ celery_app.conf.update(
     imports=[
         "app.modules.delivery.processing.dispatcher",
         "app.workers.email_worker",
+        "app.workers.identity_notifications",
         "app.workers.sms_worker",
         "app.workers.webhook_worker",
         "app.modules.delivery.processing.reconciliation",

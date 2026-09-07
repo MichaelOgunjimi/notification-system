@@ -11,69 +11,73 @@ email the app sends is found by grepping ``notify.``. The must-succeed sends
 live here; they raise on failure and stay inline in their services.
 """
 
-from app.core.config import settings
-from app.modules.delivery.notifications import send_notification_email
-from app.modules.delivery.templates.transactional import (
-    email_changed_email,
-    invitation_accepted_email,
-    member_removed_email,
-    member_role_changed_email,
-    welcome_email,
-)
+import logging
+from typing import cast
+
+from celery import Task
+
 from app.modules.identity.models.user import User
 from app.modules.tenancy.models.organization import Organization
+from app.workers.identity_notifications import (
+    NOTIFY_INVITATION_ACCEPTED,
+    NOTIFY_MEMBER_REMOVED,
+    NOTIFY_MEMBER_ROLE_CHANGED,
+    NOTIFY_PRIMARY_EMAIL_CHANGED,
+    NOTIFY_WELCOME,
+    send_lifecycle_notification,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _enqueue_lifecycle_notification(
+    event: str,
+    recipient: str,
+    payload: dict[str, str],
+) -> None:
+    """Queue a best-effort lifecycle notification without passing ORM objects."""
+    try:
+        cast(Task, send_lifecycle_notification).apply_async(
+            args=[event, recipient, payload],
+            queue="notifications.email.lifecycle",
+        )
+    except Exception:  # noqa: BLE001 - lifecycle notifications are best-effort
+        logger.exception("Unable to queue lifecycle notification %s for %s", event, recipient)
 
 
 async def welcome(*, email: str, name: str) -> None:
     """A new account (+ its first workspace) was just created."""
-    await send_notification_email(
+    _enqueue_lifecycle_notification(
+        NOTIFY_WELCOME,
         email,
-        welcome_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=email,
-            recipient_name=name,
-            workspace_name=f"{name}'s Workspace",
-        ),
+        {"recipient_name": name, "workspace_name": f"{name}'s Workspace"},
     )
 
 
 async def primary_email_changed(previous_email: str, *, new_email: str, name: str) -> None:
     """The account's primary address changed. Goes to the address losing control."""
-    await send_notification_email(
+    _enqueue_lifecycle_notification(
+        NOTIFY_PRIMARY_EMAIL_CHANGED,
         previous_email,
-        email_changed_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=previous_email,
-            recipient_name=name,
-            new_email=new_email,
-        ),
+        {"recipient_name": name, "new_email": new_email},
     )
 
 
 async def member_removed(member: User, *, organization: Organization) -> None:
     """``member`` was removed from ``organization``."""
-    await send_notification_email(
+    _enqueue_lifecycle_notification(
+        NOTIFY_MEMBER_REMOVED,
         member.email,
-        member_removed_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=member.email,
-            recipient_name=member.name,
-            organization_name=organization.name,
-        ),
+        {"recipient_name": member.name, "organization_name": organization.name},
     )
 
 
 async def member_role_changed(member: User, *, organization: Organization, role: str) -> None:
     """``member``'s role in ``organization`` changed to ``role``."""
-    await send_notification_email(
+    _enqueue_lifecycle_notification(
+        NOTIFY_MEMBER_ROLE_CHANGED,
         member.email,
-        member_role_changed_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=member.email,
-            recipient_name=member.name,
-            organization_name=organization.name,
-            role=role,
-        ),
+        {"recipient_name": member.name, "organization_name": organization.name, "role": role},
     )
 
 
@@ -85,14 +89,13 @@ async def invitation_accepted(
     role: str,
 ) -> None:
     """``member_email`` accepted ``inviter``'s invitation to ``organization``."""
-    await send_notification_email(
+    _enqueue_lifecycle_notification(
+        NOTIFY_INVITATION_ACCEPTED,
         inviter.email,
-        invitation_accepted_email(
-            frontend_url=settings.FRONTEND_URL,
-            recipient=inviter.email,
-            recipient_name=inviter.name,
-            organization_name=organization.name,
-            member_email=member_email,
-            role=role,
-        ),
+        {
+            "recipient_name": inviter.name,
+            "organization_name": organization.name,
+            "member_email": member_email,
+            "role": role,
+        },
     )
