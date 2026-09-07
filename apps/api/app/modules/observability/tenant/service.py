@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import String, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
@@ -570,7 +570,13 @@ async def _audit_page(
     if organization_id is not None:
         filters.append(resolved_organization_id == organization_id)
     if action:
-        filters.append(col(AuditLog.action).ilike(f"%{action}%"))
+        # Free-text search: the action key or the affected resource's id.
+        filters.append(
+            or_(
+                col(AuditLog.action).ilike(f"%{action}%"),
+                col(AuditLog.resource_id).ilike(f"%{action}%"),
+            )
+        )
     actor_clause = _actor_filter(actor)
     if actor_clause is not None:
         filters.append(actor_clause)
@@ -849,8 +855,17 @@ def _event_filters(
     if priority is not None:
         filters.append(col(Event.priority) == priority)
     if event_type:
+        # `event_type` is the surface's free-text search: matches the type,
+        # the event id, or the idempotency key.
         escaped = event_type.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        filters.append(col(Event.event_type).ilike(f"%{escaped}%", escape="\\"))
+        pattern = f"%{escaped}%"
+        filters.append(
+            or_(
+                col(Event.event_type).ilike(pattern, escape="\\"),
+                func.cast(col(Event.id), String).ilike(pattern, escape="\\"),
+                col(Event.idempotency_key).ilike(pattern, escape="\\"),
+            )
+        )
     if from_ is not None:
         filters.append(col(Event.created_at) >= to_naive_utc(from_))
     if to is not None:

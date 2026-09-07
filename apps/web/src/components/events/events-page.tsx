@@ -268,7 +268,7 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
         className="events-page__search"
         type="search"
         value={state.search}
-        placeholder="Search event type…"
+        placeholder="Search type, id, or idempotency key…"
         onChange={(event) => patch({ search: event.target.value })}
       />
 

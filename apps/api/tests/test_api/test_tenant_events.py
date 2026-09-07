@@ -214,3 +214,25 @@ async def test_event_detail_404s_for_another_projects_event(
     )
 
     assert response.status_code == 404
+
+
+async def test_project_events_search_matches_type_and_id(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, _org, project, key = await _seed_project(db, slug="ev-search")
+    hit = await _seed_event(db, key, event_type="checkout.completed")
+    await _seed_event(db, key, event_type="signup.done")
+
+    by_type = await client.get(
+        f"/api/v1/projects/{project.id}/events",
+        params={"event_type": "checkout"},
+        headers=await _auth(owner, db, mock_redis),
+    )
+    by_id = await client.get(
+        f"/api/v1/projects/{project.id}/events",
+        params={"event_type": str(hit.id)[:8]},
+        headers=await _auth(owner, db, mock_redis),
+    )
+
+    assert [e["event_type"] for e in by_type.json()["items"]] == ["checkout.completed"]
+    assert [e["id"] for e in by_id.json()["items"]] == [str(hit.id)]
