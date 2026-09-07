@@ -202,19 +202,11 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
     <div className="events-page">
       <header className="events-page__heading">
         <p className="events-page__eyebrow">Operate</p>
-        <div className="events-page__heading-row">
-          <div>
-            <h1>Events</h1>
-            <span>
-              Every notification request received, by project — status, priority, and fan-out at a
-              glance.
-            </span>
-          </div>
-          <span className="events-page__live" title="Refreshes automatically">
-            <span className="events-page__live-dot" aria-hidden />
-            {query.data ? `${total.toLocaleString()} events` : "Counting…"}
-          </span>
-        </div>
+        <h1>Events</h1>
+        <span>
+          Every notification request received, by project — status, priority, and fan-out at a
+          glance.
+        </span>
       </header>
 
       <div className="events-page__scope">
@@ -286,7 +278,10 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
             <h2>Event log</h2>
             <p>Newest first{state.range === "all" ? "" : `, last ${state.range}`}.</p>
           </div>
-          <span className="events-page__count">{total.toLocaleString()}</span>
+          <span className="events-page__count" title="Refreshes automatically">
+            <span className="events-page__live-dot" aria-hidden />
+            {query.data ? `${total.toLocaleString()} events` : "Counting…"}
+          </span>
         </div>
         <div className="events-page__twrap">
           <table>
