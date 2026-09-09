@@ -33,14 +33,27 @@ async def get_analytics(
     *,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    default_to_today: bool = True,
 ) -> AnalyticsResponse:
-    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    """Return delivery aggregates within an optional time window.
+
+    ``default_to_today`` preserves the public API's historical default while
+    allowing tenant dashboards to request genuinely unbounded history.
+    """
+    start = (
+        to_naive_utc(date_from)
+        if date_from is not None
+        else (_today_start() if default_to_today else None)
+    )
     end = to_naive_utc(date_to) if date_to is not None else None
+    event_dates = [col(Event.created_at) >= start] if start is not None else []
+    notification_dates = [col(Notification.created_at) >= start] if start is not None else []
+    dead_letter_dates = [col(DeadLetterMessage.failed_at) >= start] if start is not None else []
 
     event_status_rows = (
         await db.execute(
             select(col(Event.status), func.count().label("cnt"))
-            .where(col(Event.created_at) >= start)
+            .where(*event_dates)
             .where(*([col(Event.created_at) <= end] if end is not None else []))
             .where(*([event_filter] if event_filter is not None else []))
             .group_by(col(Event.status))
@@ -63,7 +76,7 @@ async def get_analytics(
             select(col(Notification.status), func.count().label("cnt"))
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([event_filter] if event_filter is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.status))
         )
@@ -91,7 +104,7 @@ async def get_analytics(
             .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
-            .where(col(Notification.created_at) >= start)
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             # Exclude outliers — notifications delayed by system downtime / worker issues
             .where(latency_expr < 300)  # cap at 5 minutes
@@ -110,7 +123,7 @@ async def get_analytics(
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([event_filter] if event_filter is not None else []))
             .where(col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE)
-            .where(col(DeadLetterMessage.failed_at) >= start)
+            .where(*dead_letter_dates)
             .where(*([col(DeadLetterMessage.failed_at) <= end] if end is not None else []))
         )
     ).scalar() or 0
@@ -124,7 +137,7 @@ async def get_analytics(
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([event_filter] if event_filter is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.channel), col(Notification.status))
         )
@@ -177,9 +190,18 @@ async def get_trends(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     granularity: str = "hour",
+    default_to_today: bool = True,
 ) -> TrendResponse:
-    """Return notification status counts bucketed by hour or day."""
-    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    """Return notification status counts bucketed by hour or day.
+
+    ``default_to_today`` preserves the public API default while tenant callers
+    may opt into an unbounded lower range.
+    """
+    start = (
+        to_naive_utc(date_from)
+        if date_from is not None
+        else (_today_start() if default_to_today else None)
+    )
     end = to_naive_utc(date_to) if date_to is not None else None
 
     bucket = granularity if granularity in ("hour", "day") else "hour"
@@ -194,7 +216,7 @@ async def get_trends(
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([event_filter] if event_filter is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*([col(Notification.created_at) >= start] if start is not None else []))
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(time_trunc, col(Notification.status))
             .order_by(time_trunc)

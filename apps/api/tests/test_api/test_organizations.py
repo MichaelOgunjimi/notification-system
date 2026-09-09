@@ -21,9 +21,13 @@ from app.modules.tenancy.models.organization import OrganizationMembership, Orga
 
 
 async def _seed_delivered_notification(
-    db: AsyncSession, api_key: ApiKey, *, channel: NotificationChannel
+    db: AsyncSession,
+    api_key: ApiKey,
+    *,
+    channel: NotificationChannel,
+    created_at: datetime | None = None,
 ) -> None:
-    now = utc_now()
+    now = created_at or utc_now()
     event = Event(
         id=uuid.uuid4(),
         event_type="test.notified",
@@ -569,7 +573,12 @@ async def test_project_analytics_aggregates_across_the_projects_keys(
     )
     db.add_all([key_a, key_b, other_key])
     await db.flush()
-    await _seed_delivered_notification(db, key_a, channel=NotificationChannel.EMAIL)
+    await _seed_delivered_notification(
+        db,
+        key_a,
+        channel=NotificationChannel.EMAIL,
+        created_at=datetime(2020, 1, 1),
+    )
     await _seed_delivered_notification(db, key_b, channel=NotificationChannel.SMS)
     await _seed_delivered_notification(db, other_key, channel=NotificationChannel.EMAIL)
     await db.commit()
@@ -623,7 +632,12 @@ async def test_project_trends_aggregate_across_the_projects_keys(
     )
     db.add_all([key_a, key_b])
     await db.flush()
-    await _seed_delivered_notification(db, key_a, channel=NotificationChannel.EMAIL)
+    await _seed_delivered_notification(
+        db,
+        key_a,
+        channel=NotificationChannel.EMAIL,
+        created_at=datetime(2020, 1, 1),
+    )
     await _seed_delivered_notification(db, key_b, channel=NotificationChannel.SMS)
     await db.commit()
 

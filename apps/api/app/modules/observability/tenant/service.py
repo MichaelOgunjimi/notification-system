@@ -779,7 +779,13 @@ async def get_project_analytics(
     event_filter = _tenant_event_filter(
         project_id=project_id, organization_id=None, api_key_id=api_key_id
     )
-    return await analytics_service.get_analytics(db, event_filter, date_from=from_, date_to=to)
+    return await analytics_service.get_analytics(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        default_to_today=False,
+    )
 
 
 async def get_organization_analytics(
@@ -800,7 +806,13 @@ async def get_organization_analytics(
     event_filter = _tenant_event_filter(
         project_id=None, organization_id=organization_id, api_key_id=api_key_id
     )
-    return await analytics_service.get_analytics(db, event_filter, date_from=from_, date_to=to)
+    return await analytics_service.get_analytics(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        default_to_today=False,
+    )
 
 
 async def get_project_trends(
@@ -823,7 +835,12 @@ async def get_project_trends(
         project_id=project_id, organization_id=None, api_key_id=api_key_id
     )
     return await analytics_service.get_trends(
-        db, event_filter, date_from=from_, date_to=to, granularity=granularity
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        granularity=granularity,
+        default_to_today=False,
     )
 
 
@@ -847,7 +864,12 @@ async def get_organization_trends(
         project_id=None, organization_id=organization_id, api_key_id=api_key_id
     )
     return await analytics_service.get_trends(
-        db, event_filter, date_from=from_, date_to=to, granularity=granularity
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        granularity=granularity,
+        default_to_today=False,
     )
 
 
