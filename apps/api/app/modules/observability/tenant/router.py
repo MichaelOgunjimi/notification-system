@@ -10,12 +10,15 @@ from app.core.http.schemas import PaginatedResponse
 from app.core.pagination import Page
 from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.identity.dependencies import CurrentUserDep
+from app.modules.notifications.enums import NotificationChannel, NotificationStatus
 from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.tenant import service
 from app.modules.observability.tenant.schemas import (
     TenantAuditLogResponse,
     TenantEventDetailResponse,
     TenantEventResponse,
+    TenantNotificationDetailResponse,
+    TenantNotificationResponse,
     TenantUsageEndpointResponse,
     TenantUsageHourlyPointResponse,
     TenantUsageResponse,
@@ -24,6 +27,7 @@ from app.modules.observability.tenant.schemas import (
 from app.modules.observability.tenant.types import (
     AuditLogView,
     EventView,
+    NotificationView,
     UsageEndpointView,
     UsageHourlyPointView,
     UsageSummaryView,
@@ -461,3 +465,100 @@ async def get_project_event(
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     return TenantEventDetailResponse.model_validate(detail, from_attributes=True)
+
+
+@router.get(
+    "/projects/{project_id}/notifications",
+    response_model=PaginatedResponse[TenantNotificationResponse],
+)
+async def get_project_notifications(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=25, ge=1, le=100),
+    status_: NotificationStatus | None = Query(default=None, alias="status"),
+    channel: NotificationChannel | None = Query(default=None),
+    search: str | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None, alias="to"),
+) -> Page[NotificationView]:
+    """List delivery instances visible inside one project."""
+    return await service.get_project_notifications(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        status=status_,
+        channel=channel,
+        search=search,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/notifications/{notification_id}",
+    response_model=TenantNotificationDetailResponse,
+)
+async def get_project_notification(
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> TenantNotificationDetailResponse:
+    """Get one delivery and its complete attempt history."""
+    detail = await service.get_project_notification(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    return TenantNotificationDetailResponse.model_validate(detail, from_attributes=True)
+
+
+@router.post(
+    "/projects/{project_id}/notifications/{notification_id}/retry",
+    response_model=TenantNotificationDetailResponse,
+)
+async def retry_project_notification(
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> TenantNotificationDetailResponse:
+    """Requeue an active dead-lettered delivery after project authorization."""
+    detail = await service.retry_project_notification(
+        db, user_id=user.id, project_id=project_id, notification_id=notification_id
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Notification has no active dead letter to retry",
+        )
+    return TenantNotificationDetailResponse.model_validate(detail, from_attributes=True)
+
+
+@router.post(
+    "/projects/{project_id}/notifications/{notification_id}/discard",
+    response_model=TenantNotificationDetailResponse,
+)
+async def discard_project_notification(
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> TenantNotificationDetailResponse:
+    """Acknowledge an active dead letter after project authorization."""
+    detail = await service.discard_project_notification(
+        db, user_id=user.id, project_id=project_id, notification_id=notification_id
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Notification has no active dead letter to discard",
+        )
+    return TenantNotificationDetailResponse.model_validate(detail, from_attributes=True)

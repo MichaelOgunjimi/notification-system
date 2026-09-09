@@ -11,10 +11,15 @@ from sqlmodel import col
 from app.core.datetime import to_naive_utc
 from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
+from app.modules.delivery.dead_letter import service as dead_letter_service
+from app.modules.delivery.dead_letter.model import DeadLetterMessage
+from app.modules.delivery.enums import DeadLetterStatus
 from app.modules.events import service as event_service
 from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.events.model import Event
 from app.modules.identity.models.user import User
+from app.modules.notifications.enums import NotificationChannel, NotificationStatus
+from app.modules.notifications.log_model import NotificationLog
 from app.modules.notifications.model import Notification
 from app.modules.observability.analytics import service as analytics_service
 from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
@@ -24,6 +29,9 @@ from app.modules.observability.tenant.types import (
     EventDetailView,
     EventNotificationView,
     EventView,
+    NotificationDetailView,
+    NotificationLogView,
+    NotificationView,
     UsageEndpointView,
     UsageEnvironmentSummary,
     UsageHourlyPointView,
@@ -1062,4 +1070,289 @@ async def get_project_event(
             )
             for notification in notifications
         ],
+    )
+
+
+def _notification_filters(
+    *,
+    project_id: uuid.UUID,
+    status: NotificationStatus | None,
+    channel: NotificationChannel | None,
+    search: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[Any]:
+    filters: list[Any] = [
+        col(Event.api_key_id).in_(
+            _api_key_scope_subquery(project_id=project_id, organization_id=None)
+        )
+    ]
+    if status is not None:
+        filters.append(col(Notification.status) == status)
+    if channel is not None:
+        filters.append(col(Notification.channel) == channel)
+    if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        filters.append(
+            or_(
+                col(Notification.recipient_address).ilike(pattern, escape="\\"),
+                func.cast(col(Notification.id), String).ilike(pattern, escape="\\"),
+                func.cast(col(Notification.event_id), String).ilike(pattern, escape="\\"),
+                col(Event.event_type).ilike(pattern, escape="\\"),
+            )
+        )
+    if from_ is not None:
+        filters.append(col(Notification.created_at) >= to_naive_utc(from_))
+    if to is not None:
+        filters.append(col(Notification.created_at) <= to_naive_utc(to))
+    return filters
+
+
+async def get_project_notifications(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    status: NotificationStatus | None,
+    channel: NotificationChannel | None,
+    search: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+    page: int,
+    per_page: int,
+) -> Page[NotificationView]:
+    """Return one authorized project's delivery instances, newest first."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
+    )
+    filters = _notification_filters(
+        project_id=project_id,
+        status=status,
+        channel=channel,
+        search=search,
+        from_=from_,
+        to=to,
+    )
+    total = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Notification)
+                .join(Event, col(Event.id) == col(Notification.event_id))
+                .where(*filters)
+            )
+        ).scalar()
+        or 0
+    )
+    rows = (
+        await db.execute(
+            select(Notification, col(Event.event_type))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(*filters)
+            .order_by(col(Notification.created_at).desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).all()
+    return Page(
+        items=[
+            NotificationView(
+                id=notification.id,
+                event_id=notification.event_id,
+                event_type=event_type,
+                channel=str(notification.channel),
+                status=str(notification.status),
+                priority=str(notification.priority),
+                recipient_address=notification.recipient_address,
+                retry_count=notification.retry_count,
+                max_retries=notification.max_retries,
+                error_message=notification.error_message,
+                created_at=notification.created_at,
+                delivered_at=notification.delivered_at,
+                failed_at=notification.failed_at,
+            )
+            for notification, event_type in rows
+        ],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Return one delivery with its immutable attempt history."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
+    )
+    row = (
+        await db.execute(
+            select(Notification, col(Event.event_type))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(
+                col(Notification.id) == notification_id,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    notification, event_type = row
+    logs = (
+        (
+            await db.execute(
+                select(NotificationLog)
+                .where(col(NotificationLog.notification_id) == notification_id)
+                .order_by(col(NotificationLog.created_at).asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    dead_letter_status = (
+        await db.execute(
+            select(col(DeadLetterMessage.status)).where(
+                col(DeadLetterMessage.notification_id) == notification_id
+            )
+        )
+    ).scalar_one_or_none()
+    return NotificationDetailView(
+        id=notification.id,
+        event_id=notification.event_id,
+        event_type=event_type,
+        channel=str(notification.channel),
+        status=str(notification.status),
+        priority=str(notification.priority),
+        recipient_user_id=notification.recipient_user_id,
+        recipient_address=notification.recipient_address,
+        rendered_subject=notification.rendered_subject,
+        rendered_body=notification.rendered_body,
+        retry_count=notification.retry_count,
+        max_retries=notification.max_retries,
+        next_retry_at=notification.next_retry_at,
+        provider_response=notification.provider_response,
+        error_message=notification.error_message,
+        created_at=notification.created_at,
+        queued_at=notification.queued_at,
+        processing_started_at=notification.processing_started_at,
+        delivered_at=notification.delivered_at,
+        failed_at=notification.failed_at,
+        updated_at=notification.updated_at,
+        dead_letter_status=str(dead_letter_status) if dead_letter_status is not None else None,
+        logs=[
+            NotificationLogView(
+                id=log.id,
+                previous_status=log.previous_status,
+                new_status=log.new_status,
+                worker_id=log.worker_id,
+                error_type=log.error_type,
+                error_message=log.error_message,
+                provider_response=log.provider_response,
+                metadata=log.metadata_,
+                created_at=log.created_at,
+            )
+            for log in logs
+        ],
+    )
+
+
+async def _active_project_dead_letter(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> tuple[uuid.UUID, uuid.UUID] | None:
+    """Resolve an active dead letter to its owning key after manage authorization."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    row = (
+        await db.execute(
+            select(col(DeadLetterMessage.id), col(Event.api_key_id))
+            .join(Notification, col(Notification.id) == col(DeadLetterMessage.notification_id))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(
+                col(Notification.id) == notification_id,
+                col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    dead_letter_id, api_key_id = row
+    return dead_letter_id, api_key_id
+
+
+async def retry_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Retry an active dead letter and return the refreshed notification."""
+    resolved = await _active_project_dead_letter(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+    if resolved is None:
+        return None
+    dead_letter_id, api_key_id = resolved
+    if await dead_letter_service.retry_dead_letter(db, dead_letter_id, api_key_id) is None:
+        return None
+    return await get_project_notification(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+
+
+async def discard_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Acknowledge an active dead letter and return the refreshed notification."""
+    resolved = await _active_project_dead_letter(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+    if resolved is None:
+        return None
+    dead_letter_id, api_key_id = resolved
+    if await dead_letter_service.discard_dead_letter(db, dead_letter_id, api_key_id) is None:
+        return None
+    return await get_project_notification(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
     )

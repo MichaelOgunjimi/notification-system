@@ -95,6 +95,63 @@ class EventDetailView:
 
 
 @dataclass(frozen=True, slots=True)
+class NotificationView:
+    id: uuid.UUID
+    event_id: uuid.UUID
+    event_type: str
+    channel: str
+    status: str
+    priority: str
+    recipient_address: str
+    retry_count: int
+    max_retries: int
+    error_message: str | None
+    created_at: datetime
+    delivered_at: datetime | None
+    failed_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationLogView:
+    id: uuid.UUID
+    previous_status: str | None
+    new_status: str
+    worker_id: str | None
+    error_type: str | None
+    error_message: str | None
+    provider_response: dict[str, Any] | None
+    metadata: dict[str, Any] | None
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationDetailView:
+    id: uuid.UUID
+    event_id: uuid.UUID
+    event_type: str
+    channel: str
+    status: str
+    priority: str
+    recipient_user_id: str
+    recipient_address: str
+    rendered_subject: str | None
+    rendered_body: str | None
+    retry_count: int
+    max_retries: int
+    next_retry_at: datetime | None
+    provider_response: dict[str, Any] | None
+    error_message: str | None
+    created_at: datetime
+    queued_at: datetime | None
+    processing_started_at: datetime | None
+    delivered_at: datetime | None
+    failed_at: datetime | None
+    updated_at: datetime
+    dead_letter_status: str | None
+    logs: list[NotificationLogView]
+
+
+@dataclass(frozen=True, slots=True)
 class AuditLogView:
     id: uuid.UUID
     organization_id: uuid.UUID

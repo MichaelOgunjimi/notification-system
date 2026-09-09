@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.credentials.model import ApiKey
@@ -12,6 +13,7 @@ from app.modules.events.model import Event
 from app.modules.identity.models.user import User
 from app.modules.identity.service import create_user_tokens
 from app.modules.notifications.enums import NotificationChannel, NotificationStatus
+from app.modules.notifications.log_model import NotificationLog
 from app.modules.notifications.model import Notification
 from app.modules.tenancy.lifecycle import create_organization, create_project
 
@@ -236,3 +238,59 @@ async def test_project_events_search_matches_type_and_id(
 
     assert [e["event_type"] for e in by_type.json()["items"]] == ["checkout.completed"]
     assert [e["id"] for e in by_id.json()["items"]] == [str(hit.id)]
+
+
+async def test_project_notifications_are_scoped_and_searchable(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner_a, _org_a, project_a, key_a = await _seed_project(db, slug="delivery-a")
+    _owner_b, _org_b, _project_b, key_b = await _seed_project(db, slug="delivery-b")
+    event_a = await _seed_event(db, key_a, event_type="invoice.ready")
+    await _seed_event(db, key_b, event_type="private.event")
+
+    response = await client.get(
+        f"/api/v1/projects/{project_a.id}/notifications",
+        params={"search": "invoice"},
+        headers=await _auth(owner_a, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["event_id"] == str(event_a.id)
+    assert body["items"][0]["event_type"] == "invoice.ready"
+
+
+async def test_project_notification_detail_includes_attempt_evidence(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, _org, project, key = await _seed_project(db, slug="delivery-detail")
+    event = await _seed_event(db, key, event_type="receipt.sent")
+    notification = (
+        await db.execute(select(Notification).where(Notification.event_id == event.id))
+    ).scalar_one()
+    notification.rendered_subject = "Your receipt"
+    notification.rendered_body = "<p>Paid</p>"
+    notification.provider_response = {"message_id": "provider-123"}
+    db.add(
+        NotificationLog(
+            notification_id=notification.id,
+            previous_status="processing",
+            new_status="delivered",
+            worker_id="worker-1",
+            provider_response={"message_id": "provider-123"},
+        )
+    )
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/notifications/{notification.id}",
+        headers=await _auth(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["event_type"] == "receipt.sent"
+    assert body["rendered_subject"] == "Your receipt"
+    assert body["provider_response"] == {"message_id": "provider-123"}
+    assert body["logs"][0]["new_status"] == "delivered"

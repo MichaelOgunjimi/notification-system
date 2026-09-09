@@ -91,6 +91,8 @@ async def test_user_lists_only_organizations_they_belong_to(
             "api_key:manage",
             "project:templates:read",
             "project:templates:manage",
+            "project:deliveries:read",
+            "project:deliveries:manage",
             "project:usage:read",
             "project:audit:read",
             "organization:templates:read",

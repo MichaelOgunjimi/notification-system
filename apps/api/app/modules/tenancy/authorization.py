@@ -26,6 +26,8 @@ class OrganizationCapability(enum.StrEnum):
     MANAGE_API_KEYS = "api_key:manage"
     READ_PROJECT_TEMPLATES = "project:templates:read"
     MANAGE_PROJECT_TEMPLATES = "project:templates:manage"
+    READ_PROJECT_DELIVERIES = "project:deliveries:read"
+    MANAGE_PROJECT_DELIVERIES = "project:deliveries:manage"
     READ_PROJECT_USAGE = "project:usage:read"
     READ_PROJECT_AUDIT = "project:audit:read"
     READ_ORGANIZATION_TEMPLATES = "organization:templates:read"
@@ -39,6 +41,7 @@ _MEMBER_CAPABILITIES = frozenset(
     {
         OrganizationCapability.READ,
         OrganizationCapability.READ_PROJECT_TEMPLATES,
+        OrganizationCapability.READ_PROJECT_DELIVERIES,
         OrganizationCapability.READ_PROJECT_USAGE,
         OrganizationCapability.READ_PROJECT_AUDIT,
     }
@@ -50,6 +53,7 @@ _ADMIN_CAPABILITIES = _MEMBER_CAPABILITIES | {
     OrganizationCapability.MANAGE_PROJECT,
     OrganizationCapability.MANAGE_API_KEYS,
     OrganizationCapability.MANAGE_PROJECT_TEMPLATES,
+    OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
     OrganizationCapability.READ_ORGANIZATION_TEMPLATES,
     OrganizationCapability.READ_ORGANIZATION_USAGE,
     OrganizationCapability.READ_ORGANIZATION_AUDIT,
