@@ -17,6 +17,8 @@ import {
   projectAnalyticsQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
+  projectNotificationQuery,
+  projectNotificationsQuery,
   projectsQuery,
   projectTemplateDefaultsQuery,
   projectTemplateQuery,
@@ -103,6 +105,12 @@ describe("control-plane queries", () => {
         forProject: vi.fn().mockResolvedValue(emptyPage),
         forOrganization: vi.fn().mockResolvedValue(emptyPage),
         get: vi.fn(),
+      },
+      notifications: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        get: vi.fn(),
+        retry: vi.fn(),
+        discard: vi.fn(),
       },
     };
 
@@ -498,5 +506,44 @@ describe("control-plane queries", () => {
     expect(single.staleTime).toBe(30 * 1000);
     await single.queryFn?.({} as never);
     expect(client.templates.get).toHaveBeenCalledWith("project-1", "template-1");
+  });
+
+  it("scopes notification queries by project, filters, and delivery id", async () => {
+    const client = {
+      notifications: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        get: vi.fn().mockResolvedValue({ id: "notification-1" }),
+      },
+    } as unknown as ControlPlaneClient;
+    const list = projectNotificationsQuery(client, "project-1", {
+      page: 2,
+      status: "failed",
+      channel: "email",
+      search: "customer@example.com",
+    });
+    const detail = projectNotificationQuery(client, "project-1", "notification-1");
+
+    expect(list.queryKey).toEqual([
+      ...controlPlaneQueryKeys.projectNotifications("project-1"),
+      2,
+      25,
+      "failed",
+      "email",
+      "customer@example.com",
+      null,
+      null,
+    ]);
+    await list.queryFn?.({} as never);
+    await detail.queryFn?.({} as never);
+    expect(client.notifications.forProject).toHaveBeenCalledWith("project-1", {
+      page: 2,
+      perPage: undefined,
+      status: "failed",
+      channel: "email",
+      search: "customer@example.com",
+      from: undefined,
+      to: undefined,
+    });
+    expect(client.notifications.get).toHaveBeenCalledWith("project-1", "notification-1");
   });
 });

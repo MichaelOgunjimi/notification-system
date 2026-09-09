@@ -11,6 +11,8 @@ export type OrganizationCapability =
   | "api_key:manage"
   | "project:templates:read"
   | "project:templates:manage"
+  | "project:deliveries:read"
+  | "project:deliveries:manage"
   | "project:usage:read"
   | "project:audit:read"
   | "organization:templates:read"
@@ -432,6 +434,70 @@ export type EventFilter = Readonly<{
   priority?: EventPriority;
   /** Case-insensitive substring match on the event type. */
   eventType?: string;
+  from?: string;
+  to?: string;
+}>;
+
+/** Lifecycle state of one channel-specific delivery instance. */
+export type NotificationStatus =
+  "pending" | "queued" | "processing" | "delivered" | "failed" | "dead_letter" | "cancelled";
+
+/** Channel used to deliver a rendered notification. */
+export type NotificationChannel = "email" | "sms" | "webhook";
+
+/** One notification in the project delivery stream. */
+export type TenantNotification = Readonly<{
+  id: string;
+  eventId: string;
+  eventType: string;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  priority: EventPriority;
+  recipientAddress: string;
+  retryCount: number;
+  maxRetries: number;
+  errorMessage: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+  failedAt: string | null;
+}>;
+
+/** One immutable state transition in a notification's delivery history. */
+export type TenantNotificationLog = Readonly<{
+  id: string;
+  previousStatus: string | null;
+  newStatus: string;
+  workerId: string | null;
+  errorType: string | null;
+  errorMessage: string | null;
+  providerResponse: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}>;
+
+/** Full notification payload and delivery history. */
+export type TenantNotificationDetail = TenantNotification &
+  Readonly<{
+    recipientUserId: string;
+    renderedSubject: string | null;
+    renderedBody: string | null;
+    nextRetryAt: string | null;
+    providerResponse: Record<string, unknown> | null;
+    queuedAt: string | null;
+    processingStartedAt: string | null;
+    updatedAt: string;
+    deadLetterStatus: "active" | "retried" | "discarded" | null;
+    logs: readonly TenantNotificationLog[];
+  }>;
+
+/** Filters and pagination for a project's notification delivery stream. */
+export type NotificationFilter = Readonly<{
+  page?: number;
+  perPage?: number;
+  status?: NotificationStatus;
+  channel?: NotificationChannel;
+  /** Matches recipient, event type, notification id, or event id. */
+  search?: string;
   from?: string;
   to?: string;
 }>;
@@ -987,6 +1053,34 @@ export interface ControlPlaneClient {
      */
     get(projectId: string, eventId: string): Promise<TenantEventDetail>;
   };
+  /** Read-only, project-scoped notification delivery records. */
+  readonly notifications: {
+    /**
+     * Lists notifications for one project, newest first.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional page, status, channel, search, and date filters.
+     * @returns A paginated delivery stream.
+     * @throws {ControlPlaneError} When project delivery access is unavailable.
+     */
+    forProject(
+      projectId: string,
+      filter?: NotificationFilter,
+    ): Promise<Paginated<TenantNotification>>;
+    /**
+     * Fetches one notification with its rendered content and attempt history.
+     *
+     * @param projectId Project that must own the notification.
+     * @param notificationId Stable notification identifier.
+     * @returns Full delivery detail.
+     * @throws {ControlPlaneError} When the notification is not visible to the project.
+     */
+    get(projectId: string, notificationId: string): Promise<TenantNotificationDetail>;
+    /** Requeues a notification whose dead letter is still active. */
+    retry(projectId: string, notificationId: string): Promise<TenantNotificationDetail>;
+    /** Acknowledges an active dead letter without retrying it. */
+    discard(projectId: string, notificationId: string): Promise<TenantNotificationDetail>;
+  };
 }
 
 /** Raw organization payload returned by the FastAPI control-plane endpoint. */
@@ -1212,6 +1306,50 @@ export type ApiTenantEventDetail = {
   created_at: string;
   updated_at: string;
   notifications: ApiTenantEventNotification[];
+};
+
+/** Raw tenant notification payload returned by FastAPI. */
+export type ApiTenantNotification = {
+  id: string;
+  event_id: string;
+  event_type: string;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  priority: EventPriority;
+  recipient_address: string;
+  retry_count: number;
+  max_retries: number;
+  error_message: string | null;
+  created_at: string;
+  delivered_at: string | null;
+  failed_at: string | null;
+};
+
+/** Raw notification state transition returned by FastAPI. */
+export type ApiTenantNotificationLog = {
+  id: string;
+  previous_status: string | null;
+  new_status: string;
+  worker_id: string | null;
+  error_type: string | null;
+  error_message: string | null;
+  provider_response: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+/** Raw notification detail returned by FastAPI. */
+export type ApiTenantNotificationDetail = ApiTenantNotification & {
+  recipient_user_id: string;
+  rendered_subject: string | null;
+  rendered_body: string | null;
+  next_retry_at: string | null;
+  provider_response: Record<string, unknown> | null;
+  queued_at: string | null;
+  processing_started_at: string | null;
+  updated_at: string;
+  dead_letter_status: "active" | "retried" | "discarded" | null;
+  logs: ApiTenantNotificationLog[];
 };
 
 /** Raw project API key payload returned by FastAPI. */

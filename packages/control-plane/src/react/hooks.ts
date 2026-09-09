@@ -5,6 +5,7 @@ import type {
   AnalyticsFilter,
   AuditLogFilter,
   EventFilter,
+  NotificationFilter,
   OrganizationCreate,
   OrganizationInvitationCreate,
   OrganizationRole,
@@ -44,6 +45,8 @@ import {
   projectAuditLogQuery,
   projectEventQuery,
   projectEventsQuery,
+  projectNotificationQuery,
+  projectNotificationsQuery,
   projectsQuery,
   projectTemplateDefaultsQuery,
   projectTemplateQuery,
@@ -911,5 +914,74 @@ export function useProjectEvent(projectId: string | null, eventId: string | null
   return useQuery({
     ...projectEventQuery(client, projectId ?? "pending", eventId ?? "pending"),
     enabled: Boolean(projectId) && Boolean(eventId),
+  });
+}
+
+/**
+ * Loads one page of a project's notification delivery stream.
+ *
+ * @param projectId Project whose notifications should load; null disables the query.
+ * @param filter Page, status, channel, search, and date filters.
+ * @returns TanStack Query result containing a page of notifications.
+ */
+export function useProjectNotifications(projectId: string | null, filter: NotificationFilter = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectNotificationsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one notification with its content and delivery history.
+ *
+ * @param projectId Project that owns the notification; null disables the query.
+ * @param notificationId Notification to load; null disables the query.
+ * @returns TanStack Query result containing notification detail.
+ */
+export function useProjectNotification(projectId: string | null, notificationId: string | null) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectNotificationQuery(client, projectId ?? "pending", notificationId ?? "pending"),
+    enabled: Boolean(projectId) && Boolean(notificationId),
+  });
+}
+
+/** Requeues an active dead-lettered notification and refreshes its delivery caches. */
+export function useRetryProjectNotification() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, notificationId }: { projectId: string; notificationId: string }) =>
+      client.notifications.retry(projectId, notificationId),
+    onSuccess: (notification, variables) => {
+      queryClient.setQueryData(
+        controlPlaneQueryKeys.projectNotification(variables.projectId, variables.notificationId),
+        notification,
+      );
+      return queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectNotifications(variables.projectId),
+      });
+    },
+  });
+}
+
+/** Discards an active dead letter and refreshes its delivery caches. */
+export function useDiscardProjectNotification() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, notificationId }: { projectId: string; notificationId: string }) =>
+      client.notifications.discard(projectId, notificationId),
+    onSuccess: (notification, variables) => {
+      queryClient.setQueryData(
+        controlPlaneQueryKeys.projectNotification(variables.projectId, variables.notificationId),
+        notification,
+      );
+      return queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectNotifications(variables.projectId),
+      });
+    },
   });
 }

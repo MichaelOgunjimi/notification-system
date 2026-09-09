@@ -16,6 +16,9 @@ import type {
   ApiTenantEvent,
   ApiTenantEventDetail,
   ApiTenantEventNotification,
+  ApiTenantNotification,
+  ApiTenantNotificationDetail,
+  ApiTenantNotificationLog,
   ApiTrendPoint,
   ApiTrends,
   ApiUsageEndpointStat,
@@ -29,6 +32,7 @@ import type {
   ControlPlaneClientOptions,
   CreatedProjectApiKey,
   EventFilter,
+  NotificationFilter,
   Organization,
   OrganizationInvitation,
   OrganizationInvitationPreview,
@@ -44,6 +48,9 @@ import type {
   TenantEvent,
   TenantEventDetail,
   TenantEventNotification,
+  TenantNotification,
+  TenantNotificationDetail,
+  TenantNotificationLog,
   TrendPoint,
   Trends,
   TrendsFilter,
@@ -393,6 +400,69 @@ function eventQuery(filter: EventFilter): string {
   if (filter.status) params.set("status", filter.status);
   if (filter.priority) params.set("priority", filter.priority);
   if (filter.eventType) params.set("event_type", filter.eventType);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapTenantNotification(notification: ApiTenantNotification): TenantNotification {
+  return {
+    id: notification.id,
+    eventId: notification.event_id,
+    eventType: notification.event_type,
+    channel: notification.channel,
+    status: notification.status,
+    priority: notification.priority,
+    recipientAddress: notification.recipient_address,
+    retryCount: notification.retry_count,
+    maxRetries: notification.max_retries,
+    errorMessage: notification.error_message,
+    createdAt: notification.created_at,
+    deliveredAt: notification.delivered_at,
+    failedAt: notification.failed_at,
+  };
+}
+
+function mapTenantNotificationLog(log: ApiTenantNotificationLog): TenantNotificationLog {
+  return {
+    id: log.id,
+    previousStatus: log.previous_status,
+    newStatus: log.new_status,
+    workerId: log.worker_id,
+    errorType: log.error_type,
+    errorMessage: log.error_message,
+    providerResponse: log.provider_response,
+    metadata: log.metadata,
+    createdAt: log.created_at,
+  };
+}
+
+function mapTenantNotificationDetail(
+  notification: ApiTenantNotificationDetail,
+): TenantNotificationDetail {
+  return {
+    ...mapTenantNotification(notification),
+    recipientUserId: notification.recipient_user_id,
+    renderedSubject: notification.rendered_subject,
+    renderedBody: notification.rendered_body,
+    nextRetryAt: notification.next_retry_at,
+    providerResponse: notification.provider_response,
+    queuedAt: notification.queued_at,
+    processingStartedAt: notification.processing_started_at,
+    updatedAt: notification.updated_at,
+    deadLetterStatus: notification.dead_letter_status,
+    logs: notification.logs.map(mapTenantNotificationLog),
+  };
+}
+
+function notificationQuery(filter: NotificationFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.status) params.set("status", filter.status);
+  if (filter.channel) params.set("channel", filter.channel);
+  if (filter.search) params.set("search", filter.search);
   if (filter.from) params.set("from", filter.from);
   if (filter.to) params.set("to", filter.to);
   const query = params.toString();
@@ -842,6 +912,38 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       mapTenantEventDetail(
         await this.get<ApiTenantEventDetail>(
           `/projects/${encodeURIComponent(projectId)}/events/${encodeURIComponent(eventId)}`,
+        ),
+      ),
+  };
+
+  readonly notifications = {
+    forProject: async (
+      projectId: string,
+      filter: NotificationFilter = {},
+    ): Promise<Paginated<TenantNotification>> => {
+      const page = await this.get<ApiPaginated<ApiTenantNotification>>(
+        `/projects/${encodeURIComponent(projectId)}/notifications${notificationQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantNotification);
+    },
+    get: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.get<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}`,
+        ),
+      ),
+    retry: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.request<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}/retry`,
+          "POST",
+        ),
+      ),
+    discard: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.request<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}/discard`,
+          "POST",
         ),
       ),
   };

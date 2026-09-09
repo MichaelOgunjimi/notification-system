@@ -5,6 +5,7 @@ import type {
   AuditLogFilter,
   ControlPlaneClient,
   EventFilter,
+  NotificationFilter,
   OrganizationTemplateListOptions,
   ProjectApiKeyListOptions,
   TemplateListOptions,
@@ -66,6 +67,10 @@ export const controlPlaneQueryKeys = {
   projectEvent: (projectId: string, eventId: string) =>
     ["control-plane", "projects", projectId, "events", eventId] as const,
   projectEvents: (projectId: string) => ["control-plane", "projects", projectId, "events"] as const,
+  projectNotification: (projectId: string, notificationId: string) =>
+    ["control-plane", "projects", projectId, "notifications", notificationId] as const,
+  projectNotifications: (projectId: string) =>
+    ["control-plane", "projects", projectId, "notifications"] as const,
   organizationEvents: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "events"] as const,
 };
@@ -785,6 +790,73 @@ export function projectEventQuery(client: ControlPlaneClient, projectId: string,
   return queryOptions({
     queryKey: controlPlaneQueryKeys.projectEvent(projectId, eventId),
     queryFn: () => client.events.get(projectId, eventId),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+function notificationKeyParts(filter: NotificationFilter) {
+  const args = {
+    page: filter.page,
+    perPage: filter.perPage,
+    status: filter.status,
+    channel: filter.channel,
+    search: filter.search,
+    from: filter.from,
+    to: filter.to,
+  };
+  return {
+    args,
+    key: [
+      args.page ?? 1,
+      args.perPage ?? 25,
+      args.status ?? null,
+      args.channel ?? null,
+      args.search ?? null,
+      args.from ?? null,
+      args.to ?? null,
+    ] as const,
+  };
+}
+
+/**
+ * Builds query options for one page of a project's notification stream.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose deliveries should load.
+ * @param filter Page, lifecycle, channel, search, and date filters.
+ * @returns TanStack Query options with stable filter-aware keys and live refresh.
+ */
+export function projectNotificationsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: NotificationFilter,
+) {
+  const { args, key } = notificationKeyParts(filter);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectNotifications(projectId), ...key] as const,
+    queryFn: () => client.notifications.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one notification and its delivery history.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project that owns the notification.
+ * @param notificationId Notification to load.
+ * @returns TanStack Query options scoped to both identifiers.
+ */
+export function projectNotificationQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  notificationId: string,
+) {
+  return queryOptions({
+    queryKey: controlPlaneQueryKeys.projectNotification(projectId, notificationId),
+    queryFn: () => client.notifications.get(projectId, notificationId),
     retry: retryTransientFailure,
     ...tenantLiveness,
   });
