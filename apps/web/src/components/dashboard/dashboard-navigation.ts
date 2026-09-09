@@ -43,7 +43,12 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
     path: "templates",
     capability: "project:templates:read",
   },
-  { label: "Delivery", icon: PaperPlaneTilt, path: "delivery", comingSoon: true },
+  {
+    label: "Delivery",
+    icon: PaperPlaneTilt,
+    path: "delivery",
+    capability: "project:deliveries:read",
+  },
   { label: "Usage", icon: Gauge, path: "usage", capability: "project:usage:read" },
   { label: "Alerts", icon: BellRinging, path: "alerts", comingSoon: true },
   { label: "Analytics", icon: ChartLineUp, path: "analytics", comingSoon: true },
@@ -90,5 +95,12 @@ const NAV_TITLES: Readonly<Record<string, string>> = Object.fromEntries(
  * @returns Title for the current surface, defaulting to the overview label.
  */
 export function stageTitleForSuffix(suffix: string): string {
-  return AUXILIARY_TITLES[suffix] ?? NAV_TITLES[suffix] ?? NAV_TITLES[""];
+  const directTitle = AUXILIARY_TITLES[suffix] ?? NAV_TITLES[suffix];
+  if (directTitle) return directTitle;
+
+  const parentRoute = [...Object.keys(AUXILIARY_TITLES), ...Object.keys(NAV_TITLES)]
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length)
+    .find((path) => suffix.startsWith(`${path}/`));
+  return parentRoute ? (AUXILIARY_TITLES[parentRoute] ?? NAV_TITLES[parentRoute]) : NAV_TITLES[""];
 }

@@ -123,7 +123,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   function renderNavItem(item: DashboardNavItem) {
     if (item.capability && !capabilities.has(item.capability)) return null;
-    const isActive = activeSuffix === item.path;
+    const isActive = item.path
+      ? activeSuffix === item.path || activeSuffix.startsWith(`${item.path}/`)
+      : activeSuffix === "";
     const Icon = item.icon;
 
     if (item.comingSoon) {

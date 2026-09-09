@@ -132,7 +132,9 @@ export function MobileNavSheet({
     }
 
     const href = item.path ? `${currentDashboardPath}/${item.path}` : currentDashboardPath;
-    const isActive = activeSuffix === item.path;
+    const isActive = item.path
+      ? activeSuffix === item.path || activeSuffix.startsWith(`${item.path}/`)
+      : activeSuffix === "";
     return (
       <Link
         key={item.label}

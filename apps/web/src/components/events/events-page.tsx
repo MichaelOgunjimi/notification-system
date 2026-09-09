@@ -167,6 +167,7 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
     map.set(project.id, project);
     return map;
   }, [projects, project]);
+  const selectedProject = projectsById.get(scopeProjectId) ?? project;
 
   const from = useMemo(() => rangeFrom(state.range), [state.range]);
 
@@ -214,8 +215,11 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
           <CaretRight size={16} weight="bold" />
         </span>
         <span className="events-page__scope-text">
-          <small>{wantsAllProjects ? "Scope" : "Project"}</small>
-          <strong>{wantsAllProjects ? "All projects" : project.name}</strong>
+          <small>Event scope</small>
+          <strong>{wantsAllProjects ? "All projects" : selectedProject.name}</strong>
+        </span>
+        <span className="events-page__scope-context">
+          {wantsAllProjects ? organization.name : "Project event stream"}
         </span>
         {canReadOrganization ? (
           <AppSelect

@@ -321,3 +321,21 @@
   font-size: 11.5px;
   padding: 14px 18px;
 }
+
+.event-detail-page__notification-row {
+  cursor: pointer;
+}
+
+.event-detail-page__notification-row:hover td,
+.event-detail-page__notification-row:focus-visible td {
+  background: var(--dashboard-overlay);
+}
+
+.event-detail-page__notification-row:focus-visible {
+  outline: 2px solid var(--dashboard-accent);
+  outline-offset: -2px;
+}
+
+.event-detail-page__notification-id {
+  color: var(--dashboard-accent);
+}

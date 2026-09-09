@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react";
 import type { Organization, Project } from "@beaco/control-plane";
 import { useProjectEvent } from "@beaco/control-plane/react";
@@ -40,6 +41,7 @@ function statusTone(status: string): "success" | "danger" | "warning" | "muted" 
  * @returns The event detail surface.
  */
 export function EventDetailPage({ organization, project, eventId }: EventDetailPageProps) {
+  const router = useRouter();
   const query = useProjectEvent(project.id, eventId);
   const backHref = `/app/${organization.slug}/${project.slug}/events`;
 
@@ -70,6 +72,9 @@ export function EventDetailPage({ organization, project, eventId }: EventDetailP
   }
 
   const event = query.data;
+  function notificationHref(notificationId: string): string {
+    return `/app/${organization.slug}/${project.slug}/delivery/${notificationId}`;
+  }
   const timeline: ReadonlyArray<{ step: string; done: boolean }> = [
     { step: "Accepted", done: true },
     { step: "Processing", done: event.status !== "accepted" },
@@ -164,8 +169,22 @@ export function EventDetailPage({ organization, project, eventId }: EventDetailP
               </thead>
               <tbody>
                 {event.notifications.map((notification) => (
-                  <tr key={notification.id}>
-                    <td className="mono">{notification.id.slice(0, 18)}…</td>
+                  <tr
+                    key={notification.id}
+                    className="event-detail-page__notification-row"
+                    tabIndex={0}
+                    role="link"
+                    aria-label={`Open ${notification.channel} delivery to ${notification.recipientAddress}`}
+                    onClick={() => router.push(notificationHref(notification.id))}
+                    onKeyDown={(keyEvent) => {
+                      if (keyEvent.key === "Enter") {
+                        router.push(notificationHref(notification.id));
+                      }
+                    }}
+                  >
+                    <td className="mono event-detail-page__notification-id">
+                      {notification.id.slice(0, 18)}…
+                    </td>
                     <td>{notification.channel}</td>
                     <td className="mono">{notification.recipientAddress}</td>
                     <td>
