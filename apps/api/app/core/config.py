@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     # Email
     EMAIL_PROVIDER: str = "auto"
     RESEND_API_KEY: str = ""
-    EMAIL_FROM_ADDRESS: str = "notifications@yourdomain.com"
+    EMAIL_FROM_ADDRESS: str = "no-reply@beaco.michaelogunjimi.com"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025
     SMTP_USERNAME: str = ""
