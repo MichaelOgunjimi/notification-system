@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { CaretRight } from "@phosphor-icons/react";
 import type {
   EventPriority,
@@ -13,6 +13,7 @@ import type {
 import { useOrganizationEvents, useProjectEvents } from "@beaco/control-plane/react";
 import { AppSelect } from "@/components/ui/app-select";
 import { TablePager } from "@/components/ui/table-pager";
+import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { relativeTime } from "@/lib/audit-log";
 import "./events-page.css";
 
@@ -94,9 +95,7 @@ function useEventsUrlState(): {
   state: EventsUrlState;
   patch: (next: Partial<EventsUrlState>) => void;
 } {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const { params, replace } = useRememberedSearchParams();
 
   const state = useMemo<EventsUrlState>(() => {
     const perPage = Number(params.get("perPage"));
@@ -131,8 +130,7 @@ function useEventsUrlState(): {
     if (merged.page > 1) search.set("page", String(merged.page));
     if (merged.perPage !== DEFAULT_PER_PAGE) search.set("perPage", String(merged.perPage));
 
-    const query = search.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    replace(search);
   }
 
   return { state, patch };

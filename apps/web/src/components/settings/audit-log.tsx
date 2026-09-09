@@ -47,7 +47,7 @@ const ACTOR_FILTERS: ReadonlyArray<{ value: string; label: string }> = [
  * @returns The audit log surface.
  */
 export function AuditLog({ organization, project, projects }: AuditLogProps) {
-  const { state, patch } = useLogUrlState();
+  const { state, patch } = useLogUrlState(true);
   const canReadOrganization = useMemo(
     () => new Set(organization.capabilities).has("organization:audit:read"),
     [organization.capabilities],

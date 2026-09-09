@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CaretRight, ChatText, Code, Envelope, Globe, Plus } from "@phosphor-icons/react";
 import type { Organization, Project, Template, TemplateChannel } from "@beaco/control-plane";
 import {
@@ -15,6 +14,7 @@ import {
 import { AppSelect } from "@/components/ui/app-select";
 import { TablePager } from "@/components/ui/table-pager";
 import { useToast } from "@/components/ui/toast";
+import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { relativeTime } from "@/lib/audit-log";
 import { TemplateFormDialog } from "./template-form-dialog";
 import "./templates-page.css";
@@ -53,9 +53,7 @@ function useTemplatesUrlState(): {
   state: TemplatesUrlState;
   patch: (next: Partial<TemplatesUrlState>) => void;
 } {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const { params, replace } = useRememberedSearchParams();
 
   const state = useMemo<TemplatesUrlState>(() => {
     const perPage = Number(params.get("perPage"));
@@ -81,8 +79,7 @@ function useTemplatesUrlState(): {
     if (merged.page > 1) search.set("page", String(merged.page));
     if (merged.perPage !== DEFAULT_PER_PAGE) search.set("perPage", String(merged.perPage));
 
-    const query = search.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    replace(search);
   }
 
   return { state, patch };

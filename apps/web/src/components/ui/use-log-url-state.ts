@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { DateRangeKey, LogFilterValue } from "./log-filters";
+import { useRememberedSearchParams } from "./use-remembered-search-params";
 
 /** Selectable page sizes for the log surfaces. */
 export const LOG_PER_PAGE_OPTIONS = [10, 25, 50] as const;
@@ -31,15 +31,14 @@ function parseRange(value: string | null): DateRangeKey {
  * `router.replace` so the view survives back-navigation and refresh and stays
  * linkable. Every change except paging and page-size resets to page 1.
  *
+ * @param rememberFilters Whether this surface should restore its last filters from a cookie.
  * @returns The current `state` and a `patch` updater.
  */
-export function useLogUrlState(): {
+export function useLogUrlState(rememberFilters = false): {
   state: LogUrlState;
   patch: (next: Partial<LogUrlState>) => void;
 } {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const { params, replace } = useRememberedSearchParams(rememberFilters);
 
   const state = useMemo<LogUrlState>(() => {
     const perPage = Number(params.get("perPage"));
@@ -75,10 +74,9 @@ export function useLogUrlState(): {
       if (merged.page > 1) search.set("page", String(merged.page));
       if (merged.perPage !== DEFAULT_PER_PAGE) search.set("perPage", String(merged.perPage));
 
-      const query = search.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      replace(search);
     },
-    [router, pathname, state],
+    [replace, state],
   );
 
   return { state, patch };

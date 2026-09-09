@@ -29,6 +29,7 @@ import {
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { TablePager } from "@/components/ui/table-pager";
 import { useToast } from "@/components/ui/toast";
+import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { ApiKeyCreateDialog } from "./api-key-create-dialog";
 import { ApiKeyEditDialog } from "./api-key-edit-dialog";
 import "./api-keys-settings.css";
@@ -105,10 +106,18 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   );
   const canManage = capabilities.has("api_key:manage");
 
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState<number>(PER_PAGE_OPTIONS[0]);
-  const [environment, setEnvironment] = useState<"" | ProjectApiKeyEnvironment>("");
-  const [status, setStatus] = useState<"" | ProjectApiKeyStatus>("");
+  const { params, replace } = useRememberedSearchParams();
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const requestedPerPage = Number(params.get("perPage"));
+  const perPage = (PER_PAGE_OPTIONS as readonly number[]).includes(requestedPerPage)
+    ? requestedPerPage
+    : PER_PAGE_OPTIONS[0];
+  const environmentValue = params.get("environment");
+  const environment: "" | ProjectApiKeyEnvironment =
+    environmentValue === "live" || environmentValue === "test" ? environmentValue : "";
+  const statusValue = params.get("status");
+  const status: "" | ProjectApiKeyStatus =
+    statusValue === "active" || statusValue === "revoked" ? statusValue : "";
   const [createOpen, setCreateOpen] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreatedProjectApiKey | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ProjectApiKey | null>(null);
@@ -176,9 +185,17 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   const noMatches = resultEmpty && filtersActive;
   const keysById = new Map(items.map((apiKey) => [apiKey.id, apiKey]));
 
-  function updateFilter(next: () => void) {
-    next();
-    setPage(1);
+  function patch(next: Record<string, string | number>) {
+    const updated = new URLSearchParams(params.toString());
+    updated.delete("page");
+    for (const [key, value] of Object.entries(next)) {
+      if (value === "" || value === 1 || (key === "perPage" && value === PER_PAGE_OPTIONS[0])) {
+        updated.delete(key);
+      } else {
+        updated.set(key, String(value));
+      }
+    }
+    replace(updated);
   }
 
   return (
@@ -211,7 +228,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
                 key={option.value || "all"}
                 type="button"
                 data-active={environment === option.value || undefined}
-                onClick={() => updateFilter(() => setEnvironment(option.value))}
+                onClick={() => patch({ environment: option.value })}
               >
                 {option.label}
               </button>
@@ -223,7 +240,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
                 key={option.value || "all"}
                 type="button"
                 data-active={status === option.value || undefined}
-                onClick={() => updateFilter(() => setStatus(option.value))}
+                onClick={() => patch({ status: option.value })}
               >
                 {option.label}
               </button>
@@ -266,15 +283,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
             <Key size={22} />
           </span>
           <strong>No keys match these filters</strong>
-          <button
-            type="button"
-            onClick={() =>
-              updateFilter(() => {
-                setEnvironment("");
-                setStatus("");
-              })
-            }
-          >
+          <button type="button" onClick={() => patch({ environment: "", status: "" })}>
             Clear filters
           </button>
         </div>
@@ -367,8 +376,8 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
             perPage={perPage}
             perPageOptions={PER_PAGE_OPTIONS}
             busy={apiKeys.isFetching}
-            onPageChange={setPage}
-            onPerPageChange={(next) => updateFilter(() => setPerPage(next))}
+            onPageChange={(next) => patch({ page: next })}
+            onPerPageChange={(next) => patch({ perPage: next })}
           />
         </div>
       ) : null}
@@ -381,7 +390,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
           onCreated={(created) => {
             setCreatedKey(created);
             setCreateOpen(false);
-            setPage(1);
+            patch({ page: 1 });
           }}
         />
       ) : null}

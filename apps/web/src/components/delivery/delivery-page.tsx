@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { CaretRight } from "@phosphor-icons/react";
 import type {
   NotificationChannel,
@@ -13,6 +13,7 @@ import type {
 import { useProjectNotifications } from "@beaco/control-plane/react";
 import { AppSelect } from "@/components/ui/app-select";
 import { TablePager } from "@/components/ui/table-pager";
+import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { relativeTime } from "@/lib/audit-log";
 import "./delivery-page.css";
 
@@ -49,8 +50,7 @@ function rangeStart(range: keyof typeof RANGE_MS | "all"): string | undefined {
 /** Project delivery stream linking every notification back to its source event. */
 export function DeliveryPage({ organization, project }: DeliveryPageProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const { params, replace } = useRememberedSearchParams();
   const status = STATUS_OPTIONS.some((option) => option.value === params.get("status"))
     ? (params.get("status") as NotificationStatus | "")
     : "";
@@ -92,8 +92,7 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
         updated.set(key, String(value));
       }
     }
-    const queryString = updated.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    replace(updated);
   }
 
   function notificationHref(notification: TenantNotification) {

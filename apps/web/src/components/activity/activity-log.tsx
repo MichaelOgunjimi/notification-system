@@ -59,7 +59,7 @@ function metaString(entry: AuditLogEntry, key: string): string | null {
  * @returns The activity surface.
  */
 export function ActivityLog({ organization, project, projects }: ActivityLogProps) {
-  const { state, patch } = useLogUrlState();
+  const { state, patch } = useLogUrlState(true);
   const canReadOrganization = useMemo(
     () => new Set(organization.capabilities).has("organization:audit:read"),
     [organization.capabilities],
