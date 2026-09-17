@@ -266,6 +266,30 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
               : "—"}
           </strong>
         </div>
+        <div className="usage-page__stat">
+          <span>p50 latency</span>
+          <strong>
+            {analytics.data?.p50DeliveryLatencyMs != null
+              ? `${Math.round(analytics.data.p50DeliveryLatencyMs)}ms`
+              : "—"}
+          </strong>
+        </div>
+        <div className="usage-page__stat">
+          <span>p95 latency</span>
+          <strong>
+            {analytics.data?.p95DeliveryLatencyMs != null
+              ? `${Math.round(analytics.data.p95DeliveryLatencyMs)}ms`
+              : "—"}
+          </strong>
+        </div>
+        <div className="usage-page__stat">
+          <span>p99 latency</span>
+          <strong>
+            {analytics.data?.p99DeliveryLatencyMs != null
+              ? `${Math.round(analytics.data.p99DeliveryLatencyMs)}ms`
+              : "—"}
+          </strong>
+        </div>
       </div>
 
       <div className="usage-page__charts">

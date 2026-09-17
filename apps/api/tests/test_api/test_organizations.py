@@ -1,8 +1,9 @@
 """Organization-wide membership, project, and observability authorization tests."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,7 @@ async def _seed_delivered_notification(
     *,
     channel: NotificationChannel,
     created_at: datetime | None = None,
+    latency_seconds: float = 0.0,
 ) -> None:
     now = created_at or utc_now()
     event = Event(
@@ -48,7 +50,7 @@ async def _seed_delivered_notification(
             recipient_address="user@test.com",
             status=NotificationStatus.DELIVERED,
             queued_at=now,
-            delivered_at=now,
+            delivered_at=now + timedelta(seconds=latency_seconds),
             created_at=now,
             updated_at=now,
         )
@@ -602,6 +604,46 @@ async def test_project_analytics_aggregates_across_the_projects_keys(
     filtered_channels = {row["channel"]: row for row in filtered.json()["channel_stats"]}
     assert "sms" not in filtered_channels
     assert filtered_channels["email"]["delivered"] == 1
+
+
+async def test_project_analytics_computes_latency_percentiles(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis,
+) -> None:
+    owner = User(email="latency-owner@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Latency Co", slug="latency-co")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Production", slug="latency-production"
+    )
+    key = ApiKey(
+        project_id=project.id,
+        created_by_user_id=owner.id,
+        key_hash="latency-key-hash",
+        key_prefix="latency-ke",
+        name="Key",
+    )
+    db.add(key)
+    await db.flush()
+    for latency in range(1, 11):  # 1s..10s, evenly spaced for exact percentile math
+        await _seed_delivered_notification(
+            db, key, channel=NotificationChannel.EMAIL, latency_seconds=latency
+        )
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/analytics",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["avg_delivery_latency_ms"] == pytest.approx(5500.0)
+    assert body["p50_delivery_latency_ms"] == pytest.approx(5500.0)
+    assert body["p95_delivery_latency_ms"] == pytest.approx(9550.0)
+    assert body["p99_delivery_latency_ms"] == pytest.approx(9910.0)
 
 
 async def test_project_trends_aggregate_across_the_projects_keys(

@@ -342,6 +342,9 @@ export type AnalyticsSummary = Readonly<{
   successRate: number;
   /** Average time from queued to delivered, in milliseconds; null with no data. */
   avgDeliveryLatencyMs: number | null;
+  p50DeliveryLatencyMs: number | null;
+  p95DeliveryLatencyMs: number | null;
+  p99DeliveryLatencyMs: number | null;
   channelStats: readonly ChannelStat[];
 }>;
 
@@ -1233,6 +1236,9 @@ export type ApiAnalyticsSummary = {
   dlq_active: number;
   success_rate: number;
   avg_delivery_latency_ms: number | null;
+  p50_delivery_latency_ms: number | null;
+  p95_delivery_latency_ms: number | null;
+  p99_delivery_latency_ms: number | null;
   channel_stats: ApiChannelStat[];
 };
 

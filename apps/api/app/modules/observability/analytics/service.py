@@ -97,9 +97,15 @@ async def get_analytics(
         "epoch",
         func.age(Notification.delivered_at, Notification.queued_at),
     )
-    latency_result = (
+    latency_ms = latency_expr * 1000
+    latency_row = (
         await db.execute(
-            select(func.avg(latency_expr * 1000).label("avg_ms"))
+            select(
+                func.avg(latency_ms).label("avg_ms"),
+                func.percentile_cont(0.5).within_group(latency_ms).label("p50_ms"),
+                func.percentile_cont(0.95).within_group(latency_ms).label("p95_ms"),
+                func.percentile_cont(0.99).within_group(latency_ms).label("p99_ms"),
+            )
             .join(Event, col(Notification.event_id) == col(Event.id))
             .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
@@ -109,8 +115,11 @@ async def get_analytics(
             # Exclude outliers — notifications delayed by system downtime / worker issues
             .where(latency_expr < 300)  # cap at 5 minutes
         )
-    ).scalar_one_or_none()
-    avg_latency = float(latency_result) if latency_result is not None else None
+    ).one()
+    avg_latency = float(latency_row.avg_ms) if latency_row.avg_ms is not None else None
+    p50_latency = float(latency_row.p50_ms) if latency_row.p50_ms is not None else None
+    p95_latency = float(latency_row.p95_ms) if latency_row.p95_ms is not None else None
+    p99_latency = float(latency_row.p99_ms) if latency_row.p99_ms is not None else None
 
     dlq_active = (
         await db.execute(
@@ -179,6 +188,9 @@ async def get_analytics(
         dlq_active=dlq_active,
         success_rate=round(success_rate, 1),
         avg_delivery_latency_ms=round(avg_latency, 1) if avg_latency is not None else None,
+        p50_delivery_latency_ms=round(p50_latency, 1) if p50_latency is not None else None,
+        p95_delivery_latency_ms=round(p95_latency, 1) if p95_latency is not None else None,
+        p99_delivery_latency_ms=round(p99_latency, 1) if p99_latency is not None else None,
         channel_stats=channel_stats,
     )
 

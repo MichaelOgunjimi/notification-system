@@ -300,6 +300,9 @@ function mapAnalyticsSummary(summary: ApiAnalyticsSummary): AnalyticsSummary {
     dlqActive: summary.dlq_active,
     successRate: summary.success_rate,
     avgDeliveryLatencyMs: summary.avg_delivery_latency_ms,
+    p50DeliveryLatencyMs: summary.p50_delivery_latency_ms,
+    p95DeliveryLatencyMs: summary.p95_delivery_latency_ms,
+    p99DeliveryLatencyMs: summary.p99_delivery_latency_ms,
     channelStats: summary.channel_stats.map(mapChannelStat),
   };
 }

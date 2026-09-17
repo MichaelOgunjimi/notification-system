@@ -40,6 +40,9 @@ class AnalyticsResponse(BaseModel):
     # Derived
     success_rate: float  # delivered / (delivered + failed) * 100, or 100.0 if none
     avg_delivery_latency_ms: float | None  # average latency for today's deliveries
+    p50_delivery_latency_ms: float | None
+    p95_delivery_latency_ms: float | None
+    p99_delivery_latency_ms: float | None
 
     # Per-channel breakdown
     channel_stats: list[ChannelStat]

@@ -701,6 +701,9 @@ describe("createControlPlaneClient", () => {
         dlq_active: 1,
         success_rate: 83.3,
         avg_delivery_latency_ms: 412.5,
+        p50_delivery_latency_ms: 380,
+        p95_delivery_latency_ms: 900,
+        p99_delivery_latency_ms: 1200,
         channel_stats: [{ channel: "email", delivered: 5, failed: 1, pending: 0, dead_letter: 0 }],
       }),
     );
@@ -720,6 +723,9 @@ describe("createControlPlaneClient", () => {
       dlqActive: 1,
       successRate: 83.3,
       avgDeliveryLatencyMs: 412.5,
+      p50DeliveryLatencyMs: 380,
+      p95DeliveryLatencyMs: 900,
+      p99DeliveryLatencyMs: 1200,
       channelStats: [{ channel: "email", delivered: 5, failed: 1, pending: 0, deadLetter: 0 }],
     });
     expect(fetcher).toHaveBeenCalledWith(
