@@ -132,27 +132,28 @@
 }
 
 .api-keys__filter-group {
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 9px;
   display: inline-flex;
-  gap: 4px;
+  padding: 3px;
 }
 
 .api-keys__filter-group button {
-  background: var(--dashboard-overlay);
-  border: 1px solid var(--dashboard-line-strong);
-  border-radius: 999px;
-  color: var(--dashboard-muted-bright);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--dashboard-muted);
   font-size: 11px;
-  padding: 5px 13px;
+  min-height: 30px;
+  padding: 0 11px;
   transition:
     background 140ms ease,
-    border-color 140ms ease,
     color 140ms ease;
 }
 
 .api-keys__filter-group button[data-active] {
-  background: color-mix(in srgb, var(--dashboard-accent) 14%, transparent);
-  border-color: var(--dashboard-accent);
-  color: var(--dashboard-ink);
+  background: var(--dashboard-overlay);
+  color: var(--dashboard-accent);
 }
 
 .api-keys__row-main small.api-keys__rotated {
