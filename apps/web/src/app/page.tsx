@@ -9,12 +9,11 @@ import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr/EnvelopeSimple";
 import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint";
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo";
-import { ThemeToggle } from "@beaco/theme";
-
 import AnimateOnScroll, { StaggerGroup, StaggerItem } from "@/components/landing/animate-on-scroll";
+import ArrowButton from "@/components/landing/arrow-button";
 import HeroBackground from "@/components/landing/hero-background";
-import MobileNav from "@/components/landing/mobile-nav";
 import PublicFooter from "@/components/landing/public-footer";
+import SiteNavActions from "@/components/landing/site-nav-actions";
 import BrandLogo from "@/components/brand/brand-logo";
 import { docsUrl } from "@/lib/urls";
 import "@/components/landing/landing.css";
@@ -85,15 +84,6 @@ const requestExample = `curl -X POST https://api.beaco.dev/v1/events \\
     "data": { "invoice_id": "inv_84Q2" }
   }'`;
 
-const ArrowButton = ({ label, className = "" }: { label: string; className?: string }) => (
-  <span className={`site-primary-action ${className}`}>
-    <span>{label}</span>
-    <span className="site-primary-action-icon">
-      <ArrowRight size={14} weight="bold" aria-hidden="true" />
-    </span>
-  </span>
-);
-
 export default function Home() {
   return (
     <main
@@ -140,25 +130,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="ml-auto hidden items-center gap-2 md:flex">
-            <ThemeToggle />
-            <Link
-              href="/login"
-              className="rounded-[9px] px-3 py-2 text-[12px] font-medium text-[var(--site-muted)] transition-colors duration-300 hover:text-[var(--site-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
-            >
-              Sign in
-            </Link>
-            <Link
-              href={docsUrl("/quickstart")}
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
-            >
-              <ArrowButton label="Start building" />
-            </Link>
-          </div>
-
-          <div className="ml-auto md:hidden">
-            <MobileNav links={navLinks} />
-          </div>
+          <SiteNavActions links={navLinks} />
         </nav>
       </header>
 
