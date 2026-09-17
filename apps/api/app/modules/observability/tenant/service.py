@@ -1098,7 +1098,7 @@ async def get_project_event(
 def _notification_filters(
     *,
     project_id: uuid.UUID,
-    status: NotificationStatus | None,
+    status: list[NotificationStatus] | None,
     channel: NotificationChannel | None,
     search: str | None,
     from_: datetime | None,
@@ -1109,8 +1109,8 @@ def _notification_filters(
             _api_key_scope_subquery(project_id=project_id, organization_id=None)
         )
     ]
-    if status is not None:
-        filters.append(col(Notification.status) == status)
+    if status:
+        filters.append(col(Notification.status).in_(status))
     if channel is not None:
         filters.append(col(Notification.channel) == channel)
     if search:
@@ -1136,7 +1136,7 @@ async def get_project_notifications(
     *,
     user_id: uuid.UUID,
     project_id: uuid.UUID,
-    status: NotificationStatus | None,
+    status: list[NotificationStatus] | None,
     channel: NotificationChannel | None,
     search: str | None,
     from_: datetime | None,

@@ -477,13 +477,17 @@ async def get_project_notifications(
     db: SessionDep,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=25, ge=1, le=100),
-    status_: NotificationStatus | None = Query(default=None, alias="status"),
+    status_: list[NotificationStatus] | None = Query(default=None, alias="status"),
     channel: NotificationChannel | None = Query(default=None),
     search: str | None = Query(default=None),
     from_: datetime | None = Query(default=None, alias="from"),
     to: datetime | None = Query(default=None, alias="to"),
 ) -> Page[NotificationView]:
-    """List delivery instances visible inside one project."""
+    """List delivery instances visible inside one project.
+
+    `status` may repeat (`?status=failed&status=dead_letter`) to match any of
+    several states — the Alerts surface uses this to show both at once.
+    """
     return await service.get_project_notifications(
         db,
         user_id=user.id,

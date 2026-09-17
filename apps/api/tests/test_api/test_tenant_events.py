@@ -261,6 +261,32 @@ async def test_project_notifications_are_scoped_and_searchable(
     assert body["items"][0]["event_type"] == "invoice.ready"
 
 
+async def test_project_notifications_filters_by_multiple_statuses(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, _org, project, key = await _seed_project(db, slug="delivery-issues")
+    await _seed_event(db, key, event_type="ok.sent")
+    await _seed_event(db, key, event_type="failed.sent", with_failed_notification=True)
+    dead_event = await _seed_event(db, key, event_type="dead.sent")
+    dead_notification = (
+        await db.execute(select(Notification).where(Notification.event_id == dead_event.id))
+    ).scalar_one()
+    dead_notification.status = NotificationStatus.DEAD_LETTER
+    db.add(dead_notification)
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/notifications",
+        params=[("status", "failed"), ("status", "dead_letter")],
+        headers=await _auth(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert {item["event_type"] for item in body["items"]} == {"failed.sent", "dead.sent"}
+
+
 async def test_project_notification_detail_includes_attempt_evidence(
     client: AsyncClient, db: AsyncSession, mock_redis
 ) -> None:

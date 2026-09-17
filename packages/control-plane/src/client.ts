@@ -460,7 +460,11 @@ function notificationQuery(filter: NotificationFilter): string {
   const params = new URLSearchParams();
   if (filter.page !== undefined) params.set("page", String(filter.page));
   if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
-  if (filter.status) params.set("status", filter.status);
+  if (filter.status) {
+    for (const status of Array.isArray(filter.status) ? filter.status : [filter.status]) {
+      params.append("status", status);
+    }
+  }
   if (filter.channel) params.set("channel", filter.channel);
   if (filter.search) params.set("search", filter.search);
   if (filter.from) params.set("from", filter.from);

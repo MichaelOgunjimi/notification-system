@@ -26,6 +26,8 @@ type DeliveryDetailPageProps = Readonly<{
   organization: Organization;
   project: Project;
   notificationId: string;
+  /** Which nav surface this detail was opened from, for the back link and its label. */
+  basePath?: "delivery" | "alerts";
 }>;
 
 function statusTone(status: NotificationStatus): "success" | "danger" | "warning" | "muted" {
@@ -44,6 +46,7 @@ export function DeliveryDetailPage({
   organization,
   project,
   notificationId,
+  basePath = "delivery",
 }: DeliveryDetailPageProps) {
   const toast = useToast();
   const [previewMode, setPreviewMode] = useState<"preview" | "source">("preview");
@@ -56,7 +59,8 @@ export function DeliveryDetailPage({
     [organization.capabilities],
   );
   const canRecover = capabilities.has("project:deliveries:manage");
-  const deliveryHref = `/app/${organization.slug}/${project.slug}/delivery`;
+  const deliveryHref = `/app/${organization.slug}/${project.slug}/${basePath}`;
+  const backLabel = basePath === "alerts" ? "All alerts" : "All deliveries";
 
   async function handleRecovery() {
     if (!recoveryAction) return;
@@ -77,7 +81,7 @@ export function DeliveryDetailPage({
       <div className="delivery-detail">
         <Link href={deliveryHref} className="delivery-detail__back">
           <ArrowLeft size={13} />
-          All deliveries
+          {backLabel}
         </Link>
         <p className="delivery-detail__empty">
           {query.isPending
@@ -96,7 +100,7 @@ export function DeliveryDetailPage({
     <div className="delivery-detail">
       <Link href={deliveryHref} className="delivery-detail__back">
         <ArrowLeft size={13} />
-        All deliveries
+        {backLabel}
       </Link>
 
       <header className="delivery-detail__heading">
@@ -163,22 +167,25 @@ export function DeliveryDetailPage({
           </header>
           <div className="delivery-detail__timeline">
             {notification.logs.length ? (
-              notification.logs.map((log, index) => (
-                <article key={log.id}>
-                  <span
-                    className="delivery-detail__node"
-                    data-tone={statusTone(log.newStatus as NotificationStatus)}
-                  >
-                    {index + 1}
-                  </span>
-                  <div>
-                    <strong>{log.newStatus.replace("_", " ")}</strong>
-                    <time>{absoluteFormatter.format(new Date(log.createdAt))}</time>
-                    {log.errorMessage ? <p>{log.errorMessage}</p> : null}
-                    {log.workerId ? <small>Worker {log.workerId}</small> : null}
-                  </div>
-                </article>
-              ))
+              notification.logs.map((log, index) => {
+                const tone =
+                  index === notification.logs.length - 1
+                    ? statusTone(log.newStatus as NotificationStatus)
+                    : "muted";
+                return (
+                  <article key={log.id}>
+                    <span className="delivery-detail__node" data-tone={tone}>
+                      {index + 1}
+                    </span>
+                    <div>
+                      <strong>{log.newStatus.replace("_", " ")}</strong>
+                      <time>{absoluteFormatter.format(new Date(log.createdAt))}</time>
+                      {log.errorMessage ? <p data-tone={tone}>{log.errorMessage}</p> : null}
+                      {log.workerId ? <small>Worker {log.workerId}</small> : null}
+                    </div>
+                  </article>
+                );
+              })
             ) : (
               <p className="delivery-detail__empty-inline">
                 No state transitions have been recorded.

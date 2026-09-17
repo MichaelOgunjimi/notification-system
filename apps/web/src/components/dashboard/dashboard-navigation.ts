@@ -3,7 +3,6 @@ import {
   BellRinging,
   Broadcast,
   Buildings,
-  ChartLineUp,
   Code,
   FolderSimple,
   Gauge,
@@ -50,8 +49,12 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
     capability: "project:deliveries:read",
   },
   { label: "Usage", icon: Gauge, path: "usage", capability: "project:usage:read" },
-  { label: "Alerts", icon: BellRinging, path: "alerts", comingSoon: true },
-  { label: "Analytics", icon: ChartLineUp, path: "analytics", comingSoon: true },
+  {
+    label: "Alerts",
+    icon: BellRinging,
+    path: "alerts",
+    capability: "project:deliveries:read",
+  },
 ];
 
 /** Configuration surfaces scoped to the active project and its organization. */

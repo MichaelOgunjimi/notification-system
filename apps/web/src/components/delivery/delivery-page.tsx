@@ -17,7 +17,12 @@ import { useRememberedSearchParams } from "@/components/ui/use-remembered-search
 import { relativeTime } from "@/lib/audit-log";
 import "./delivery-page.css";
 
-type DeliveryPageProps = Readonly<{ organization: Organization; project: Project }>;
+type DeliveryPageProps = Readonly<{
+  organization: Organization;
+  project: Project;
+  /** Scopes the surface to failed/dead-lettered deliveries for the Alerts nav item, sharing every other behavior with Delivery. */
+  restrictToIssues?: boolean;
+}>;
 
 const PER_PAGE_OPTIONS = [25, 50, 100] as const;
 const STATUS_OPTIONS: ReadonlyArray<{ value: NotificationStatus | ""; label: string }> = [
@@ -27,6 +32,15 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: NotificationStatus | ""; label: str
   { value: "processing", label: "Processing" },
   { value: "failed", label: "Failed" },
   { value: "dead_letter", label: "Dead letter" },
+];
+const ISSUE_OPTIONS: ReadonlyArray<{
+  value: string;
+  label: string;
+  statuses: readonly NotificationStatus[];
+}> = [
+  { value: "all", label: "All issues", statuses: ["failed", "dead_letter"] },
+  { value: "dead_letter", label: "Dead letter", statuses: ["dead_letter"] },
+  { value: "failed", label: "Failed", statuses: ["failed"] },
 ];
 const CHANNEL_CHIPS: ReadonlyArray<{ value: NotificationChannel | ""; label: string }> = [
   { value: "", label: "All" },
@@ -48,18 +62,24 @@ function rangeStart(range: keyof typeof RANGE_MS | "all"): string | undefined {
 }
 
 /** Project delivery stream linking every notification back to its source event. */
-export function DeliveryPage({ organization, project }: DeliveryPageProps) {
+export function DeliveryPage({ organization, project, restrictToIssues }: DeliveryPageProps) {
   const router = useRouter();
   const { params, replace } = useRememberedSearchParams();
   const status = STATUS_OPTIONS.some((option) => option.value === params.get("status"))
     ? (params.get("status") as NotificationStatus | "")
     : "";
+  const issue = ISSUE_OPTIONS.some((option) => option.value === params.get("issue"))
+    ? params.get("issue")!
+    : "all";
   const channel = CHANNEL_CHIPS.some((option) => option.value === params.get("channel"))
     ? (params.get("channel") as NotificationChannel | "")
     : "";
   const rangeValue = params.get("range");
+  const defaultRange = restrictToIssues ? "all" : "7d";
   const range =
-    rangeValue === "24h" || rangeValue === "30d" || rangeValue === "all" ? rangeValue : "7d";
+    rangeValue === "24h" || rangeValue === "7d" || rangeValue === "30d" || rangeValue === "all"
+      ? rangeValue
+      : defaultRange;
   const search = params.get("search") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const requestedPerPage = Number(params.get("perPage"));
@@ -70,7 +90,9 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
   const query = useProjectNotifications(project.id, {
     page,
     perPage,
-    status: status || undefined,
+    status: restrictToIssues
+      ? ISSUE_OPTIONS.find((option) => option.value === issue)!.statuses
+      : status || undefined,
     channel: channel || undefined,
     search: search || undefined,
     from,
@@ -85,7 +107,8 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
         value === undefined ||
         value === "" ||
         value === 1 ||
-        (key === "range" && value === "7d")
+        (key === "range" && value === defaultRange) ||
+        (key === "issue" && value === "all")
       ) {
         updated.delete(key);
       } else {
@@ -96,7 +119,8 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
   }
 
   function notificationHref(notification: TenantNotification) {
-    return `/app/${organization.slug}/${project.slug}/delivery/${notification.id}`;
+    const basePath = restrictToIssues ? "alerts" : "delivery";
+    return `/app/${organization.slug}/${project.slug}/${basePath}/${notification.id}`;
   }
 
   const notifications = query.data?.items ?? [];
@@ -105,8 +129,12 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
     <div className="delivery-page">
       <header className="delivery-page__heading">
         <p>Operate</p>
-        <h1>Delivery</h1>
-        <span>Every channel-specific message spawned from your events, with retries attached.</span>
+        <h1>{restrictToIssues ? "Alerts" : "Delivery"}</h1>
+        <span>
+          {restrictToIssues
+            ? "Every failed or dead-lettered delivery that needs attention."
+            : "Every channel-specific message spawned from your events, with retries attached."}
+        </span>
       </header>
 
       <section className="delivery-page__scope">
@@ -115,7 +143,11 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
           <small>Project</small>
           <strong>{project.name}</strong>
         </span>
-        <em>{query.data ? `${total.toLocaleString()} deliveries` : "Counting…"}</em>
+        <em>
+          {query.data
+            ? `${total.toLocaleString()} ${restrictToIssues ? "needing attention" : "deliveries"}`
+            : "Counting…"}
+        </em>
       </section>
 
       <div className="delivery-page__filters">
@@ -131,12 +163,27 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
             </button>
           ))}
         </span>
-        <AppSelect
-          aria-label="Delivery state"
-          value={status}
-          onValueChange={(value) => patch({ status: value })}
-          options={STATUS_OPTIONS}
-        />
+        {restrictToIssues ? (
+          <span className="delivery-page__chips">
+            {ISSUE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                data-active={issue === option.value || undefined}
+                onClick={() => patch({ issue: option.value })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </span>
+        ) : (
+          <AppSelect
+            aria-label="Delivery state"
+            value={status}
+            onValueChange={(value) => patch({ status: value })}
+            options={STATUS_OPTIONS}
+          />
+        )}
         <span className="delivery-page__chips">
           {(["24h", "7d", "30d", "all"] as const).map((value) => (
             <button
@@ -162,8 +209,12 @@ export function DeliveryPage({ organization, project }: DeliveryPageProps) {
       <section className="delivery-page__table">
         <header>
           <div>
-            <h2>Notification stream</h2>
-            <p>Newest delivery instances first.</p>
+            <h2>{restrictToIssues ? "Attention needed" : "Notification stream"}</h2>
+            <p>
+              {restrictToIssues
+                ? "Failed and dead-lettered deliveries, newest first."
+                : "Newest delivery instances first."}
+            </p>
           </div>
           <span>
             <i /> Live

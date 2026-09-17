@@ -1042,4 +1042,18 @@ describe("createControlPlaneClient", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("repeats the status param when filtering a project's notifications by several statuses", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({ items: [], total: 0, page: 1, per_page: 25, total_pages: 0 }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.notifications.forProject("project-1", { status: ["failed", "dead_letter"] });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/notifications?status=failed&status=dead_letter",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

@@ -494,7 +494,8 @@ export type TenantNotificationDetail = TenantNotification &
 export type NotificationFilter = Readonly<{
   page?: number;
   perPage?: number;
-  status?: NotificationStatus;
+  /** A single state, or several to match any of (e.g. the Alerts surface's failed + dead_letter). */
+  status?: NotificationStatus | readonly NotificationStatus[];
   channel?: NotificationChannel;
   /** Matches recipient, event type, notification id, or event id. */
   search?: string;
