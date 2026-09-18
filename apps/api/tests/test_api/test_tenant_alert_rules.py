@@ -278,3 +278,30 @@ async def test_fork_copies_the_org_wide_rule_into_a_project_owned_rule(
     await db.refresh(org_rule)
     assert org_rule.project_id is None
     assert org_rule.organization_id == organization.id
+
+
+async def test_cannot_fork_another_organizations_alert_rule(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    _owner_a, organization_a, _project_a = await _seed_owner_and_project(
+        db, org_slug="org-alert-fork-cross-a", project_slug="alpha"
+    )
+    owner_b, _organization_b, project_b = await _seed_owner_and_project(
+        db, org_slug="org-alert-fork-cross-b", project_slug="beta"
+    )
+    org_rule = AlertRule(
+        organization_id=organization_a.id,
+        name="A's org default",
+        metric="failure_rate",
+        threshold=5,
+    )
+    db.add(org_rule)
+    await db.commit()
+    await db.refresh(org_rule)
+
+    response = await client.post(
+        f"/api/v1/projects/{project_b.id}/alert-rules/{org_rule.id}/fork",
+        headers=await _authorization_header(owner_b, db, mock_redis),
+    )
+
+    assert response.status_code == 404

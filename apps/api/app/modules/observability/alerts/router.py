@@ -205,7 +205,12 @@ async def fork_project_alert_rule(
         project_id=project_id,
         capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
     )
-    fork = await alert_service.fork_alert_rule(db, rule_id=rule_id, project_id=access.project.id)
+    fork = await alert_service.fork_alert_rule(
+        db,
+        rule_id=rule_id,
+        project_id=access.project.id,
+        organization_id=access.project.organization_id,
+    )
     await log_action(
         db,
         api_key_id=None,

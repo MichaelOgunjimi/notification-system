@@ -130,19 +130,21 @@ async def get_org_alert_rule(
 
 
 async def fork_alert_rule(
-    db: AsyncSession, *, rule_id: uuid.UUID, project_id: uuid.UUID
+    db: AsyncSession, *, rule_id: uuid.UUID, project_id: uuid.UUID, organization_id: uuid.UUID
 ) -> AlertRule:
     """Copy an org-wide rule into a new rule owned by this project.
 
     The org-wide default is never modified — forking only ever creates a
     new, independently-editable row, which the evaluator then prefers over
-    the org-wide default for the same metric.
+    the org-wide default for the same metric. ``organization_id`` must be
+    the forking project's own organization, so a rule can't be forked across
+    tenants by guessing another organization's rule id.
     """
     source = (
         await db.execute(
             select(AlertRule).where(
                 col(AlertRule.id) == rule_id,
-                col(AlertRule.organization_id).isnot(None),
+                col(AlertRule.organization_id) == organization_id,
             )
         )
     ).scalar_one_or_none()
