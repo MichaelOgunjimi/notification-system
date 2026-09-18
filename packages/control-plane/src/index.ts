@@ -1,6 +1,11 @@
 export { controlPlaneClient, createControlPlaneClient } from "./client";
 export { ControlPlaneError, type ControlPlaneErrorCode } from "./error";
 export type {
+  AlertMetric,
+  AlertRule,
+  AlertRuleCreate,
+  AlertRuleListOptions,
+  AlertRuleUpdate,
   AnalyticsFilter,
   AnalyticsSummary,
   ApiKeyScope,

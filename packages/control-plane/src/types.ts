@@ -507,6 +507,49 @@ export type NotificationFilter = Readonly<{
 /** Delivery channel a template renders for. */
 export type TemplateChannel = "email" | "sms" | "webhook";
 
+/** Metric an alert rule watches — each reuses a field Usage already computes. */
+export type AlertMetric = "failure_rate" | "dead_letter_count" | "avg_latency_ms";
+
+/** A project's own delivery-health monitoring rule. */
+export type AlertRule = Readonly<{
+  id: string;
+  projectId: string;
+  name: string;
+  metric: AlertMetric;
+  threshold: number;
+  windowMinutes: number;
+  notifyEmail: string | null;
+  isActive: boolean;
+  lastTriggeredAt: string | null;
+  createdAt: string;
+}>;
+
+/** Pagination for listing a project's alert rules. */
+export type AlertRuleListOptions = Readonly<{
+  page?: number;
+  perPage?: number;
+}>;
+
+/** Fields accepted when creating an alert rule. */
+export type AlertRuleCreate = Readonly<{
+  name: string;
+  metric: AlertMetric;
+  threshold: number;
+  windowMinutes?: number;
+  notifyEmail?: string | null;
+  isActive?: boolean;
+}>;
+
+/** Fields accepted when updating an alert rule; omitted fields remain unchanged. */
+export type AlertRuleUpdate = Readonly<{
+  name?: string;
+  metric?: AlertMetric;
+  threshold?: number;
+  windowMinutes?: number;
+  notifyEmail?: string | null;
+  isActive?: boolean;
+}>;
+
 /**
  * A project's own template, or a system default when `projectId` is null.
  * Every key in a project shares one template pool — ownership is at the
@@ -1024,6 +1067,46 @@ export interface ControlPlaneClient {
      */
     fork(projectId: string, templateId: string): Promise<Template>;
   };
+  /** A project's own delivery-health monitoring rules. */
+  readonly alertRules: {
+    /**
+     * Lists alert rules owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param options Optional page and page size (1-100, default 20).
+     * @returns One page of this project's alert rules.
+     * @throws {ControlPlaneError} When the `project:deliveries:read` capability is unavailable.
+     */
+    forProject(projectId: string, options?: AlertRuleListOptions): Promise<Paginated<AlertRule>>;
+    /**
+     * Creates an alert rule owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param input Name, metric, threshold, and optional window/notify/active fields.
+     * @returns The new alert rule.
+     * @throws {ControlPlaneError} When the `project:deliveries:manage` capability is unavailable.
+     */
+    create(projectId: string, input: AlertRuleCreate): Promise<AlertRule>;
+    /**
+     * Updates an alert rule owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param ruleId Stable alert rule identifier.
+     * @param changes Fields to update; omitted fields remain unchanged.
+     * @returns The updated alert rule.
+     * @throws {ControlPlaneError} When the rule isn't owned by this project, or access is denied.
+     */
+    update(projectId: string, ruleId: string, changes: AlertRuleUpdate): Promise<AlertRule>;
+    /**
+     * Deletes an alert rule owned by this project.
+     *
+     * @param projectId Stable project identifier.
+     * @param ruleId Stable alert rule identifier.
+     * @returns Promise resolved after the delete succeeds.
+     * @throws {ControlPlaneError} When the rule isn't owned by this project, or access is denied.
+     */
+    delete(projectId: string, ruleId: string): Promise<void>;
+  };
   /** Read-only tenant event log — every ingested notification request, by project. */
   readonly events: {
     /**
@@ -1267,6 +1350,20 @@ export type ApiTemplate = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+/** Raw alert rule payload returned by FastAPI. */
+export type ApiAlertRule = {
+  id: string;
+  project_id: string;
+  name: string;
+  metric: AlertMetric;
+  threshold: number;
+  window_minutes: number;
+  notify_email: string | null;
+  is_active: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
 };
 
 /** Raw tenant event payload returned by FastAPI. */

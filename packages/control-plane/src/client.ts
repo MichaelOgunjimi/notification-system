@@ -1,6 +1,11 @@
 import type {
+  AlertRule,
+  AlertRuleCreate,
+  AlertRuleListOptions,
+  AlertRuleUpdate,
   AnalyticsFilter,
   AnalyticsSummary,
+  ApiAlertRule,
   ApiAnalyticsSummary,
   ApiAuditLogEntry,
   ApiChannelStat,
@@ -343,6 +348,29 @@ function templateListQuery(options: OrganizationTemplateListOptions): string {
   if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
   if (options.channel) params.set("channel", options.channel);
   if (options.projectId) params.set("project_id", options.projectId);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapAlertRule(rule: ApiAlertRule): AlertRule {
+  return {
+    id: rule.id,
+    projectId: rule.project_id,
+    name: rule.name,
+    metric: rule.metric,
+    threshold: rule.threshold,
+    windowMinutes: rule.window_minutes,
+    notifyEmail: rule.notify_email,
+    isActive: rule.is_active,
+    lastTriggeredAt: rule.last_triggered_at,
+    createdAt: rule.created_at,
+  };
+}
+
+function alertRuleListQuery(options: AlertRuleListOptions): string {
+  const params = new URLSearchParams();
+  if (options.page !== undefined) params.set("page", String(options.page));
+  if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -894,6 +922,61 @@ class HttpControlPlaneClient implements ControlPlaneClient {
           "POST",
         ),
       ),
+  };
+
+  readonly alertRules = {
+    forProject: async (
+      projectId: string,
+      options: AlertRuleListOptions = {},
+    ): Promise<Paginated<AlertRule>> => {
+      const page = await this.get<ApiPaginated<ApiAlertRule>>(
+        `/projects/${encodeURIComponent(projectId)}/alert-rules${alertRuleListQuery(options)}`,
+      );
+      return mapPage(page, mapAlertRule);
+    },
+    create: async (projectId: string, input: AlertRuleCreate): Promise<AlertRule> => {
+      const body: Record<string, unknown> = {
+        name: input.name,
+        metric: input.metric,
+        threshold: input.threshold,
+      };
+      if (input.windowMinutes !== undefined) body.window_minutes = input.windowMinutes;
+      if (input.notifyEmail !== undefined) body.notify_email = input.notifyEmail;
+      if (input.isActive !== undefined) body.is_active = input.isActive;
+      return mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/projects/${encodeURIComponent(projectId)}/alert-rules`,
+          "POST",
+          body,
+        ),
+      );
+    },
+    update: async (
+      projectId: string,
+      ruleId: string,
+      changes: AlertRuleUpdate,
+    ): Promise<AlertRule> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.metric !== undefined) body.metric = changes.metric;
+      if (changes.threshold !== undefined) body.threshold = changes.threshold;
+      if (changes.windowMinutes !== undefined) body.window_minutes = changes.windowMinutes;
+      if (changes.notifyEmail !== undefined) body.notify_email = changes.notifyEmail;
+      if (changes.isActive !== undefined) body.is_active = changes.isActive;
+      return mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+          "PUT",
+          body,
+        ),
+      );
+    },
+    delete: async (projectId: string, ruleId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+        "DELETE",
+      );
+    },
   };
 
   readonly events = {

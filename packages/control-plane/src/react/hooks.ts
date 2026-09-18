@@ -2,6 +2,9 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AlertRuleCreate,
+  AlertRuleListOptions,
+  AlertRuleUpdate,
   AnalyticsFilter,
   AuditLogFilter,
   EventFilter,
@@ -40,6 +43,7 @@ import {
   organizationUsageHourlyQuery,
   organizationUsageQuery,
   organizationUsageSummaryQuery,
+  projectAlertRulesQuery,
   projectAnalyticsQuery,
   projectApiKeysQuery,
   projectAuditLogQuery,
@@ -866,6 +870,83 @@ export function useForkProjectTemplate() {
     onSuccess: (_template, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projectTemplates(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Loads one page of a project's own alert rules.
+ *
+ * @param projectId Project whose alert rules should load; null disables the query.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query result containing one page of alert rules.
+ */
+export function useProjectAlertRules(projectId: string | null, options: AlertRuleListOptions = {}) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectAlertRulesQuery(client, projectId ?? "pending", options),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Creates an alert rule owned by a project and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the project identifier and the new rule's fields.
+ */
+export function useCreateProjectAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: AlertRuleCreate }) =>
+      client.alertRules.create(projectId, input),
+    onSuccess: (_rule, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectAlertRules(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Updates an alert rule owned by a project and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the project and rule identifiers and field changes.
+ */
+export function useUpdateProjectAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      ruleId,
+      changes,
+    }: {
+      projectId: string;
+      ruleId: string;
+      changes: AlertRuleUpdate;
+    }) => client.alertRules.update(projectId, ruleId, changes),
+    onSuccess: (_rule, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectAlertRules(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Deletes an alert rule owned by a project and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the project and rule identifiers.
+ */
+export function useDeleteProjectAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ruleId }: { projectId: string; ruleId: string }) =>
+      client.alertRules.delete(projectId, ruleId),
+    onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectAlertRules(variables.projectId),
       }),
   });
 }

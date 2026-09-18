@@ -101,6 +101,12 @@ describe("control-plane queries", () => {
         delete: vi.fn(),
         fork: vi.fn(),
       },
+      alertRules: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+      },
       events: {
         forProject: vi.fn().mockResolvedValue(emptyPage),
         forOrganization: vi.fn().mockResolvedValue(emptyPage),

@@ -953,6 +953,108 @@ describe("createControlPlaneClient", () => {
     );
   });
 
+  it("lists a project's alert rules as a camel-cased page", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "rule-1",
+            project_id: "project-1",
+            name: "High failure rate",
+            metric: "failure_rate",
+            threshold: 10,
+            window_minutes: 30,
+            notify_email: "oncall@example.com",
+            is_active: true,
+            last_triggered_at: null,
+            created_at: "2026-09-01T00:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 20,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const page = await client.alertRules.forProject("project-1");
+
+    expect(page.items).toEqual([
+      {
+        id: "rule-1",
+        projectId: "project-1",
+        name: "High failure rate",
+        metric: "failure_rate",
+        threshold: 10,
+        windowMinutes: 30,
+        notifyEmail: "oncall@example.com",
+        isActive: true,
+        lastTriggeredAt: null,
+        createdAt: "2026-09-01T00:00:00Z",
+      },
+    ]);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/alert-rules",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("creates and updates an alert rule scoped to the project", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "rule-2",
+          project_id: "project-1",
+          name: "Dead letters piling up",
+          metric: "dead_letter_count",
+          threshold: 5,
+          window_minutes: 60,
+          notify_email: null,
+          is_active: true,
+          last_triggered_at: null,
+          created_at: "2026-09-01T00:00:00Z",
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const created = await client.alertRules.create("project-1", {
+      name: "Dead letters piling up",
+      metric: "dead_letter_count",
+      threshold: 5,
+    });
+
+    expect(created).toMatchObject({ id: "rule-2", metric: "dead_letter_count" });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/alert-rules",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Dead letters piling up",
+          metric: "dead_letter_count",
+          threshold: 5,
+        }),
+      }),
+    );
+
+    await client.alertRules.update("project-1", "rule-2", { threshold: 8, isActive: false });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/alert-rules/rule-2",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ threshold: 8, is_active: false }),
+      }),
+    );
+
+    await client.alertRules.delete("project-1", "rule-2");
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/alert-rules/rule-2",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
   it("lists a project's events with camel-cased rows and forwarded filters", async () => {
     const fetcher = fetchAdapter(() =>
       Response.json({

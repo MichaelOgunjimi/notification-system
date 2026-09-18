@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ControlPlaneError } from "../error";
 import type {
+  AlertRuleListOptions,
   AnalyticsFilter,
   AuditLogFilter,
   ControlPlaneClient,
@@ -73,6 +74,8 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "projects", projectId, "notifications"] as const,
   organizationEvents: (organizationId: string) =>
     ["control-plane", "organizations", organizationId, "events"] as const,
+  projectAlertRules: (projectId: string) =>
+    ["control-plane", "projects", projectId, "alert-rules"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -589,6 +592,33 @@ export function organizationTrendsQuery(
     queryFn: () => client.usage.trendsForOrganization(organizationId, args),
     retry: retryTransientFailure,
     ...tenantLiveness,
+  });
+}
+
+function alertRuleListKeyParts(options: AlertRuleListOptions) {
+  const { page = 1, perPage = 20 } = options;
+  return { args: { page, perPage }, key: [page, perPage] as const };
+}
+
+/**
+ * Builds query options for one page of a project's own alert rules.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose alert rules should be loaded.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectAlertRulesQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  options: AlertRuleListOptions,
+) {
+  const { args, key } = alertRuleListKeyParts(options);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectAlertRules(projectId), ...key] as const,
+    queryFn: () => client.alertRules.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
   });
 }
 
