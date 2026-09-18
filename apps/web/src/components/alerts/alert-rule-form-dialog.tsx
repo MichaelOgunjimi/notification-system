@@ -3,14 +3,22 @@
 import { FormEvent, useId, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
 import type { AlertComparison, AlertMetric, AlertRule } from "@beaco/control-plane";
-import { useCreateProjectAlertRule, useUpdateProjectAlertRule } from "@beaco/control-plane/react";
+import {
+  useCreateOrganizationAlertRule,
+  useCreateProjectAlertRule,
+  useUpdateOrganizationAlertRule,
+  useUpdateProjectAlertRule,
+} from "@beaco/control-plane/react";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { useToast } from "@/components/ui/toast";
 
+/** Owned by a project, or an org-wide default owned by an organization. */
+type AlertRuleScope = { projectId: string } | { organizationId: string };
+
 type AlertRuleFormDialogProps = Readonly<{
   open: boolean;
-  projectId: string;
-  /** A rule to edit, or null to create a new one owned by this project. */
+  scope: AlertRuleScope;
+  /** A rule to edit, or null to create a new one owned by this scope. */
   rule: AlertRule | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -28,17 +36,18 @@ const COMPARISONS: ReadonlyArray<{ value: AlertComparison; label: string }> = [
 ];
 
 /**
- * Modal form for creating or editing a project's alert rule. Fires an email
- * when the chosen metric exceeds its threshold over the trailing window, at
- * most once per window (the evaluator's own cooldown).
+ * Modal form for creating or editing an alert rule, owned by either a
+ * project or (for an org-wide default) an organization. Fires an email when
+ * the chosen metric exceeds its threshold over the trailing window, at most
+ * once per window (the evaluator's own cooldown).
  *
- * @param props Dialog visibility, the target project, an optional rule to
+ * @param props Dialog visibility, the target scope, an optional rule to
  *   edit, and success/close callbacks.
  * @returns The create/edit alert rule dialog.
  */
 export function AlertRuleFormDialog({
   open,
-  projectId,
+  scope,
   rule,
   onOpenChange,
   onSaved,
@@ -49,8 +58,13 @@ export function AlertRuleFormDialog({
   const thresholdId = useId();
   const windowId = useId();
   const emailId = useId();
-  const createRule = useCreateProjectAlertRule();
-  const updateRule = useUpdateProjectAlertRule();
+  const createProjectRule = useCreateProjectAlertRule();
+  const updateProjectRule = useUpdateProjectAlertRule();
+  const createOrgRule = useCreateOrganizationAlertRule();
+  const updateOrgRule = useUpdateOrganizationAlertRule();
+  const isOrgScope = "organizationId" in scope;
+  const createRule = isOrgScope ? createOrgRule : createProjectRule;
+  const updateRule = isOrgScope ? updateOrgRule : updateProjectRule;
   const mutation = rule ? updateRule : createRule;
 
   const [name, setName] = useState(rule?.name ?? "");
@@ -77,33 +91,37 @@ export function AlertRuleFormDialog({
       return setFormError("Enter a window in whole minutes, greater than 0.");
     }
 
+    const fields = {
+      name: name.trim(),
+      metric,
+      comparison,
+      threshold: thresholdValue,
+      windowMinutes: windowValue,
+      notifyEmail: notifyEmail.trim() || null,
+    };
+
     try {
       if (rule) {
-        await updateRule.mutateAsync({
-          projectId,
-          ruleId: rule.id,
-          changes: {
-            name: name.trim(),
-            metric,
-            comparison,
-            threshold: thresholdValue,
-            windowMinutes: windowValue,
-            notifyEmail: notifyEmail.trim() || null,
-          },
-        });
+        if (isOrgScope) {
+          await updateOrgRule.mutateAsync({
+            organizationId: scope.organizationId,
+            ruleId: rule.id,
+            changes: fields,
+          });
+        } else {
+          await updateProjectRule.mutateAsync({
+            projectId: scope.projectId,
+            ruleId: rule.id,
+            changes: fields,
+          });
+        }
         toast.success(`${name.trim()} updated`);
       } else {
-        await createRule.mutateAsync({
-          projectId,
-          input: {
-            name: name.trim(),
-            metric,
-            comparison,
-            threshold: thresholdValue,
-            windowMinutes: windowValue,
-            notifyEmail: notifyEmail.trim() || null,
-          },
-        });
+        if (isOrgScope) {
+          await createOrgRule.mutateAsync({ organizationId: scope.organizationId, input: fields });
+        } else {
+          await createProjectRule.mutateAsync({ projectId: scope.projectId, input: fields });
+        }
         toast.success(`${name.trim()} created`);
       }
       onSaved();

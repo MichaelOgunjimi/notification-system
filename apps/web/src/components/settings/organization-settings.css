@@ -193,7 +193,20 @@
   font-size: 10px;
 }
 
+.organization-settings__alert-rules-actions {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.organization-settings__alert-rules-actions span {
+  color: var(--dashboard-muted);
+  font-size: 10px;
+}
+
 .organization-settings__actions button,
+.organization-settings__alert-rules-actions button,
 .organization-settings__invite > button,
 .organization-settings__project-create > button {
   align-items: center;
