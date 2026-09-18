@@ -1,14 +1,13 @@
 import type { ApiKeyScope } from "@beaco/control-plane";
 import "./api-key-scopes.css";
 
-/** The 17 API key scopes grouped by the resource they act on. */
+/** The 15 API key scopes grouped by the resource they act on. */
 export const SCOPE_GROUPS: ReadonlyArray<{ label: string; scopes: readonly ApiKeyScope[] }> = [
   { label: "Events", scopes: ["events:read", "events:write"] },
   { label: "Templates", scopes: ["templates:read", "templates:write"] },
   { label: "Notifications", scopes: ["notifications:read"] },
   { label: "Scheduled events", scopes: ["scheduled_events:read", "scheduled_events:write"] },
   { label: "Suppressions", scopes: ["suppressions:read", "suppressions:write"] },
-  { label: "Alerts", scopes: ["alerts:read", "alerts:write"] },
   { label: "Analytics", scopes: ["analytics:read"] },
   { label: "Dead letters", scopes: ["dead_letters:read", "dead_letters:write"] },
   { label: "Usage", scopes: ["usage:read"] },

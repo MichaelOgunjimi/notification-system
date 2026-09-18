@@ -150,8 +150,6 @@ export type ApiKeyScope =
   | "scheduled_events:write"
   | "suppressions:read"
   | "suppressions:write"
-  | "alerts:read"
-  | "alerts:write"
   | "analytics:read"
   | "dead_letters:read"
   | "dead_letters:write"

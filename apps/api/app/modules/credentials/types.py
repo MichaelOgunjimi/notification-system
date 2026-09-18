@@ -16,8 +16,6 @@ class ApiKeyScope(StrEnum):
     SCHEDULED_EVENTS_WRITE = "scheduled_events:write"
     SUPPRESSIONS_READ = "suppressions:read"
     SUPPRESSIONS_WRITE = "suppressions:write"
-    ALERTS_READ = "alerts:read"
-    ALERTS_WRITE = "alerts:write"
     ANALYTICS_READ = "analytics:read"
     DEAD_LETTERS_READ = "dead_letters:read"
     DEAD_LETTERS_WRITE = "dead_letters:write"
