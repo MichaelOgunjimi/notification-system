@@ -78,6 +78,7 @@ function mapOrganization(organization: ApiOrganization): Organization {
     description: organization.description,
     role: organization.role,
     capabilities: [...organization.capabilities],
+    archivedAt: organization.archived_at,
   };
 }
 
@@ -88,6 +89,7 @@ function mapProject(project: ApiProject): Project {
     name: project.name,
     slug: project.slug,
     description: project.description,
+    archivedAt: project.archived_at,
   };
 }
 
@@ -510,8 +512,9 @@ class HttpControlPlaneClient implements ControlPlaneClient {
   private readonly fetcher: typeof globalThis.fetch;
 
   readonly organizations = {
-    list: async (): Promise<Organization[]> => {
-      const organizations = await this.get<ApiOrganization[]>("/organizations");
+    list: async (includeArchived = false): Promise<Organization[]> => {
+      const query = includeArchived ? "?include_archived=true" : "";
+      const organizations = await this.get<ApiOrganization[]>(`/organizations${query}`);
       return organizations.map(mapOrganization);
     },
     create: async (
@@ -534,6 +537,13 @@ class HttpControlPlaneClient implements ControlPlaneClient {
         await this.request<ApiOrganization>(
           `/organizations/${encodeURIComponent(organizationId)}`,
           "DELETE",
+        ),
+      ),
+    restore: async (organizationId: string): Promise<Organization> =>
+      mapOrganization(
+        await this.request<ApiOrganization>(
+          `/organizations/${encodeURIComponent(organizationId)}/restore`,
+          "POST",
         ),
       ),
   };
@@ -601,9 +611,10 @@ class HttpControlPlaneClient implements ControlPlaneClient {
   };
 
   readonly projects = {
-    list: async (organizationId: string): Promise<Project[]> => {
+    list: async (organizationId: string, includeArchived = false): Promise<Project[]> => {
+      const query = includeArchived ? "?include_archived=true" : "";
       const projects = await this.get<ApiProject[]>(
-        `/organizations/${encodeURIComponent(organizationId)}/projects`,
+        `/organizations/${encodeURIComponent(organizationId)}/projects${query}`,
       );
       return projects.map(mapProject);
     },
@@ -633,6 +644,13 @@ class HttpControlPlaneClient implements ControlPlaneClient {
     archive: async (projectId: string): Promise<Project> =>
       mapProject(
         await this.request<ApiProject>(`/projects/${encodeURIComponent(projectId)}`, "DELETE"),
+      ),
+    restore: async (projectId: string): Promise<Project> =>
+      mapProject(
+        await this.request<ApiProject>(
+          `/projects/${encodeURIComponent(projectId)}/restore`,
+          "POST",
+        ),
       ),
   };
 

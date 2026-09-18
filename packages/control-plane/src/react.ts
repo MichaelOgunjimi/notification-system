@@ -25,6 +25,8 @@ export {
   useOrganizationUsage,
   useOrganizationUsageHourly,
   useOrganizationUsageSummary,
+  useRestoreOrganization,
+  useRestoreProject,
   useProjectAlertRules,
   useProjectAnalytics,
   useProjectApiKeys,

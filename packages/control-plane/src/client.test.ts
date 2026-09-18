@@ -36,6 +36,7 @@ describe("createControlPlaneClient", () => {
         description: "Primary organization",
         role: "owner",
         capabilities: ["organization:read", "project:create"],
+        archivedAt: null,
       },
     ]);
     expect(fetcher).toHaveBeenCalledWith(
@@ -91,6 +92,7 @@ describe("createControlPlaneClient", () => {
         name: "Delivery",
         slug: "delivery",
         description: null,
+        archivedAt: null,
       },
     ]);
     expect(fetcher).toHaveBeenCalledWith(
@@ -131,6 +133,7 @@ describe("createControlPlaneClient", () => {
       description: null,
       role: "owner",
       capabilities: ["organization:read", "organization:manage", "project:create"],
+      archivedAt: null,
     });
     expect(fetcher).toHaveBeenCalledWith(
       "/api/control-plane/organizations",
@@ -207,6 +210,71 @@ describe("createControlPlaneClient", () => {
     expect(fetcher).toHaveBeenLastCalledWith(
       "/api/control-plane/projects/project-1",
       expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("restores an archived organization and project", async () => {
+    const fetcher = fetchAdapter((input) => {
+      if (String(input).includes("/organizations/")) {
+        return Response.json({
+          id: "organization-1",
+          name: "Northstar",
+          slug: "northstar",
+          description: null,
+          role: "owner",
+          capabilities: ["organization:read"],
+          created_at: "2026-09-01T09:00:00Z",
+          updated_at: "2026-09-03T09:00:00Z",
+          archived_at: null,
+        });
+      }
+      return Response.json({
+        id: "project-1",
+        organization_id: "organization-1",
+        name: "Delivery",
+        slug: "delivery",
+        description: null,
+        created_by_user_id: "user-1",
+        created_at: "2026-09-01T09:00:00Z",
+        updated_at: "2026-09-03T09:00:00Z",
+        archived_at: null,
+      });
+    });
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await expect(client.organizations.restore("organization-1")).resolves.toMatchObject({
+      id: "organization-1",
+      archivedAt: null,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1/restore",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    await expect(client.projects.restore("project-1")).resolves.toMatchObject({
+      id: "project-1",
+      archivedAt: null,
+    });
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "/api/control-plane/projects/project-1/restore",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("includes archived organizations and projects when requested", async () => {
+    const fetcher = fetchAdapter(() => Response.json([]));
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.organizations.list(true);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations?include_archived=true",
+      expect.objectContaining({ method: "GET" }),
+    );
+
+    await client.projects.list("organization-1", true);
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/organizations/organization-1/projects?include_archived=true",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 

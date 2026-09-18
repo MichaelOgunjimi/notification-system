@@ -87,12 +87,13 @@ const retryTransientFailure = (failureCount: number, error: Error) =>
  * Transient failures retry once; authorization and validation failures surface immediately.
  *
  * @param client Control-plane client used by the query function.
+ * @param includeArchived When true, includes archived organizations too.
  * @returns TanStack Query options with stable keys and retry behavior.
  */
-export function organizationsQuery(client: ControlPlaneClient) {
+export function organizationsQuery(client: ControlPlaneClient, includeArchived = false) {
   return queryOptions({
-    queryKey: controlPlaneQueryKeys.organizations(),
-    queryFn: () => client.organizations.list(),
+    queryKey: [...controlPlaneQueryKeys.organizations(), includeArchived] as const,
+    queryFn: () => client.organizations.list(includeArchived),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });
@@ -103,12 +104,17 @@ export function organizationsQuery(client: ControlPlaneClient) {
  *
  * @param client Control-plane client used by the query function.
  * @param organizationId Organization that scopes the project request and cache key.
+ * @param includeArchived When true, includes archived projects too.
  * @returns TanStack Query options with stable organization-specific caching.
  */
-export function projectsQuery(client: ControlPlaneClient, organizationId: string) {
+export function projectsQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  includeArchived = false,
+) {
   return queryOptions({
-    queryKey: controlPlaneQueryKeys.projects(organizationId),
-    queryFn: () => client.projects.list(organizationId),
+    queryKey: [...controlPlaneQueryKeys.projects(organizationId), includeArchived] as const,
+    queryFn: () => client.projects.list(organizationId, includeArchived),
     retry: retryTransientFailure,
     staleTime: 30 * 1000,
   });

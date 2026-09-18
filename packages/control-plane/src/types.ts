@@ -38,6 +38,8 @@ export type Organization = Readonly<{
   description: string | null;
   role: OrganizationRole;
   capabilities: readonly OrganizationCapability[];
+  /** When the organization was archived, or null while active. */
+  archivedAt: string | null;
 }>;
 
 /** Editable fields accepted by the organization settings endpoint. */
@@ -73,6 +75,8 @@ export type Project = Readonly<{
   name: string;
   slug: string;
   description: string | null;
+  /** When the project was archived, or null while active. */
+  archivedAt: string | null;
 }>;
 
 /** Fields accepted when creating a project inside an organization. */
@@ -614,12 +618,13 @@ export interface ControlPlaneClient {
   /** Organization operations available to the current user. */
   readonly organizations: {
     /**
-     * Lists active organizations the authenticated user can access.
+     * Lists organizations the authenticated user can access.
      *
+     * @param includeArchived When true, includes archived organizations too.
      * @returns Application-facing organization records.
      * @throws {ControlPlaneError} When the application boundary or backend rejects the request.
      */
-    list(): Promise<Organization[]>;
+    list(includeArchived?: boolean): Promise<Organization[]>;
     /**
      * Creates an organization owned by the current user. The backend also seeds
      * a default project so the workspace is immediately usable.
@@ -646,6 +651,15 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the owner requirement or request fails.
      */
     archive(organizationId: string): Promise<Organization>;
+    /**
+     * Un-archives an organization. Any projects archived alongside it (or on
+     * their own) stay archived — restore each one individually.
+     *
+     * @param organizationId Stable organization identifier.
+     * @returns Restored organization record.
+     * @throws {ControlPlaneError} When the owner requirement or request fails.
+     */
+    restore(organizationId: string): Promise<Organization>;
   };
   /** Membership operations scoped by organization authorization. */
   readonly members: {
@@ -734,13 +748,14 @@ export interface ControlPlaneClient {
   /** Project operations scoped by organization membership. */
   readonly projects: {
     /**
-     * Lists active projects visible within an organization.
+     * Lists projects visible within an organization.
      *
      * @param organizationId Stable identifier of the organization to inspect.
+     * @param includeArchived When true, includes archived projects too.
      * @returns Application-facing project records belonging to the organization.
      * @throws {ControlPlaneError} When access is denied or the service is unavailable.
      */
-    list(organizationId: string): Promise<Project[]>;
+    list(organizationId: string, includeArchived?: boolean): Promise<Project[]>;
     /**
      * Creates a project inside an organization.
      *
@@ -767,6 +782,14 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When project-management access is unavailable.
      */
     archive(projectId: string): Promise<Project>;
+    /**
+     * Un-archives a project.
+     *
+     * @param projectId Stable project identifier.
+     * @returns Restored project record.
+     * @throws {ControlPlaneError} When project-management access is unavailable.
+     */
+    restore(projectId: string): Promise<Project>;
   };
   /** Project API key operations; every request requires the `api_key:manage` capability. */
   readonly apiKeys: {

@@ -40,6 +40,7 @@ describe("control-plane queries", () => {
         create: vi.fn(),
         update: vi.fn(),
         archive: vi.fn(),
+        restore: vi.fn(),
       },
       members: {
         list: vi.fn().mockResolvedValue([]),
@@ -58,6 +59,7 @@ describe("control-plane queries", () => {
         create: vi.fn(),
         update: vi.fn(),
         archive: vi.fn(),
+        restore: vi.fn(),
       },
       apiKeys: {
         list: vi.fn().mockResolvedValue({
@@ -125,8 +127,8 @@ describe("control-plane queries", () => {
     const members = organizationMembersQuery(client, "organization-1");
     const invitations = organizationInvitationsQuery(client, "organization-1");
 
-    expect(organizations.queryKey).toEqual(controlPlaneQueryKeys.organizations());
-    expect(projects.queryKey).toEqual(controlPlaneQueryKeys.projects("organization-1"));
+    expect(organizations.queryKey).toEqual([...controlPlaneQueryKeys.organizations(), false]);
+    expect(projects.queryKey).toEqual([...controlPlaneQueryKeys.projects("organization-1"), false]);
     expect(members.queryKey).toEqual(controlPlaneQueryKeys.members("organization-1"));
     expect(invitations.queryKey).toEqual(controlPlaneQueryKeys.invitations("organization-1"));
     await organizations.queryFn?.({} as never);
@@ -134,7 +136,7 @@ describe("control-plane queries", () => {
     await members.queryFn?.({} as never);
     await invitations.queryFn?.({} as never);
     expect(client.organizations.list).toHaveBeenCalledOnce();
-    expect(client.projects.list).toHaveBeenCalledWith("organization-1");
+    expect(client.projects.list).toHaveBeenCalledWith("organization-1", false);
     expect(client.members.list).toHaveBeenCalledWith("organization-1");
     expect(client.invitations.list).toHaveBeenCalledWith("organization-1");
   });

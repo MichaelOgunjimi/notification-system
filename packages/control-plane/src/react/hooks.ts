@@ -66,12 +66,13 @@ import {
  * Loads organizations available to the authenticated user.
  *
  * @param enabled Whether the query may execute; disable it until auth is resolved.
+ * @param includeArchived When true, includes archived organizations too.
  * @returns TanStack Query result containing organization records or a structured error.
  */
-export function useOrganizations(enabled = true) {
+export function useOrganizations(enabled = true, includeArchived = false) {
   const client = useControlPlaneClient();
   return useQuery({
-    ...organizationsQuery(client),
+    ...organizationsQuery(client, includeArchived),
     enabled,
   });
 }
@@ -81,13 +82,14 @@ export function useOrganizations(enabled = true) {
  *
  * Passing `null` keeps the query disabled and prevents an unscoped request.
  *
- * @param organizationId Organization whose active projects should be loaded.
+ * @param organizationId Organization whose projects should be loaded.
+ * @param includeArchived When true, includes archived projects too.
  * @returns TanStack Query result containing project records or a structured error.
  */
-export function useProjects(organizationId: string | null) {
+export function useProjects(organizationId: string | null, includeArchived = false) {
   const client = useControlPlaneClient();
   return useQuery({
-    ...projectsQuery(client, organizationId ?? "pending"),
+    ...projectsQuery(client, organizationId ?? "pending", includeArchived),
     enabled: Boolean(organizationId),
   });
 }
@@ -147,6 +149,23 @@ export function useArchiveOrganization() {
   return useMutation({
     mutationFn: ({ organizationId }: { organizationId: string }) =>
       client.organizations.archive(organizationId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: controlPlaneQueryKeys.organizations() }),
+  });
+}
+
+/**
+ * Restores an archived organization and refreshes the organization list. Its
+ * projects, archived alongside it or on their own, stay archived.
+ *
+ * @returns TanStack mutation accepting an organization identifier.
+ */
+export function useRestoreOrganization() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ organizationId }: { organizationId: string }) =>
+      client.organizations.restore(organizationId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: controlPlaneQueryKeys.organizations() }),
   });
@@ -350,6 +369,24 @@ export function useArchiveProject() {
   return useMutation({
     mutationFn: ({ projectId }: { organizationId: string; projectId: string }) =>
       client.projects.archive(projectId),
+    onSuccess: (_project, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projects(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Restores an archived project and refreshes its organization's project list.
+ *
+ * @returns TanStack mutation accepting the organization and project identifiers.
+ */
+export function useRestoreProject() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId }: { organizationId: string; projectId: string }) =>
+      client.projects.restore(projectId),
     onSuccess: (_project, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projects(variables.organizationId),

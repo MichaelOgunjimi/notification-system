@@ -8,7 +8,10 @@ export async function GET(
 ) {
   const { organizationId } = await params;
   if (!isControlPlaneId(organizationId)) return invalidControlPlaneIdResponse();
-  return beacoAuth.forwardAuthenticated(request, `/organizations/${organizationId}/projects`);
+  return beacoAuth.forwardAuthenticated(
+    request,
+    `/organizations/${organizationId}/projects${request.nextUrl.search}`,
+  );
 }
 
 /**
