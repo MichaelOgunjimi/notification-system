@@ -1,4 +1,4 @@
-"""Alert rule schemas — project-scoped delivery health monitoring."""
+"""Alert rule schemas — a project's own rules, plus org-wide defaults."""
 
 import uuid
 from datetime import datetime
@@ -30,7 +30,8 @@ class AlertRuleUpdate(BaseModel):
 
 class AlertRuleResponse(BaseModel):
     id: uuid.UUID
-    project_id: uuid.UUID
+    project_id: uuid.UUID | None
+    organization_id: uuid.UUID | None
     name: str
     metric: AlertMetric
     comparison: AlertComparison

@@ -184,3 +184,97 @@ async def test_delete_removes_the_rule(client: AsyncClient, db: AsyncSession, mo
         await db.execute(select(AlertRule).where(AlertRule.id == rule.id))
     ).scalar_one_or_none()
     assert remaining is None
+
+
+async def test_viewer_cannot_create_an_org_wide_alert_rule(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    _owner, organization, _project = await _seed_owner_and_project(
+        db, org_slug="org-alert-viewer", project_slug="alpha"
+    )
+    viewer = await _add_member(db, organization_id=organization.id, role=OrganizationRole.VIEWER)
+
+    response = await client.post(
+        f"/api/v1/organizations/{organization.id}/alert-rules",
+        json={"name": "Nope", "metric": "failure_rate", "threshold": 10},
+        headers=await _authorization_header(viewer, db, mock_redis),
+    )
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_create_an_org_wide_alert_rule(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, organization, _project = await _seed_owner_and_project(
+        db, org_slug="org-alert-create", project_slug="beta"
+    )
+
+    response = await client.post(
+        f"/api/v1/organizations/{organization.id}/alert-rules",
+        json={"name": "Org default", "metric": "failure_rate", "threshold": 10},
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["organization_id"] == str(organization.id)
+    assert data["project_id"] is None
+
+
+async def test_project_defaults_lists_its_organizations_org_wide_rules(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, organization, project = await _seed_owner_and_project(
+        db, org_slug="org-alert-defaults", project_slug="gamma"
+    )
+    db.add(
+        AlertRule(
+            organization_id=organization.id, name="Org default", metric="failure_rate", threshold=5
+        )
+    )
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/alert-rules/defaults",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [item["name"] for item in items] == ["Org default"]
+
+
+async def test_fork_copies_the_org_wide_rule_into_a_project_owned_rule(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, organization, project = await _seed_owner_and_project(
+        db, org_slug="org-alert-fork", project_slug="delta"
+    )
+    org_rule = AlertRule(
+        organization_id=organization.id,
+        name="Org default",
+        metric="failure_rate",
+        threshold=5,
+        comparison="lt",
+    )
+    db.add(org_rule)
+    await db.commit()
+    await db.refresh(org_rule)
+
+    response = await client.post(
+        f"/api/v1/projects/{project.id}/alert-rules/{org_rule.id}/fork",
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 201
+    fork = response.json()
+    assert fork["project_id"] == str(project.id)
+    assert fork["organization_id"] is None
+    assert fork["comparison"] == "lt"
+    assert fork["id"] != str(org_rule.id)
+
+    # The source org-wide rule is untouched.
+    await db.refresh(org_rule)
+    assert org_rule.project_id is None
+    assert org_rule.organization_id == organization.id
