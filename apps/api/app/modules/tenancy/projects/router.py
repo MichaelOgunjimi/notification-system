@@ -44,3 +44,12 @@ async def archive_project(
     db: SessionDep,
 ) -> ProjectView:
     return await application.archive_project_for_user(db, user=user, project_id=project_id)
+
+
+@router.post("/{project_id}/restore", response_model=ProjectResponse)
+async def restore_project(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> ProjectView:
+    return await application.restore_project_for_user(db, user=user, project_id=project_id)

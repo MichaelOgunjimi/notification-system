@@ -88,6 +88,19 @@ async def archive_organization(
     )
 
 
+@router.post("/{organization_id}/restore", response_model=OrganizationResponse)
+async def restore_organization(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> OrganizationView:
+    return await application.restore_organization_for_user(
+        db,
+        user=user,
+        organization_id=organization_id,
+    )
+
+
 @router.get("/{organization_id}/projects", response_model=list[ProjectResponse])
 async def list_projects(
     organization_id: uuid.UUID,

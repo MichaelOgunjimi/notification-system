@@ -113,6 +113,69 @@ async def test_owner_edits_and_archives_organization_and_project(
     assert projects.json() == []
 
 
+async def test_project_restore_undoes_archive(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    owner = User(email="project-restore@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="proj-restore")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Api", slug="api"
+    )
+    await db.commit()
+    headers = await _headers(owner, db, mock_redis)
+
+    await client.delete(f"/api/v1/projects/{project.id}", headers=headers)
+    restored = await client.post(f"/api/v1/projects/{project.id}/restore", headers=headers)
+
+    assert restored.status_code == 200
+    assert restored.json()["archived_at"] is None
+    projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects", headers=headers
+    )
+    assert [project["id"] for project in projects.json()] == [str(project.id)]
+
+
+async def test_organization_restore_leaves_its_projects_archived(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    owner = User(email="org-restore@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="org-restore")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Api", slug="api"
+    )
+    await db.commit()
+    headers = await _headers(owner, db, mock_redis)
+
+    await client.delete(f"/api/v1/organizations/{organization.id}", headers=headers)
+    restored = await client.post(
+        f"/api/v1/organizations/{organization.id}/restore", headers=headers
+    )
+
+    assert restored.status_code == 200
+    assert restored.json()["archived_at"] is None
+    # The org is back, but archiving it archived the project too — that stays
+    # archived until restored on its own, deliberately.
+    projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects", headers=headers
+    )
+    assert projects.json() == []
+    all_projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects",
+        params={"include_archived": "true"},
+        headers=headers,
+    )
+    assert [row["id"] for row in all_projects.json()] == [str(project.id)]
+    assert all_projects.json()[0]["archived_at"] is not None
+
+
 async def test_final_owner_cannot_be_demoted_or_removed(
     client: AsyncClient,
     db: AsyncSession,
