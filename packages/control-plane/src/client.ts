@@ -358,6 +358,7 @@ function mapAlertRule(rule: ApiAlertRule): AlertRule {
   return {
     id: rule.id,
     projectId: rule.project_id,
+    organizationId: rule.organization_id,
     name: rule.name,
     metric: rule.metric,
     comparison: rule.comparison,
@@ -376,6 +377,31 @@ function alertRuleListQuery(options: AlertRuleListOptions): string {
   if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function alertRuleCreateBody(input: AlertRuleCreate): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    name: input.name,
+    metric: input.metric,
+    threshold: input.threshold,
+  };
+  if (input.comparison !== undefined) body.comparison = input.comparison;
+  if (input.windowMinutes !== undefined) body.window_minutes = input.windowMinutes;
+  if (input.notifyEmail !== undefined) body.notify_email = input.notifyEmail;
+  if (input.isActive !== undefined) body.is_active = input.isActive;
+  return body;
+}
+
+function alertRuleUpdateBody(changes: AlertRuleUpdate): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (changes.name !== undefined) body.name = changes.name;
+  if (changes.metric !== undefined) body.metric = changes.metric;
+  if (changes.comparison !== undefined) body.comparison = changes.comparison;
+  if (changes.threshold !== undefined) body.threshold = changes.threshold;
+  if (changes.windowMinutes !== undefined) body.window_minutes = changes.windowMinutes;
+  if (changes.notifyEmail !== undefined) body.notify_email = changes.notifyEmail;
+  if (changes.isActive !== undefined) body.is_active = changes.isActive;
+  return body;
 }
 
 function mapTenantEvent(event: ApiTenantEvent): TenantEvent {
@@ -953,51 +979,86 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       );
       return mapPage(page, mapAlertRule);
     },
-    create: async (projectId: string, input: AlertRuleCreate): Promise<AlertRule> => {
-      const body: Record<string, unknown> = {
-        name: input.name,
-        metric: input.metric,
-        threshold: input.threshold,
-      };
-      if (input.comparison !== undefined) body.comparison = input.comparison;
-      if (input.windowMinutes !== undefined) body.window_minutes = input.windowMinutes;
-      if (input.notifyEmail !== undefined) body.notify_email = input.notifyEmail;
-      if (input.isActive !== undefined) body.is_active = input.isActive;
-      return mapAlertRule(
+    defaultsForProject: async (
+      projectId: string,
+      options: AlertRuleListOptions = {},
+    ): Promise<Paginated<AlertRule>> => {
+      const page = await this.get<ApiPaginated<ApiAlertRule>>(
+        `/projects/${encodeURIComponent(projectId)}/alert-rules/defaults${alertRuleListQuery(options)}`,
+      );
+      return mapPage(page, mapAlertRule);
+    },
+    forOrganization: async (
+      organizationId: string,
+      options: AlertRuleListOptions = {},
+    ): Promise<Paginated<AlertRule>> => {
+      const page = await this.get<ApiPaginated<ApiAlertRule>>(
+        `/organizations/${encodeURIComponent(organizationId)}/alert-rules${alertRuleListQuery(options)}`,
+      );
+      return mapPage(page, mapAlertRule);
+    },
+    create: async (projectId: string, input: AlertRuleCreate): Promise<AlertRule> =>
+      mapAlertRule(
         await this.request<ApiAlertRule>(
           `/projects/${encodeURIComponent(projectId)}/alert-rules`,
           "POST",
-          body,
+          alertRuleCreateBody(input),
         ),
-      );
-    },
+      ),
     update: async (
       projectId: string,
       ruleId: string,
       changes: AlertRuleUpdate,
-    ): Promise<AlertRule> => {
-      const body: Record<string, unknown> = {};
-      if (changes.name !== undefined) body.name = changes.name;
-      if (changes.metric !== undefined) body.metric = changes.metric;
-      if (changes.comparison !== undefined) body.comparison = changes.comparison;
-      if (changes.threshold !== undefined) body.threshold = changes.threshold;
-      if (changes.windowMinutes !== undefined) body.window_minutes = changes.windowMinutes;
-      if (changes.notifyEmail !== undefined) body.notify_email = changes.notifyEmail;
-      if (changes.isActive !== undefined) body.is_active = changes.isActive;
-      return mapAlertRule(
+    ): Promise<AlertRule> =>
+      mapAlertRule(
         await this.request<ApiAlertRule>(
           `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
           "PUT",
-          body,
+          alertRuleUpdateBody(changes),
         ),
-      );
-    },
+      ),
     delete: async (projectId: string, ruleId: string): Promise<void> => {
       await this.request<void>(
         `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
         "DELETE",
       );
     },
+    createForOrganization: async (
+      organizationId: string,
+      input: AlertRuleCreate,
+    ): Promise<AlertRule> =>
+      mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/organizations/${encodeURIComponent(organizationId)}/alert-rules`,
+          "POST",
+          alertRuleCreateBody(input),
+        ),
+      ),
+    updateForOrganization: async (
+      organizationId: string,
+      ruleId: string,
+      changes: AlertRuleUpdate,
+    ): Promise<AlertRule> =>
+      mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/organizations/${encodeURIComponent(organizationId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+          "PUT",
+          alertRuleUpdateBody(changes),
+        ),
+      ),
+    deleteForOrganization: async (organizationId: string, ruleId: string): Promise<void> => {
+      await this.request<void>(
+        `/organizations/${encodeURIComponent(organizationId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+        "DELETE",
+      );
+    },
+    fork: async (projectId: string, ruleId: string): Promise<AlertRule> =>
+      mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}/fork`,
+          "POST",
+        ),
+      ),
   };
 
   readonly events = {
