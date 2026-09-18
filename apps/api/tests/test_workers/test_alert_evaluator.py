@@ -139,6 +139,23 @@ def test_rule_below_threshold_does_not_trigger(mock_get_session, mock_notify):
 
 @patch("app.modules.observability.alerts.evaluator.notify.alert_triggered")
 @patch("app.modules.observability.alerts.evaluator.get_sync_session")
+def test_less_than_comparison_triggers_below_threshold(mock_get_session, mock_notify):
+    session = _get_test_session()
+    project_id = _seed_project_with_notifications(session, delivered=9, failed=1)  # 10% failure
+    _seed_rule(session, project_id=project_id, threshold=50.0, comparison="lt")
+    session.close()
+
+    mock_get_session.return_value = _get_test_session()
+    result = evaluate_alert_rules_task.apply().get()
+
+    # 10% failure is below the 50% threshold, so an "lt" rule fires here
+    # where a default "gt" rule (the other tests) would not.
+    assert result == {"evaluated": 1, "triggered": 1}
+    mock_notify.assert_called_once()
+
+
+@patch("app.modules.observability.alerts.evaluator.notify.alert_triggered")
+@patch("app.modules.observability.alerts.evaluator.get_sync_session")
 def test_cooldown_prevents_a_second_fire_within_the_window(mock_get_session, mock_notify):
     session = _get_test_session()
     project_id = _seed_project_with_notifications(session, delivered=0, failed=10)  # 100% failure

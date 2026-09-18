@@ -38,6 +38,7 @@ async def create_alert_rule(
         project_id=project_id,
         name=data.name,
         metric=data.metric,
+        comparison=data.comparison,
         threshold=data.threshold,
         window_minutes=data.window_minutes,
         notify_email=data.notify_email,

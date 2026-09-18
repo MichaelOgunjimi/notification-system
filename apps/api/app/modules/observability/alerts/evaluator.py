@@ -22,7 +22,7 @@ from app.modules.delivery.enums import DeadLetterStatus
 from app.modules.events.model import Event
 from app.modules.notifications.enums import NotificationStatus
 from app.modules.notifications.model import Notification
-from app.modules.observability.alerts.enums import AlertMetric
+from app.modules.observability.alerts.enums import AlertComparison, AlertMetric
 from app.modules.observability.alerts.model import AlertRule
 from app.modules.tenancy.models.project import Project
 from app.workers.celery_app import celery_app
@@ -45,6 +45,12 @@ def _format_metric(metric: str, value: float) -> str:
     if metric == AlertMetric.AVG_LATENCY_MS:
         return f"{round(value)}ms"
     return str(int(value))
+
+
+def _is_triggered(value: float, rule: AlertRule) -> bool:
+    if rule.comparison == AlertComparison.LESS_THAN:
+        return value < rule.threshold
+    return value > rule.threshold
 
 
 def _project_key_ids(project_id):
@@ -131,7 +137,7 @@ def evaluate_alert_rules() -> dict:
 
             evaluated += 1
             value = _evaluate_metric(session, rule, window_start=window_start, now=now)
-            if value <= rule.threshold:
+            if not _is_triggered(value, rule):
                 continue
 
             # Stamp and commit the cooldown before enqueueing the email, so a

@@ -79,8 +79,38 @@ async def test_owner_can_create_an_alert_rule_scoped_to_the_project(
     data = response.json()
     assert data["project_id"] == str(project.id)
     assert data["metric"] == "failure_rate"
+    assert data["comparison"] == "gt"
     assert data["window_minutes"] == 30
     assert data["last_triggered_at"] is None
+
+
+async def test_create_and_update_accept_an_explicit_comparison(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, _organization, project = await _seed_owner_and_project(
+        db, org_slug="alert-comparison", project_slug="theta"
+    )
+
+    created = await client.post(
+        f"/api/v1/projects/{project.id}/alert-rules",
+        json={
+            "name": "Low success rate",
+            "metric": "failure_rate",
+            "comparison": "lt",
+            "threshold": 5,
+        },
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert created.status_code == 201
+    assert created.json()["comparison"] == "lt"
+
+    updated = await client.put(
+        f"/api/v1/projects/{project.id}/alert-rules/{created.json()['id']}",
+        json={"comparison": "gt"},
+        headers=await _authorization_header(owner, db, mock_redis),
+    )
+    assert updated.status_code == 200
+    assert updated.json()["comparison"] == "gt"
 
 
 async def test_list_excludes_other_projects_rules(

@@ -16,6 +16,7 @@ class AlertRule(SQLModel, table=True):
     project_id: uuid.UUID = Field(foreign_key="projects.id", index=True)
     name: str = Field(max_length=255)
     metric: str = Field(max_length=50)
+    comparison: str = Field(default="gt", max_length=10)
     threshold: float
     window_minutes: int = Field(default=60)
     notify_email: str | None = Field(default=None, max_length=255)

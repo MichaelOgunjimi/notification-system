@@ -360,6 +360,7 @@ function mapAlertRule(rule: ApiAlertRule): AlertRule {
     projectId: rule.project_id,
     name: rule.name,
     metric: rule.metric,
+    comparison: rule.comparison,
     threshold: rule.threshold,
     windowMinutes: rule.window_minutes,
     notifyEmail: rule.notify_email,
@@ -958,6 +959,7 @@ class HttpControlPlaneClient implements ControlPlaneClient {
         metric: input.metric,
         threshold: input.threshold,
       };
+      if (input.comparison !== undefined) body.comparison = input.comparison;
       if (input.windowMinutes !== undefined) body.window_minutes = input.windowMinutes;
       if (input.notifyEmail !== undefined) body.notify_email = input.notifyEmail;
       if (input.isActive !== undefined) body.is_active = input.isActive;
@@ -977,6 +979,7 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       const body: Record<string, unknown> = {};
       if (changes.name !== undefined) body.name = changes.name;
       if (changes.metric !== undefined) body.metric = changes.metric;
+      if (changes.comparison !== undefined) body.comparison = changes.comparison;
       if (changes.threshold !== undefined) body.threshold = changes.threshold;
       if (changes.windowMinutes !== undefined) body.window_minutes = changes.windowMinutes;
       if (changes.notifyEmail !== undefined) body.notify_email = changes.notifyEmail;

@@ -2,7 +2,7 @@
 
 import { FormEvent, useId, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
-import type { AlertMetric, AlertRule } from "@beaco/control-plane";
+import type { AlertComparison, AlertMetric, AlertRule } from "@beaco/control-plane";
 import { useCreateProjectAlertRule, useUpdateProjectAlertRule } from "@beaco/control-plane/react";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -20,6 +20,11 @@ const METRICS: ReadonlyArray<{ value: AlertMetric; label: string; placeholder: s
   { value: "failure_rate", label: "Failure rate", placeholder: "10" },
   { value: "dead_letter_count", label: "Dead letters", placeholder: "5" },
   { value: "avg_latency_ms", label: "Avg latency", placeholder: "2000" },
+];
+
+const COMPARISONS: ReadonlyArray<{ value: AlertComparison; label: string }> = [
+  { value: "gt", label: "Above" },
+  { value: "lt", label: "Below" },
 ];
 
 /**
@@ -50,6 +55,7 @@ export function AlertRuleFormDialog({
 
   const [name, setName] = useState(rule?.name ?? "");
   const [metric, setMetric] = useState<AlertMetric>(rule?.metric ?? "failure_rate");
+  const [comparison, setComparison] = useState<AlertComparison>(rule?.comparison ?? "gt");
   const [threshold, setThreshold] = useState(rule ? String(rule.threshold) : "");
   const [windowMinutes, setWindowMinutes] = useState(String(rule?.windowMinutes ?? 60));
   const [notifyEmail, setNotifyEmail] = useState(rule?.notifyEmail ?? "");
@@ -79,6 +85,7 @@ export function AlertRuleFormDialog({
           changes: {
             name: name.trim(),
             metric,
+            comparison,
             threshold: thresholdValue,
             windowMinutes: windowValue,
             notifyEmail: notifyEmail.trim() || null,
@@ -91,6 +98,7 @@ export function AlertRuleFormDialog({
           input: {
             name: name.trim(),
             metric,
+            comparison,
             threshold: thresholdValue,
             windowMinutes: windowValue,
             notifyEmail: notifyEmail.trim() || null,
@@ -112,7 +120,7 @@ export function AlertRuleFormDialog({
       }}
       eyebrow="Alert rules"
       title={rule ? "Edit alert rule" : "New alert rule"}
-      description="Fires an email when this metric exceeds its threshold, at most once per window."
+      description="Fires an email when this metric crosses its threshold, at most once per window."
       busy={mutation.isPending}
       formId={formId}
       submitLabel={rule ? "Save changes" : "Create rule"}
@@ -143,6 +151,22 @@ export function AlertRuleFormDialog({
             aria-checked={metric === option.value}
             data-active={metric === option.value || undefined}
             onClick={() => setMetric(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="form-dialog__field-label">Trigger when the metric is</span>
+      <div className="form-dialog__segmented" role="radiogroup" aria-label="Comparison">
+        {COMPARISONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={comparison === option.value}
+            data-active={comparison === option.value || undefined}
+            onClick={() => setComparison(option.value)}
           >
             {option.label}
           </button>

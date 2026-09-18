@@ -514,12 +514,16 @@ export type TemplateChannel = "email" | "sms" | "webhook";
 /** Metric an alert rule watches — each reuses a field Usage already computes. */
 export type AlertMetric = "failure_rate" | "dead_letter_count" | "avg_latency_ms";
 
+/** Which direction of a threshold crossing fires a rule. */
+export type AlertComparison = "gt" | "lt";
+
 /** A project's own delivery-health monitoring rule. */
 export type AlertRule = Readonly<{
   id: string;
   projectId: string;
   name: string;
   metric: AlertMetric;
+  comparison: AlertComparison;
   threshold: number;
   windowMinutes: number;
   notifyEmail: string | null;
@@ -538,6 +542,7 @@ export type AlertRuleListOptions = Readonly<{
 export type AlertRuleCreate = Readonly<{
   name: string;
   metric: AlertMetric;
+  comparison?: AlertComparison;
   threshold: number;
   windowMinutes?: number;
   notifyEmail?: string | null;
@@ -548,6 +553,7 @@ export type AlertRuleCreate = Readonly<{
 export type AlertRuleUpdate = Readonly<{
   name?: string;
   metric?: AlertMetric;
+  comparison?: AlertComparison;
   threshold?: number;
   windowMinutes?: number;
   notifyEmail?: string | null;
@@ -1381,6 +1387,7 @@ export type ApiAlertRule = {
   project_id: string;
   name: string;
   metric: AlertMetric;
+  comparison: AlertComparison;
   threshold: number;
   window_minutes: number;
   notify_email: string | null;

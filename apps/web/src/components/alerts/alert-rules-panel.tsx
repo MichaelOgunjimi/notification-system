@@ -87,8 +87,8 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
               <div className="alert-rules-panel__summary">
                 <strong>{rule.name}</strong>
                 <span>
-                  {METRIC_LABELS[rule.metric]} &gt; {formatThreshold(rule.metric, rule.threshold)}{" "}
-                  over {rule.windowMinutes}m
+                  {METRIC_LABELS[rule.metric]} {rule.comparison === "lt" ? "<" : ">"}{" "}
+                  {formatThreshold(rule.metric, rule.threshold)} over {rule.windowMinutes}m
                 </span>
               </div>
               <div className="alert-rules-panel__meta">
