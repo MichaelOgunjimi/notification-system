@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.modules.delivery.adapters.email import EmailAdapter
 from app.modules.delivery.templates.transactional import (
     TransactionalEmail,
+    alert_triggered_email,
     email_changed_email,
     invitation_accepted_email,
     member_removed_email,
@@ -23,6 +24,7 @@ NOTIFY_PRIMARY_EMAIL_CHANGED = "NOTIFY.PRIMARY_EMAIL_CHANGED"
 NOTIFY_MEMBER_REMOVED = "NOTIFY.MEMBER_REMOVED"
 NOTIFY_MEMBER_ROLE_CHANGED = "NOTIFY.MEMBER_ROLE_CHANGED"
 NOTIFY_INVITATION_ACCEPTED = "NOTIFY.INVITATION_ACCEPTED"
+NOTIFY_ALERT_TRIGGERED = "NOTIFY.ALERT_TRIGGERED"
 
 
 def _render_welcome(recipient: str, payload: dict[str, str]) -> TransactionalEmail:
@@ -73,12 +75,26 @@ def _render_invitation_accepted(recipient: str, payload: dict[str, str]) -> Tran
     )
 
 
+def _render_alert_triggered(recipient: str, payload: dict[str, str]) -> TransactionalEmail:
+    return alert_triggered_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=recipient,
+        rule_name=payload["rule_name"],
+        project_name=payload["project_name"],
+        metric_label=payload["metric_label"],
+        observed_value=payload["observed_value"],
+        threshold_value=payload["threshold_value"],
+        window_minutes=int(payload["window_minutes"]),
+    )
+
+
 _RENDERERS: dict[str, Callable[[str, dict[str, str]], TransactionalEmail]] = {
     NOTIFY_WELCOME: _render_welcome,
     NOTIFY_PRIMARY_EMAIL_CHANGED: _render_primary_email_changed,
     NOTIFY_MEMBER_REMOVED: _render_member_removed,
     NOTIFY_MEMBER_ROLE_CHANGED: _render_member_role_changed,
     NOTIFY_INVITATION_ACCEPTED: _render_invitation_accepted,
+    NOTIFY_ALERT_TRIGGERED: _render_alert_triggered,
 }
 
 

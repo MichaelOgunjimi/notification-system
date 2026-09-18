@@ -356,3 +356,49 @@ def organization_invitation_email(
             expiry=expiry,
         ),
     )
+
+
+def alert_triggered_email(
+    *,
+    frontend_url: str,
+    recipient: str,
+    rule_name: str,
+    project_name: str,
+    metric_label: str,
+    observed_value: str,
+    threshold_value: str,
+    window_minutes: int,
+) -> TransactionalEmail:
+    subject = f"Alert triggered: {rule_name}"
+    context = {
+        **_shared_assets(frontend_url),
+        "subject": subject,
+        "preheader": f"{metric_label} crossed its threshold in {project_name}.",
+        "eyebrow": "Alert triggered",
+        "heading": rule_name,
+        "intro": (
+            f"{metric_label} in {project_name} reached {observed_value} over the last "
+            f"{window_minutes} minutes, past the {threshold_value} threshold."
+        ),
+        "detail_label": "Project",
+        "detail_value": project_name,
+        "security_value": f"{metric_label}: {observed_value}",
+        "action_label": "Open Alerts",
+        "action_url": f"{frontend_url.rstrip('/')}/workspace",
+        "footnote": "This rule won't fire again until its evaluation window passes.",
+        "recipient": recipient,
+    }
+    return TransactionalEmail(
+        subject=subject,
+        html=render_html(**context),
+        text=render_text(
+            "alert_triggered.txt.j2",
+            rule_name=rule_name,
+            project_name=project_name,
+            metric_label=metric_label,
+            observed_value=observed_value,
+            threshold_value=threshold_value,
+            window_minutes=window_minutes,
+            action_url=f"{frontend_url.rstrip('/')}/workspace",
+        ),
+    )

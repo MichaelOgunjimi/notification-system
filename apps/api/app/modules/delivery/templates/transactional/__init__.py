@@ -1,6 +1,7 @@
 """Branded transactional email templates."""
 
 from app.modules.delivery.templates.transactional.messages import (
+    alert_triggered_email,
     email_changed_email,
     email_verification_email,
     invitation_accepted_email,
@@ -14,6 +15,7 @@ from app.modules.delivery.templates.transactional.models import TransactionalEma
 
 __all__ = [
     "TransactionalEmail",
+    "alert_triggered_email",
     "email_changed_email",
     "email_verification_email",
     "invitation_accepted_email",

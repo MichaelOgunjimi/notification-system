@@ -19,6 +19,7 @@ from celery import Task
 from app.modules.identity.models.user import User
 from app.modules.tenancy.models.organization import Organization
 from app.workers.identity_notifications import (
+    NOTIFY_ALERT_TRIGGERED,
     NOTIFY_INVITATION_ACCEPTED,
     NOTIFY_MEMBER_REMOVED,
     NOTIFY_MEMBER_ROLE_CHANGED,
@@ -78,6 +79,35 @@ async def member_role_changed(member: User, *, organization: Organization, role:
         NOTIFY_MEMBER_ROLE_CHANGED,
         member.email,
         {"recipient_name": member.name, "organization_name": organization.name, "role": role},
+    )
+
+
+def alert_triggered(
+    *,
+    recipient: str,
+    rule_name: str,
+    project_name: str,
+    metric_label: str,
+    observed_value: str,
+    threshold_value: str,
+    window_minutes: int,
+) -> None:
+    """A project's alert rule crossed its threshold.
+
+    Not ``async`` like the rest of this module — its only caller is the sync
+    Celery evaluator task, which has nothing to await.
+    """
+    _enqueue_lifecycle_notification(
+        NOTIFY_ALERT_TRIGGERED,
+        recipient,
+        {
+            "rule_name": rule_name,
+            "project_name": project_name,
+            "metric_label": metric_label,
+            "observed_value": observed_value,
+            "threshold_value": threshold_value,
+            "window_minutes": str(window_minutes),
+        },
     )
 
 
