@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CaretRight } from "@phosphor-icons/react";
 import type {
@@ -22,6 +22,8 @@ type DeliveryPageProps = Readonly<{
   project: Project;
   /** Scopes the surface to failed/dead-lettered deliveries for the Alerts nav item, sharing every other behavior with Delivery. */
   restrictToIssues?: boolean;
+  /** Extra content rendered between the scope line and the filters — the Alerts rules panel. */
+  configPanel?: ReactNode;
 }>;
 
 const PER_PAGE_OPTIONS = [25, 50, 100] as const;
@@ -62,7 +64,12 @@ function rangeStart(range: keyof typeof RANGE_MS | "all"): string | undefined {
 }
 
 /** Project delivery stream linking every notification back to its source event. */
-export function DeliveryPage({ organization, project, restrictToIssues }: DeliveryPageProps) {
+export function DeliveryPage({
+  organization,
+  project,
+  restrictToIssues,
+  configPanel,
+}: DeliveryPageProps) {
   const router = useRouter();
   const { params, replace } = useRememberedSearchParams();
   const status = STATUS_OPTIONS.some((option) => option.value === params.get("status"))
@@ -149,6 +156,8 @@ export function DeliveryPage({ organization, project, restrictToIssues }: Delive
             : "Counting…"}
         </em>
       </section>
+
+      {configPanel}
 
       <div className="delivery-page__filters">
         <span className="delivery-page__chips">
