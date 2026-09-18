@@ -9,6 +9,7 @@ from app.modules.delivery.router import router as delivery_router
 from app.modules.events.router import router as events_router
 from app.modules.identity.router import router as identity_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.observability.alerts.router import router as alert_rules_router
 from app.modules.observability.router import router as observability_router
 from app.modules.suppressions.router import router as suppressions_router
 from app.modules.templates.router import router as templates_router
@@ -27,4 +28,5 @@ api_v1_router.include_router(templates_tenant_router)
 api_v1_router.include_router(delivery_router)
 api_v1_router.include_router(suppressions_router)
 api_v1_router.include_router(observability_router)
+api_v1_router.include_router(alert_rules_router)
 api_v1_router.include_router(admin_router)
