@@ -18,4 +18,4 @@
 - Run `make new-worktree` immediately after creating or entering a new worktree. It derives an isolated Compose project name from the branch, assigns a free three-digit port suffix, and writes the ignored root `.env` and `apps/web/.env.local` files.
 - Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
 - Start worktree stacks with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.
-- `cloudflared` is intentionally excluded from normal worktree stacks because the shared tunnel would route public traffic to an arbitrary connector. Only the primary `main` checkout may run it, using `make docker-up-tunnel`.
+- `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Any checkout may opt in, but only one may run the tunnel at a time: run `make docker-stop-tunnel` in the active checkout before `make docker-up-tunnel` in another.
