@@ -1,4 +1,4 @@
-.PHONY: install setup new-worktree dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed docker-up docker-up-tunnel docker-stop-tunnel docker-down docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: install setup new-worktree dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke docker-up docker-up-tunnel docker-stop-tunnel docker-down docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 API_DIR := apps/api
 
@@ -53,6 +53,9 @@ migrate-create:
 seed:
 	cd $(API_DIR) && uv run python -m scripts.seed
 
+smoke:
+	./scripts/smoke-test.py
+
 docker-up:
 	docker compose up -d
 
@@ -64,6 +67,12 @@ docker-stop-tunnel:
 
 docker-down:
 	docker compose down
+
+docker-migrate:
+	docker compose exec -T api alembic upgrade head
+
+docker-seed:
+	docker compose exec -T api python -m scripts.seed
 
 docker-rebuild:
 	docker compose down --rmi all && docker compose up -d --build

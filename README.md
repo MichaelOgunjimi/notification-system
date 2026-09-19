@@ -95,26 +95,37 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/notification-system.git
+git clone https://github.com/MichaelOgunjimi/notification-system.git
 cd notification-system
 
-# Install Python and JavaScript workspace dependencies
-make install
+# Create this checkout's Compose name and non-conflicting ports
+make new-worktree
 
-# Start the complete Docker stack
-make docker-up
+# Build the complete stack and apply migrations
+docker compose up -d --build
+make docker-migrate
 
-# Run database migrations
-make migrate
+# Verify login, API-key creation, event processing, and email delivery
+make smoke
 
-# Seed sample data
-make seed
+# Optional sample data
+make docker-seed
 
 # Or run each application locally in separate terminals
 make dev-api   # http://localhost:8000
 make dev-web   # http://localhost:3000
 make dev-docs  # http://localhost:3001
 ```
+
+`make new-worktree` writes ignored `.env` and `apps/web/.env.local` files. It derives
+the Compose project name from the current branch and chooses one shared three-digit
+port suffix. Override either value with `make new-worktree name=my-feature suffix=123`.
+The command prints the URLs assigned to that checkout.
+
+Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so stop it
+in its current checkout with `make docker-stop-tunnel`, then run
+`make docker-up-tunnel` in the checkout that should receive public traffic. Only one
+checkout may own the tunnel at a time.
 
 ### Interactive API Docs
 

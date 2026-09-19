@@ -19,3 +19,17 @@
 - Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
 - Start worktree stacks with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.
 - `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Any checkout may opt in, but only one may run the tunnel at a time: run `make docker-stop-tunnel` in the active checkout before `make docker-up-tunnel` in another.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the canonical `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix` labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository with domain language in the root `CONTEXT.md`. See `docs/agents/domain.md`.

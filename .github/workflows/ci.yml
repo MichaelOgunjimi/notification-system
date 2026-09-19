@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: notification_system
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_system
+      JWT_SECRET: ci-only-secret-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+        working-directory: apps/api
+      - run: createdb -h localhost -U postgres notification_system_test
+        env:
+          PGPASSWORD: postgres
+      - run: uv run ruff check .
+        working-directory: apps/api
+      - run: uv run ruff format --check .
+        working-directory: apps/api
+      - run: uv run mypy app/
+        working-directory: apps/api
+      - run: uv run pytest -q
+        working-directory: apps/api
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run type-check
+      - run: npm run test --workspaces --if-present
+      - run: npm run build
