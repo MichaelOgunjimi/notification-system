@@ -43,6 +43,7 @@ htmlcov/
 
 # Docker
 .docker/
+cloudflared/*.json
 
 # OS
 .DS_Store

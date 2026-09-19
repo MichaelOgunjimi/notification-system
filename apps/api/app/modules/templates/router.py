@@ -38,7 +38,7 @@ async def list_templates(
         db,
         page=page,
         per_page=per_page,
-        api_key_id=api_key_filter_id(api_key),
+        project_id=api_key.project_id,
     )
     return PaginatedResponse.create(
         [TemplateResponse.model_validate(item) for item in items],
@@ -56,7 +56,9 @@ async def create_template(
     api_key: TemplatesWriteApiKeyDep,
     request: Request,
 ) -> TemplateResponse:
-    template = await template_service.create_template(db, body, api_key_filter_id(api_key))
+    template = await template_service.create_template(
+        db, body, project_id=api_key.project_id, api_key_id=api_key.id
+    )
     await log_action(
         db,
         api_key_id=api_key_filter_id(api_key),
@@ -77,8 +79,8 @@ async def get_template(
     db: SessionDep,
     api_key: TemplatesReadApiKeyDep,
 ) -> TemplateResponse:
-    template = await template_service.get_template_for_key(
-        db, template_id, api_key_id=api_key_filter_id(api_key)
+    template = await template_service.get_template_for_project(
+        db, template_id, project_id=api_key.project_id
     )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -95,7 +97,7 @@ async def update_template(
     request: Request,
 ) -> TemplateResponse:
     template = await template_service.get_owned_template(
-        db, template_id, api_key_id=api_key_filter_id(api_key)
+        db, template_id, project_id=api_key.project_id
     )
     if template is None:
         raise HTTPException(
@@ -125,8 +127,8 @@ async def preview_template(
     db: SessionDep,
     api_key: TemplatesReadApiKeyDep,
 ) -> TemplatePreviewResponse:
-    template = await template_service.get_template_for_key(
-        db, template_id, api_key_id=api_key_filter_id(api_key)
+    template = await template_service.get_template_for_project(
+        db, template_id, project_id=api_key.project_id
     )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -148,7 +150,7 @@ async def delete_template(
     request: Request,
 ) -> None:
     template = await template_service.get_owned_template(
-        db, template_id, api_key_id=api_key_filter_id(api_key)
+        db, template_id, project_id=api_key.project_id
     )
     if template is None:
         raise HTTPException(

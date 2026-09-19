@@ -1,88 +1,160 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
-  Code2,
-  Layers,
-  Mail,
-  Rocket,
-  Send,
-  Server,
-  Webhook,
-  Zap,
-} from "lucide-react";
+  BookOpenText,
+  BracketsCurly,
+  Database,
+  EnvelopeSimple,
+  Lightning,
+  PaperPlaneTilt,
+  PlugsConnected,
+  RocketLaunch,
+  TreeStructure,
+} from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { getDocsByGroup } from "@/lib/docs";
-import type { DocSlug } from "@/lib/docs";
+import { DocsSearchButton } from "@/components/docs-shell";
+import { DocsSidebar } from "@/components/docs-sidebar";
+import { getDocsByGroup, type DocSlug } from "@/lib/docs";
 
 export const metadata: Metadata = {
   title: "Documentation — Beaco",
-  description:
-    "Learn how to integrate and operate Beaco as a hosted notification platform.",
+  description: "Learn how to integrate and operate Beaco as a hosted notification platform.",
 };
 
-const ICONS: Record<DocSlug, ReactNode> = {
-  introduction: <BookOpen size={20} />,
-  quickstart: <Rocket size={20} />,
-  events: <Zap size={20} />,
-  channels: <Mail size={20} />,
-  templates: <Code2 size={20} />,
-  delivery: <Send size={20} />,
-  "api-reference": <Server size={20} />,
-  architecture: <Layers size={20} />,
-  webhooks: <Webhook size={20} />,
+const icons: Record<DocSlug, ReactNode> = {
+  introduction: <BookOpenText size={18} />,
+  quickstart: <RocketLaunch size={18} />,
+  events: <Lightning size={18} />,
+  channels: <EnvelopeSimple size={18} />,
+  templates: <BracketsCurly size={18} />,
+  delivery: <PaperPlaneTilt size={18} />,
+  "api-reference": <Database size={18} />,
+  architecture: <TreeStructure size={18} />,
+  webhooks: <PlugsConnected size={18} />,
 };
+
+const popular: DocSlug[] = ["quickstart", "events", "delivery", "api-reference"];
 
 export default function DocsIndexPage() {
   const groups = getDocsByGroup();
+  const allDocs = groups.flatMap((group) => group.items);
 
   return (
-    <div className="mx-auto w-full max-w-[900px] px-6 py-12 lg:px-10">
-      <div className="mb-12">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--gray-4)] bg-[var(--gray-2)] px-3 py-1 text-[12px] font-medium text-[var(--gray-9)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
-          Documentation
-        </div>
-        <h1 className="text-[36px] font-semibold tracking-tight text-[var(--foreground)]">
-          Beaco Documentation
+    <div className="mx-auto w-full max-w-7xl px-5 pb-20 pt-14 sm:px-8 sm:pt-20 xl:px-10">
+      <header className="mx-auto max-w-195 text-center">
+        <p className="text-[11px] font-medium text-(--docs-accent)">Beaco help centre</p>
+        <h1 className="mt-5 font-serif text-[clamp(2.8rem,7vw,5.6rem)] font-normal leading-[0.98] tracking-[-0.045em] text-(--docs-ink) text-balance">
+          How can we help?
         </h1>
-        <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-[var(--gray-9)]">
-          Everything you need to understand, integrate, and operate the
-          event-driven notification platform. From first API call to production delivery.
+        <p className="mx-auto mt-5 max-w-147.5 text-[15px] leading-7 text-(--docs-muted)">
+          Learn the platform model, send your first event, or trace a delivery from ingestion
+          through retries and final status.
         </p>
-      </div>
+        <div className="mx-auto mt-8 max-w-170 text-left">
+          <DocsSearchButton large />
+        </div>
+      </header>
 
-      <div className="space-y-10">
-        {groups.map((group) => (
-          <div key={group.label}>
-            <h2 className="mb-4 text-[14px] font-semibold uppercase tracking-wide text-[var(--gray-7)]">
-              {group.label}
+      <div className="mt-16 grid gap-10 border-t border-[var(--docs-line)] pt-10 lg:grid-cols-[210px_minmax(0,1fr)_240px] lg:gap-12">
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 -ml-3">
+            <DocsSidebar />
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          <div className="mb-7">
+            <h2 className="font-serif text-[30px] font-normal tracking-[-0.025em] text-(--docs-ink)">
+              Browse by topic
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {group.items.map((doc) => (
-                <Link
-                  key={doc.slug}
-                  href={`/${doc.slug}`}
-                  className="group rounded-xl border border-[var(--gray-3)] bg-[var(--gray-2)] p-6 transition-all hover:border-[var(--gray-4)] hover:shadow-sm"
-                >
-                  <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--gray-3)] bg-[var(--gray-1)] text-[var(--primary)]">
-                    {ICONS[doc.slug]}
-                  </span>
-                  <h3 className="text-[15px] font-semibold text-[var(--foreground)]">
-                    {doc.title}
-                  </h3>
-                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--gray-9)]">
-                    {doc.description}
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-[13px] font-medium text-[var(--primary)] opacity-0 transition-opacity group-hover:opacity-100">
-                    Read more <ArrowRight size={14} />
-                  </span>
-                </Link>
-              ))}
+            <p className="mt-2 text-[12px] text-(--docs-muted)">
+              Start with the job you need to complete.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {groups.map((group) => (
+              <section
+                key={group.label}
+                className="rounded-2xl bg-(--docs-panel) p-5 ring-1 ring-[var(--docs-line)] sm:p-6"
+              >
+                <h3 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">
+                  {group.label}
+                </h3>
+                <div className="mt-4 grid gap-x-7 sm:grid-cols-2">
+                  {group.items.map((doc) => (
+                    <Link
+                      key={doc.slug}
+                      href={`/${doc.slug}`}
+                      className="group grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 border-t border-[var(--docs-line)] py-4"
+                    >
+                      <span className="grid size-8 place-items-center rounded-lg bg-[var(--docs-control)] text-[var(--docs-muted)] transition-colors group-hover:text-(--docs-accent)">
+                        {icons[doc.slug]}
+                      </span>
+                      <span>
+                        <span className="block text-[13px] font-medium text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-ink)">
+                          {doc.title}
+                        </span>
+                        <span className="mt-1 block text-[11px] leading-[1.65] text-(--docs-muted)">
+                          {doc.description}
+                        </span>
+                      </span>
+                      <ArrowRight
+                        size={13}
+                        className="mt-2 text-[var(--docs-muted-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-(--docs-accent)"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </main>
+
+        <aside>
+          <div className="sticky top-24">
+            <h2 className="text-[13px] font-medium text-[var(--docs-ink-soft)]">
+              Popular articles
+            </h2>
+            <ol className="mt-4">
+              {popular.map((slug, index) => {
+                const doc = allDocs.find((item) => item.slug === slug);
+                if (!doc) return null;
+                return (
+                  <li key={slug} className="border-t border-[var(--docs-line)]">
+                    <Link href={`/${slug}`} className="group flex gap-3 py-4">
+                      <span className="font-mono text-[9px] leading-5 text-[var(--docs-muted-faint)]">
+                        0{index + 1}
+                      </span>
+                      <span>
+                        <span className="block text-[12px] leading-5 text-[var(--docs-ink-soft)] transition-colors group-hover:text-(--docs-accent)">
+                          {doc.title}
+                        </span>
+                        <span className="mt-1 block text-[10px] leading-4 text-[var(--docs-muted)]">
+                          {doc.description}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="mt-8 rounded-2xl bg-[var(--docs-soft)] p-5 ring-1 ring-[var(--docs-line)]">
+              <p className="font-serif text-[20px] text-[var(--docs-ink-soft)]">New to Beaco?</p>
+              <p className="mt-2 text-[11px] leading-5 text-(--docs-muted)">
+                Send one event and inspect every delivery created from it.
+              </p>
+              <Link
+                href="/quickstart"
+                className="mt-4 inline-flex items-center gap-2 text-[11px] font-medium text-(--docs-accent)"
+              >
+                Start the quickstart <ArrowRight size={12} />
+              </Link>
             </div>
           </div>
-        ))}
+        </aside>
       </div>
     </div>
   );

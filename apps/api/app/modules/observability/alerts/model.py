@@ -1,4 +1,4 @@
-"""Alert rule model — per-project threshold-based monitoring rules."""
+"""Alert rule model — per-project threshold-based delivery health monitoring."""
 
 import uuid
 from datetime import datetime
@@ -13,9 +13,9 @@ class AlertRule(SQLModel, table=True):
     __table_args__ = ({"extend_existing": True},)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    api_key_id: uuid.UUID = Field(foreign_key="api_keys.id", index=True)
+    project_id: uuid.UUID = Field(foreign_key="projects.id", index=True)
     name: str = Field(max_length=255)
-    metric: str = Field(max_length=100)
+    metric: str = Field(max_length=50)
     threshold: float
     window_minutes: int = Field(default=60)
     notify_email: str | None = Field(default=None, max_length=255)

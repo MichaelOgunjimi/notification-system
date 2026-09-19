@@ -342,7 +342,7 @@ async def admin_create_template(
     db: SessionDep,
     _: TemplatesAdminDep,
 ) -> TemplateResponse:
-    item = await template_service.create_template(db, body, api_key_id=None)
+    item = await template_service.create_template(db, body, project_id=None)
     await db.commit()
     await db.refresh(item)
     return TemplateResponse.model_validate(item)

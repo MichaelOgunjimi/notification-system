@@ -48,23 +48,23 @@ Beaco sends a JSON body with event and delivery context.
 
 Common headers:
 
-| Header | Description |
-| --- | --- |
-| `Content-Type: application/json` | JSON payload format |
-| `X-Beaco-Signature-256` | HMAC-SHA256 signature for verification |
+| Header                           | Description                            |
+| -------------------------------- | -------------------------------------- |
+| `Content-Type: application/json` | JSON payload format                    |
+| `X-Beaco-Signature-256`          | HMAC-SHA256 signature for verification |
 
 ## Retry Behavior
 
 Beaco retries failed webhook deliveries using exponential backoff with jitter.
 
-| Condition | Behavior |
-| --- | --- |
-| Timeout / network failure | Retry |
-| HTTP `5xx` | Retry |
-| HTTP `2xx` | Mark delivered |
-| Max retries exceeded | Move to dead-letter state |
+| Condition                 | Behavior                  |
+| ------------------------- | ------------------------- |
+| Timeout / network failure | Retry                     |
+| HTTP `5xx`                | Retry                     |
+| HTTP `2xx`                | Mark delivered            |
+| Max retries exceeded      | Move to dead-letter state |
 
-See [Delivery Pipeline](/docs/delivery) for retry and dead-letter operations.
+See [Delivery Pipeline](/delivery) for retry and dead-letter operations.
 
 ## Verify Webhook Signatures (HMAC-SHA256)
 
@@ -99,16 +99,10 @@ app.post("/beaco/webhooks", (req, res) => {
     return res.status(401).send("Missing signature");
   }
 
-  const digest = crypto
-    .createHmac("sha256", webhookSecret)
-    .update(req.rawBody)
-    .digest("hex");
+  const digest = crypto.createHmac("sha256", webhookSecret).update(req.rawBody).digest("hex");
 
   const expected = `sha256=${digest}`;
-  const valid = crypto.timingSafeEqual(
-    Buffer.from(expected),
-    Buffer.from(signature),
-  );
+  const valid = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 
   if (!valid) {
     return res.status(401).send("Invalid signature");
@@ -129,7 +123,7 @@ app.post("/beaco/webhooks", (req, res) => {
 
 ## Related Docs
 
-- [Channels](/docs/channels)
-- [Events](/docs/events)
-- [Delivery Pipeline](/docs/delivery)
-- [API Reference](/docs/api-reference)
+- [Channels](/channels)
+- [Events](/events)
+- [Delivery Pipeline](/delivery)
+- [API Reference](/api-reference)

@@ -84,6 +84,7 @@ async def create_project_api_key(
         updated_at=api_key.updated_at,
         last_used_at=api_key.last_used_at,
         revoked_at=api_key.revoked_at,
+        rotated_from_id=api_key.rotated_from_id,
     )
 
 
@@ -102,6 +103,7 @@ def _api_key_view(api_key: ApiKey) -> ApiKeyView:
         updated_at=api_key.updated_at,
         last_used_at=api_key.last_used_at,
         revoked_at=api_key.revoked_at,
+        rotated_from_id=api_key.rotated_from_id,
     )
 
 
@@ -112,6 +114,8 @@ async def list_project_api_keys(
     project_id: uuid.UUID,
     page: int,
     per_page: int,
+    environment: str | None = None,
+    status: str | None = None,
 ) -> Page[ApiKeyView]:
     await authorize_project(
         db,
@@ -119,17 +123,20 @@ async def list_project_api_keys(
         project_id=project_id,
         capability=OrganizationCapability.MANAGE_API_KEYS,
     )
+    filters = [col(ApiKey.project_id) == project_id]
+    if environment is not None:
+        filters.append(col(ApiKey.environment) == environment)
+    if status == "active":
+        filters.append(col(ApiKey.is_active).is_(True))
+    elif status == "revoked":
+        filters.append(col(ApiKey.is_active).is_(False))
+
     total = int(
-        (
-            await db.execute(
-                select(func.count()).select_from(ApiKey).where(col(ApiKey.project_id) == project_id)
-            )
-        ).scalar()
-        or 0
+        (await db.execute(select(func.count()).select_from(ApiKey).where(*filters))).scalar() or 0
     )
     result = await db.execute(
         select(ApiKey)
-        .where(col(ApiKey.project_id) == project_id)
+        .where(*filters)
         .order_by(col(ApiKey.is_active).desc(), col(ApiKey.created_at).desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -301,4 +308,5 @@ async def rotate_project_api_key(
         updated_at=view.updated_at,
         last_used_at=view.last_used_at,
         revoked_at=view.revoked_at,
+        rotated_from_id=view.rotated_from_id,
     )

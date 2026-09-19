@@ -1,0 +1,1116 @@
+import type {
+  AlertRule,
+  AlertRuleCreate,
+  AlertRuleListOptions,
+  AlertRuleUpdate,
+  AnalyticsFilter,
+  AnalyticsSummary,
+  ApiAlertRule,
+  ApiAnalyticsSummary,
+  ApiAuditLogEntry,
+  ApiChannelStat,
+  ApiCreatedProjectApiKey,
+  ApiOrganization,
+  ApiOrganizationInvitation,
+  ApiOrganizationInvitationPreview,
+  ApiOrganizationMember,
+  ApiPaginated,
+  ApiProject,
+  ApiProjectApiKey,
+  ApiTemplate,
+  ApiTenantEvent,
+  ApiTenantEventDetail,
+  ApiTenantEventNotification,
+  ApiTenantNotification,
+  ApiTenantNotificationDetail,
+  ApiTenantNotificationLog,
+  ApiTrendPoint,
+  ApiTrends,
+  ApiUsageEndpointStat,
+  ApiUsageEntry,
+  ApiUsageHourlyPoint,
+  ApiUsageSummary,
+  AuditLogEntry,
+  AuditLogFilter,
+  ChannelStat,
+  ControlPlaneClient,
+  ControlPlaneClientOptions,
+  CreatedProjectApiKey,
+  EventFilter,
+  NotificationFilter,
+  Organization,
+  OrganizationInvitation,
+  OrganizationInvitationPreview,
+  OrganizationMember,
+  OrganizationTemplateListOptions,
+  Paginated,
+  Project,
+  ProjectApiKey,
+  Template,
+  TemplateCreate,
+  TemplateListOptions,
+  TemplateUpdate,
+  TenantEvent,
+  TenantEventDetail,
+  TenantEventNotification,
+  TenantNotification,
+  TenantNotificationDetail,
+  TenantNotificationLog,
+  TrendPoint,
+  Trends,
+  TrendsFilter,
+  UsageEndpointStat,
+  UsageEntry,
+  UsageFilter,
+  UsageHourlyPoint,
+  UsageSummary,
+  UsageSummaryFilter,
+} from "./types";
+import { controlPlaneErrorFromResponse, controlPlaneNetworkError } from "./error";
+
+const DEFAULT_CONTROL_PLANE_PATH = "/api/control-plane";
+
+function mapOrganization(organization: ApiOrganization): Organization {
+  return {
+    id: organization.id,
+    name: organization.name,
+    slug: organization.slug,
+    description: organization.description,
+    role: organization.role,
+    capabilities: [...organization.capabilities],
+    archivedAt: organization.archived_at,
+  };
+}
+
+function mapProject(project: ApiProject): Project {
+  return {
+    id: project.id,
+    organizationId: project.organization_id,
+    name: project.name,
+    slug: project.slug,
+    description: project.description,
+    archivedAt: project.archived_at,
+  };
+}
+
+function mapMember(member: ApiOrganizationMember): OrganizationMember {
+  return {
+    id: member.id,
+    userId: member.user_id,
+    email: member.email,
+    name: member.name,
+    role: member.role,
+    joinedAt: member.joined_at,
+  };
+}
+
+function mapPage<TRaw, TItem>(
+  page: ApiPaginated<TRaw>,
+  mapItem: (item: TRaw) => TItem,
+): Paginated<TItem> {
+  return {
+    items: page.items.map(mapItem),
+    total: page.total,
+    page: page.page,
+    perPage: page.per_page,
+    totalPages: page.total_pages,
+  };
+}
+
+function mapApiKey(apiKey: ApiProjectApiKey): ProjectApiKey {
+  return {
+    id: apiKey.id,
+    projectId: apiKey.project_id,
+    keyPrefix: apiKey.key_prefix,
+    name: apiKey.name,
+    description: apiKey.description,
+    environment: apiKey.environment,
+    scopes: [...apiKey.scopes],
+    isActive: apiKey.is_active,
+    rateLimitPerMin: apiKey.rate_limit_per_min,
+    createdAt: apiKey.created_at,
+    updatedAt: apiKey.updated_at,
+    lastUsedAt: apiKey.last_used_at,
+    revokedAt: apiKey.revoked_at,
+    rotatedFromId: apiKey.rotated_from_id,
+  };
+}
+
+function mapCreatedApiKey(apiKey: ApiCreatedProjectApiKey): CreatedProjectApiKey {
+  return { ...mapApiKey(apiKey), key: apiKey.key };
+}
+
+function mapInvitationPreview(
+  preview: ApiOrganizationInvitationPreview,
+): OrganizationInvitationPreview {
+  return {
+    organizationName: preview.organization_name,
+    email: preview.email,
+    role: preview.role,
+    inviterName: preview.inviter_name,
+    expiresAt: preview.expires_at,
+  };
+}
+
+function mapInvitation(invitation: ApiOrganizationInvitation): OrganizationInvitation {
+  return {
+    id: invitation.id,
+    organizationId: invitation.organization_id,
+    email: invitation.email,
+    role: invitation.role,
+    invitedByUserId: invitation.invited_by_user_id,
+    expiresAt: invitation.expires_at,
+    acceptedAt: invitation.accepted_at,
+    revokedAt: invitation.revoked_at,
+    createdAt: invitation.created_at,
+  };
+}
+
+function mapAuditLogEntry(entry: ApiAuditLogEntry): AuditLogEntry {
+  return {
+    id: entry.id,
+    organizationId: entry.organization_id,
+    projectId: entry.project_id,
+    actorUserId: entry.actor_user_id,
+    actorName: entry.actor_name,
+    actorRole: entry.actor_role,
+    apiKeyId: entry.api_key_id,
+    apiKeyName: entry.api_key_name,
+    apiKeyEnvironment: entry.api_key_environment,
+    action: entry.action,
+    resourceType: entry.resource_type,
+    resourceId: entry.resource_id,
+    metadata: entry.metadata ?? {},
+    ipAddress: entry.ip_address,
+    createdAt: entry.created_at,
+  };
+}
+
+function auditLogQuery(filter: AuditLogFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.action) params.set("action", filter.action);
+  if (filter.actor) params.set("actor", filter.actor);
+  if (filter.category) params.set("category", filter.category);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapUsageEntry(entry: ApiUsageEntry): UsageEntry {
+  return {
+    projectId: entry.project_id,
+    apiKeyId: entry.api_key_id,
+    apiKeyName: entry.api_key_name,
+    apiKeyEnvironment: entry.api_key_environment,
+    endpoint: entry.endpoint,
+    hourBucket: entry.hour_bucket,
+    requestCount: entry.request_count,
+  };
+}
+
+function mapUsageSummary(summary: ApiUsageSummary): UsageSummary {
+  return {
+    totalRequests: summary.total_requests,
+    successfulRequests: summary.successful_requests,
+    failedRequests: summary.failed_requests,
+    projectCount: summary.project_count,
+    apiKeyCount: summary.api_key_count,
+    byEnvironment: summary.by_environment.map((row) => ({
+      environment: row.environment,
+      totalRequests: row.total_requests,
+      successfulRequests: row.successful_requests,
+      failedRequests: row.failed_requests,
+    })),
+  };
+}
+
+function usageQuery(filter: UsageFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function usageSummaryQuery(filter: UsageSummaryFilter): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function topEndpointsQuery(filter: UsageFilter & Readonly<{ limit?: number }>): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.limit !== undefined) params.set("limit", String(filter.limit));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function analyticsQuery(filter: AnalyticsFilter): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function trendsQuery(filter: TrendsFilter): string {
+  const params = new URLSearchParams();
+  if (filter.apiKeyId) params.set("api_key_id", filter.apiKeyId);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.granularity) params.set("granularity", filter.granularity);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapUsageHourlyPoint(point: ApiUsageHourlyPoint): UsageHourlyPoint {
+  return { hour: point.hour, requestCount: point.request_count };
+}
+
+function mapUsageEndpointStat(row: ApiUsageEndpointStat): UsageEndpointStat {
+  return { endpoint: row.endpoint, requestCount: row.request_count };
+}
+
+function mapChannelStat(row: ApiChannelStat): ChannelStat {
+  return {
+    channel: row.channel,
+    delivered: row.delivered,
+    failed: row.failed,
+    pending: row.pending,
+    deadLetter: row.dead_letter,
+  };
+}
+
+function mapAnalyticsSummary(summary: ApiAnalyticsSummary): AnalyticsSummary {
+  return {
+    eventsToday: summary.events_today,
+    eventsCompleted: summary.events_completed,
+    eventsFailed: summary.events_failed,
+    eventsProcessing: summary.events_processing,
+    notificationsDelivered: summary.notifications_delivered,
+    notificationsFailed: summary.notifications_failed,
+    notificationsProcessing: summary.notifications_processing,
+    notificationsQueued: summary.notifications_queued,
+    dlqActive: summary.dlq_active,
+    successRate: summary.success_rate,
+    avgDeliveryLatencyMs: summary.avg_delivery_latency_ms,
+    p50DeliveryLatencyMs: summary.p50_delivery_latency_ms,
+    p95DeliveryLatencyMs: summary.p95_delivery_latency_ms,
+    p99DeliveryLatencyMs: summary.p99_delivery_latency_ms,
+    channelStats: summary.channel_stats.map(mapChannelStat),
+  };
+}
+
+function mapTrendPoint(point: ApiTrendPoint): TrendPoint {
+  return {
+    timestamp: point.timestamp,
+    delivered: point.delivered,
+    failed: point.failed,
+    queued: point.queued,
+    processing: point.processing,
+  };
+}
+
+function mapTrends(trends: ApiTrends): Trends {
+  return { points: trends.points.map(mapTrendPoint) };
+}
+
+function mapTemplate(template: ApiTemplate): Template {
+  return {
+    id: template.id,
+    projectId: template.project_id,
+    apiKeyId: template.api_key_id,
+    name: template.name,
+    channel: template.channel,
+    subject: template.subject,
+    body: template.body,
+    variables: [...template.variables],
+    isActive: template.is_active,
+    createdAt: template.created_at,
+    updatedAt: template.updated_at,
+  };
+}
+
+function templateListQuery(options: OrganizationTemplateListOptions): string {
+  const params = new URLSearchParams();
+  if (options.page !== undefined) params.set("page", String(options.page));
+  if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
+  if (options.channel) params.set("channel", options.channel);
+  if (options.projectId) params.set("project_id", options.projectId);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapAlertRule(rule: ApiAlertRule): AlertRule {
+  return {
+    id: rule.id,
+    projectId: rule.project_id,
+    name: rule.name,
+    metric: rule.metric,
+    threshold: rule.threshold,
+    windowMinutes: rule.window_minutes,
+    notifyEmail: rule.notify_email,
+    isActive: rule.is_active,
+    lastTriggeredAt: rule.last_triggered_at,
+    createdAt: rule.created_at,
+  };
+}
+
+function alertRuleListQuery(options: AlertRuleListOptions): string {
+  const params = new URLSearchParams();
+  if (options.page !== undefined) params.set("page", String(options.page));
+  if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapTenantEvent(event: ApiTenantEvent): TenantEvent {
+  return {
+    id: event.id,
+    eventType: event.event_type,
+    priority: event.priority,
+    status: event.status,
+    recipientCount: event.recipient_count,
+    apiKeyId: event.api_key_id,
+    apiKeyName: event.api_key_name,
+    apiKeyEnvironment: event.api_key_environment,
+    hasFailures: event.has_failures,
+    createdAt: event.created_at,
+  };
+}
+
+function mapTenantEventNotification(
+  notification: ApiTenantEventNotification,
+): TenantEventNotification {
+  return {
+    id: notification.id,
+    channel: notification.channel,
+    status: notification.status,
+    recipientAddress: notification.recipient_address,
+    errorMessage: notification.error_message,
+    createdAt: notification.created_at,
+    deliveredAt: notification.delivered_at,
+  };
+}
+
+function mapTenantEventDetail(detail: ApiTenantEventDetail): TenantEventDetail {
+  return {
+    id: detail.id,
+    eventType: detail.event_type,
+    priority: detail.priority,
+    status: detail.status,
+    recipientCount: detail.recipient_count,
+    apiKeyId: detail.api_key_id,
+    apiKeyName: detail.api_key_name,
+    apiKeyEnvironment: detail.api_key_environment,
+    idempotencyKey: detail.idempotency_key,
+    batchId: detail.batch_id,
+    payload: detail.payload,
+    metadata: detail.metadata,
+    createdAt: detail.created_at,
+    updatedAt: detail.updated_at,
+    notifications: detail.notifications.map(mapTenantEventNotification),
+  };
+}
+
+function eventQuery(filter: EventFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.status) params.set("status", filter.status);
+  if (filter.priority) params.set("priority", filter.priority);
+  if (filter.eventType) params.set("event_type", filter.eventType);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function mapTenantNotification(notification: ApiTenantNotification): TenantNotification {
+  return {
+    id: notification.id,
+    eventId: notification.event_id,
+    eventType: notification.event_type,
+    channel: notification.channel,
+    status: notification.status,
+    priority: notification.priority,
+    recipientAddress: notification.recipient_address,
+    retryCount: notification.retry_count,
+    maxRetries: notification.max_retries,
+    errorMessage: notification.error_message,
+    createdAt: notification.created_at,
+    deliveredAt: notification.delivered_at,
+    failedAt: notification.failed_at,
+  };
+}
+
+function mapTenantNotificationLog(log: ApiTenantNotificationLog): TenantNotificationLog {
+  return {
+    id: log.id,
+    previousStatus: log.previous_status,
+    newStatus: log.new_status,
+    workerId: log.worker_id,
+    errorType: log.error_type,
+    errorMessage: log.error_message,
+    providerResponse: log.provider_response,
+    metadata: log.metadata,
+    createdAt: log.created_at,
+  };
+}
+
+function mapTenantNotificationDetail(
+  notification: ApiTenantNotificationDetail,
+): TenantNotificationDetail {
+  return {
+    ...mapTenantNotification(notification),
+    recipientUserId: notification.recipient_user_id,
+    renderedSubject: notification.rendered_subject,
+    renderedBody: notification.rendered_body,
+    nextRetryAt: notification.next_retry_at,
+    providerResponse: notification.provider_response,
+    queuedAt: notification.queued_at,
+    processingStartedAt: notification.processing_started_at,
+    updatedAt: notification.updated_at,
+    deadLetterStatus: notification.dead_letter_status,
+    logs: notification.logs.map(mapTenantNotificationLog),
+  };
+}
+
+function notificationQuery(filter: NotificationFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.status) {
+    for (const status of Array.isArray(filter.status) ? filter.status : [filter.status]) {
+      params.append("status", status);
+    }
+  }
+  if (filter.channel) params.set("channel", filter.channel);
+  if (filter.search) params.set("search", filter.search);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+/** HTTP implementation that communicates through an application's same-origin boundary. */
+class HttpControlPlaneClient implements ControlPlaneClient {
+  private readonly appControlPlanePath: string;
+  private readonly fetcher: typeof globalThis.fetch;
+
+  readonly organizations = {
+    list: async (includeArchived = false): Promise<Organization[]> => {
+      const query = includeArchived ? "?include_archived=true" : "";
+      const organizations = await this.get<ApiOrganization[]>(`/organizations${query}`);
+      return organizations.map(mapOrganization);
+    },
+    create: async (
+      organization: Parameters<ControlPlaneClient["organizations"]["create"]>[0],
+    ): Promise<Organization> =>
+      mapOrganization(await this.request<ApiOrganization>("/organizations", "POST", organization)),
+    update: async (
+      organizationId: string,
+      changes: Parameters<ControlPlaneClient["organizations"]["update"]>[1],
+    ): Promise<Organization> =>
+      mapOrganization(
+        await this.request<ApiOrganization>(
+          `/organizations/${encodeURIComponent(organizationId)}`,
+          "PATCH",
+          changes,
+        ),
+      ),
+    archive: async (organizationId: string): Promise<Organization> =>
+      mapOrganization(
+        await this.request<ApiOrganization>(
+          `/organizations/${encodeURIComponent(organizationId)}`,
+          "DELETE",
+        ),
+      ),
+    restore: async (organizationId: string): Promise<Organization> =>
+      mapOrganization(
+        await this.request<ApiOrganization>(
+          `/organizations/${encodeURIComponent(organizationId)}/restore`,
+          "POST",
+        ),
+      ),
+  };
+
+  readonly members = {
+    list: async (organizationId: string): Promise<OrganizationMember[]> => {
+      const members = await this.get<ApiOrganizationMember[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/members`,
+      );
+      return members.map(mapMember);
+    },
+    updateRole: async (
+      organizationId: string,
+      membershipId: string,
+      role: Parameters<ControlPlaneClient["members"]["updateRole"]>[2],
+    ): Promise<OrganizationMember> =>
+      mapMember(
+        await this.request<ApiOrganizationMember>(
+          `/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(membershipId)}`,
+          "PATCH",
+          { role },
+        ),
+      ),
+    remove: async (organizationId: string, membershipId: string): Promise<void> => {
+      await this.request<void>(
+        `/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(membershipId)}`,
+        "DELETE",
+      );
+    },
+  };
+
+  readonly invitations = {
+    list: async (organizationId: string): Promise<OrganizationInvitation[]> => {
+      const invitations = await this.get<ApiOrganizationInvitation[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/invitations`,
+      );
+      return invitations.map(mapInvitation);
+    },
+    create: async (
+      organizationId: string,
+      invitation: Parameters<ControlPlaneClient["invitations"]["create"]>[1],
+    ): Promise<OrganizationInvitation> =>
+      mapInvitation(
+        await this.request<ApiOrganizationInvitation>(
+          `/organizations/${encodeURIComponent(organizationId)}/invitations`,
+          "POST",
+          invitation,
+        ),
+      ),
+    revoke: async (organizationId: string, invitationId: string): Promise<void> => {
+      await this.request<void>(
+        `/organizations/${encodeURIComponent(organizationId)}/invitations/${encodeURIComponent(invitationId)}`,
+        "DELETE",
+      );
+    },
+    accept: async (token: string): Promise<void> => {
+      await this.request<void>("/invitations/accept", "POST", { token });
+    },
+    preview: async (token: string): Promise<OrganizationInvitationPreview> =>
+      mapInvitationPreview(
+        await this.get<ApiOrganizationInvitationPreview>(
+          `/invitations/${encodeURIComponent(token)}`,
+        ),
+      ),
+  };
+
+  readonly projects = {
+    list: async (organizationId: string, includeArchived = false): Promise<Project[]> => {
+      const query = includeArchived ? "?include_archived=true" : "";
+      const projects = await this.get<ApiProject[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/projects${query}`,
+      );
+      return projects.map(mapProject);
+    },
+    create: async (
+      organizationId: string,
+      project: Parameters<ControlPlaneClient["projects"]["create"]>[1],
+    ): Promise<Project> =>
+      mapProject(
+        await this.request<ApiProject>(
+          `/organizations/${encodeURIComponent(organizationId)}/projects`,
+          "POST",
+          project,
+        ),
+      ),
+    update: async (
+      projectId: string,
+      changes: Parameters<ControlPlaneClient["projects"]["update"]>[1],
+    ): Promise<Project> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.slug !== undefined) body.slug = changes.slug;
+      if (changes.description !== undefined) body.description = changes.description;
+      return mapProject(
+        await this.request<ApiProject>(`/projects/${encodeURIComponent(projectId)}`, "PATCH", body),
+      );
+    },
+    archive: async (projectId: string): Promise<Project> =>
+      mapProject(
+        await this.request<ApiProject>(`/projects/${encodeURIComponent(projectId)}`, "DELETE"),
+      ),
+    restore: async (projectId: string): Promise<Project> =>
+      mapProject(
+        await this.request<ApiProject>(
+          `/projects/${encodeURIComponent(projectId)}/restore`,
+          "POST",
+        ),
+      ),
+  };
+
+  readonly apiKeys = {
+    list: async (
+      projectId: string,
+      options: Parameters<ControlPlaneClient["apiKeys"]["list"]>[1] = {},
+    ): Promise<Paginated<ProjectApiKey>> => {
+      const params = new URLSearchParams();
+      if (options.page !== undefined) params.set("page", String(options.page));
+      if (options.perPage !== undefined) params.set("per_page", String(options.perPage));
+      if (options.environment !== undefined) params.set("environment", options.environment);
+      if (options.status !== undefined) params.set("status", options.status);
+      const query = params.toString();
+      const page = await this.get<ApiPaginated<ApiProjectApiKey>>(
+        `/projects/${encodeURIComponent(projectId)}/api-keys${query ? `?${query}` : ""}`,
+      );
+      return mapPage(page, mapApiKey);
+    },
+    create: async (
+      projectId: string,
+      input: Parameters<ControlPlaneClient["apiKeys"]["create"]>[1],
+    ): Promise<CreatedProjectApiKey> => {
+      const body: Record<string, unknown> = { name: input.name };
+      if (input.description !== undefined) body.description = input.description;
+      body.scopes = input.scopes;
+      if (input.rateLimitPerMin !== undefined) body.rate_limit_per_min = input.rateLimitPerMin;
+      if (input.environment !== undefined) body.environment = input.environment;
+      return mapCreatedApiKey(
+        await this.request<ApiCreatedProjectApiKey>(
+          `/projects/${encodeURIComponent(projectId)}/api-keys`,
+          "POST",
+          body,
+        ),
+      );
+    },
+    update: async (
+      projectId: string,
+      apiKeyId: string,
+      changes: Parameters<ControlPlaneClient["apiKeys"]["update"]>[2],
+    ): Promise<ProjectApiKey> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.description !== undefined) body.description = changes.description;
+      if (changes.scopes !== undefined) body.scopes = changes.scopes;
+      if (changes.rateLimitPerMin !== undefined) body.rate_limit_per_min = changes.rateLimitPerMin;
+      return mapApiKey(
+        await this.request<ApiProjectApiKey>(
+          `/projects/${encodeURIComponent(projectId)}/api-keys/${encodeURIComponent(apiKeyId)}`,
+          "PATCH",
+          body,
+        ),
+      );
+    },
+    revoke: async (projectId: string, apiKeyId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/api-keys/${encodeURIComponent(apiKeyId)}`,
+        "DELETE",
+      );
+    },
+    rotate: async (projectId: string, apiKeyId: string): Promise<CreatedProjectApiKey> =>
+      mapCreatedApiKey(
+        await this.request<ApiCreatedProjectApiKey>(
+          `/projects/${encodeURIComponent(projectId)}/api-keys/${encodeURIComponent(apiKeyId)}/rotate`,
+          "POST",
+        ),
+      ),
+  };
+
+  readonly auditLog = {
+    forProject: async (
+      projectId: string,
+      filter: AuditLogFilter = {},
+    ): Promise<Paginated<AuditLogEntry>> => {
+      const page = await this.get<ApiPaginated<ApiAuditLogEntry>>(
+        `/projects/${encodeURIComponent(projectId)}/audit-log${auditLogQuery(filter)}`,
+      );
+      return mapPage(page, mapAuditLogEntry);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: AuditLogFilter = {},
+    ): Promise<Paginated<AuditLogEntry>> => {
+      const page = await this.get<ApiPaginated<ApiAuditLogEntry>>(
+        `/organizations/${encodeURIComponent(organizationId)}/audit-log${auditLogQuery(filter)}`,
+      );
+      return mapPage(page, mapAuditLogEntry);
+    },
+  };
+
+  readonly usage = {
+    forProject: async (
+      projectId: string,
+      filter: UsageFilter = {},
+    ): Promise<Paginated<UsageEntry>> => {
+      const page = await this.get<ApiPaginated<ApiUsageEntry>>(
+        `/projects/${encodeURIComponent(projectId)}/usage${usageQuery(filter)}`,
+      );
+      return mapPage(page, mapUsageEntry);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: UsageFilter = {},
+    ): Promise<Paginated<UsageEntry>> => {
+      const page = await this.get<ApiPaginated<ApiUsageEntry>>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage${usageQuery(filter)}`,
+      );
+      return mapPage(page, mapUsageEntry);
+    },
+    summaryForProject: async (
+      projectId: string,
+      filter: UsageSummaryFilter = {},
+    ): Promise<UsageSummary> =>
+      mapUsageSummary(
+        await this.get<ApiUsageSummary>(
+          `/projects/${encodeURIComponent(projectId)}/usage/summary${usageSummaryQuery(filter)}`,
+        ),
+      ),
+    summaryForOrganization: async (
+      organizationId: string,
+      filter: UsageSummaryFilter = {},
+    ): Promise<UsageSummary> =>
+      mapUsageSummary(
+        await this.get<ApiUsageSummary>(
+          `/organizations/${encodeURIComponent(organizationId)}/usage/summary${usageSummaryQuery(filter)}`,
+        ),
+      ),
+    hourlyForProject: async (
+      projectId: string,
+      filter: UsageFilter = {},
+    ): Promise<readonly UsageHourlyPoint[]> => {
+      const points = await this.get<ApiUsageHourlyPoint[]>(
+        `/projects/${encodeURIComponent(projectId)}/usage/hourly${usageQuery(filter)}`,
+      );
+      return points.map(mapUsageHourlyPoint);
+    },
+    hourlyForOrganization: async (
+      organizationId: string,
+      filter: UsageFilter = {},
+    ): Promise<readonly UsageHourlyPoint[]> => {
+      const points = await this.get<ApiUsageHourlyPoint[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage/hourly${usageQuery(filter)}`,
+      );
+      return points.map(mapUsageHourlyPoint);
+    },
+    topEndpointsForProject: async (
+      projectId: string,
+      filter: UsageFilter & Readonly<{ limit?: number }> = {},
+    ): Promise<readonly UsageEndpointStat[]> => {
+      const rows = await this.get<ApiUsageEndpointStat[]>(
+        `/projects/${encodeURIComponent(projectId)}/usage/top-endpoints${topEndpointsQuery(filter)}`,
+      );
+      return rows.map(mapUsageEndpointStat);
+    },
+    topEndpointsForOrganization: async (
+      organizationId: string,
+      filter: UsageFilter & Readonly<{ limit?: number }> = {},
+    ): Promise<readonly UsageEndpointStat[]> => {
+      const rows = await this.get<ApiUsageEndpointStat[]>(
+        `/organizations/${encodeURIComponent(organizationId)}/usage/top-endpoints${topEndpointsQuery(filter)}`,
+      );
+      return rows.map(mapUsageEndpointStat);
+    },
+    analyticsForProject: async (
+      projectId: string,
+      filter: AnalyticsFilter = {},
+    ): Promise<AnalyticsSummary> =>
+      mapAnalyticsSummary(
+        await this.get<ApiAnalyticsSummary>(
+          `/projects/${encodeURIComponent(projectId)}/analytics${analyticsQuery(filter)}`,
+        ),
+      ),
+    analyticsForOrganization: async (
+      organizationId: string,
+      filter: AnalyticsFilter = {},
+    ): Promise<AnalyticsSummary> =>
+      mapAnalyticsSummary(
+        await this.get<ApiAnalyticsSummary>(
+          `/organizations/${encodeURIComponent(organizationId)}/analytics${analyticsQuery(filter)}`,
+        ),
+      ),
+    trendsForProject: async (projectId: string, filter: TrendsFilter = {}): Promise<Trends> =>
+      mapTrends(
+        await this.get<ApiTrends>(
+          `/projects/${encodeURIComponent(projectId)}/analytics/trends${trendsQuery(filter)}`,
+        ),
+      ),
+    trendsForOrganization: async (
+      organizationId: string,
+      filter: TrendsFilter = {},
+    ): Promise<Trends> =>
+      mapTrends(
+        await this.get<ApiTrends>(
+          `/organizations/${encodeURIComponent(organizationId)}/analytics/trends${trendsQuery(filter)}`,
+        ),
+      ),
+  };
+
+  readonly templates = {
+    get: async (projectId: string, templateId: string): Promise<Template> =>
+      mapTemplate(
+        await this.get<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+        ),
+      ),
+    forProject: async (
+      projectId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/projects/${encodeURIComponent(projectId)}/templates${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    defaultsForProject: async (
+      projectId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/projects/${encodeURIComponent(projectId)}/templates/defaults${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    forOrganization: async (
+      organizationId: string,
+      options: OrganizationTemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/organizations/${encodeURIComponent(organizationId)}/templates${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    defaultsForOrganization: async (
+      organizationId: string,
+      options: TemplateListOptions = {},
+    ): Promise<Paginated<Template>> => {
+      const page = await this.get<ApiPaginated<ApiTemplate>>(
+        `/organizations/${encodeURIComponent(organizationId)}/templates/defaults${templateListQuery(options)}`,
+      );
+      return mapPage(page, mapTemplate);
+    },
+    create: async (projectId: string, input: TemplateCreate): Promise<Template> => {
+      const body: Record<string, unknown> = {
+        name: input.name,
+        channel: input.channel,
+        body: input.body,
+      };
+      if (input.subject !== undefined) body.subject = input.subject;
+      if (input.variables !== undefined) body.variables = input.variables;
+      return mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates`,
+          "POST",
+          body,
+        ),
+      );
+    },
+    update: async (
+      projectId: string,
+      templateId: string,
+      changes: TemplateUpdate,
+    ): Promise<Template> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.channel !== undefined) body.channel = changes.channel;
+      if (changes.subject !== undefined) body.subject = changes.subject;
+      if (changes.body !== undefined) body.body = changes.body;
+      if (changes.variables !== undefined) body.variables = changes.variables;
+      return mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+          "PUT",
+          body,
+        ),
+      );
+    },
+    delete: async (projectId: string, templateId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}`,
+        "DELETE",
+      );
+    },
+    fork: async (projectId: string, templateId: string): Promise<Template> =>
+      mapTemplate(
+        await this.request<ApiTemplate>(
+          `/projects/${encodeURIComponent(projectId)}/templates/${encodeURIComponent(templateId)}/fork`,
+          "POST",
+        ),
+      ),
+  };
+
+  readonly alertRules = {
+    forProject: async (
+      projectId: string,
+      options: AlertRuleListOptions = {},
+    ): Promise<Paginated<AlertRule>> => {
+      const page = await this.get<ApiPaginated<ApiAlertRule>>(
+        `/projects/${encodeURIComponent(projectId)}/alert-rules${alertRuleListQuery(options)}`,
+      );
+      return mapPage(page, mapAlertRule);
+    },
+    create: async (projectId: string, input: AlertRuleCreate): Promise<AlertRule> => {
+      const body: Record<string, unknown> = {
+        name: input.name,
+        metric: input.metric,
+        threshold: input.threshold,
+      };
+      if (input.windowMinutes !== undefined) body.window_minutes = input.windowMinutes;
+      if (input.notifyEmail !== undefined) body.notify_email = input.notifyEmail;
+      if (input.isActive !== undefined) body.is_active = input.isActive;
+      return mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/projects/${encodeURIComponent(projectId)}/alert-rules`,
+          "POST",
+          body,
+        ),
+      );
+    },
+    update: async (
+      projectId: string,
+      ruleId: string,
+      changes: AlertRuleUpdate,
+    ): Promise<AlertRule> => {
+      const body: Record<string, unknown> = {};
+      if (changes.name !== undefined) body.name = changes.name;
+      if (changes.metric !== undefined) body.metric = changes.metric;
+      if (changes.threshold !== undefined) body.threshold = changes.threshold;
+      if (changes.windowMinutes !== undefined) body.window_minutes = changes.windowMinutes;
+      if (changes.notifyEmail !== undefined) body.notify_email = changes.notifyEmail;
+      if (changes.isActive !== undefined) body.is_active = changes.isActive;
+      return mapAlertRule(
+        await this.request<ApiAlertRule>(
+          `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+          "PUT",
+          body,
+        ),
+      );
+    },
+    delete: async (projectId: string, ruleId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/alert-rules/${encodeURIComponent(ruleId)}`,
+        "DELETE",
+      );
+    },
+  };
+
+  readonly events = {
+    forProject: async (
+      projectId: string,
+      filter: EventFilter = {},
+    ): Promise<Paginated<TenantEvent>> => {
+      const page = await this.get<ApiPaginated<ApiTenantEvent>>(
+        `/projects/${encodeURIComponent(projectId)}/events${eventQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantEvent);
+    },
+    forOrganization: async (
+      organizationId: string,
+      filter: EventFilter = {},
+    ): Promise<Paginated<TenantEvent>> => {
+      const page = await this.get<ApiPaginated<ApiTenantEvent>>(
+        `/organizations/${encodeURIComponent(organizationId)}/events${eventQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantEvent);
+    },
+    get: async (projectId: string, eventId: string): Promise<TenantEventDetail> =>
+      mapTenantEventDetail(
+        await this.get<ApiTenantEventDetail>(
+          `/projects/${encodeURIComponent(projectId)}/events/${encodeURIComponent(eventId)}`,
+        ),
+      ),
+  };
+
+  readonly notifications = {
+    forProject: async (
+      projectId: string,
+      filter: NotificationFilter = {},
+    ): Promise<Paginated<TenantNotification>> => {
+      const page = await this.get<ApiPaginated<ApiTenantNotification>>(
+        `/projects/${encodeURIComponent(projectId)}/notifications${notificationQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantNotification);
+    },
+    get: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.get<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}`,
+        ),
+      ),
+    retry: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.request<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}/retry`,
+          "POST",
+        ),
+      ),
+    discard: async (projectId: string, notificationId: string): Promise<TenantNotificationDetail> =>
+      mapTenantNotificationDetail(
+        await this.request<ApiTenantNotificationDetail>(
+          `/projects/${encodeURIComponent(projectId)}/notifications/${encodeURIComponent(notificationId)}/discard`,
+          "POST",
+        ),
+      ),
+  };
+
+  /**
+   * Creates an HTTP control-plane client without taking custody of auth tokens.
+   *
+   * @param options Route and transport configuration supplied by the host application.
+   */
+  constructor(options: ControlPlaneClientOptions = {}) {
+    this.appControlPlanePath = (options.appControlPlanePath ?? DEFAULT_CONTROL_PLANE_PATH).replace(
+      /\/$/,
+      "",
+    );
+    this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
+  }
+
+  private async get<T>(path: string): Promise<T> {
+    return this.request<T>(path, "GET");
+  }
+
+  private async request<T>(path: string, method: string, body?: unknown): Promise<T> {
+    let response: Response;
+    try {
+      response = await this.fetcher(`${this.appControlPlanePath}${path}`, {
+        method,
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (error) {
+      throw controlPlaneNetworkError(error);
+    }
+    if (!response.ok) {
+      throw await controlPlaneErrorFromResponse(response, "The workspace service is unavailable.");
+    }
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  }
+}
+
+/**
+ * Creates a browser-safe client for organization and project operations.
+ *
+ * Requests use same-origin credentials so the host application's HTTP-only
+ * session cookies remain inaccessible to this package.
+ *
+ * @param options Optional application route and fetch transport overrides.
+ * @returns Configured control-plane client.
+ */
+export function createControlPlaneClient(
+  options: ControlPlaneClientOptions = {},
+): ControlPlaneClient {
+  return new HttpControlPlaneClient(options);
+}
+
+/** Shared client bound to the default `/api/control-plane` application route. */
+export const controlPlaneClient = createControlPlaneClient();

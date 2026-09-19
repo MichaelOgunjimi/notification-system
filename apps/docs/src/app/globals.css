@@ -4,17 +4,31 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --gray-1: #141517;
-  --gray-2: #191b1e;
-  --gray-3: #212629;
-  --gray-4: #293034;
-  --gray-7: #434a4d;
-  --gray-9: #a1a4a5;
-  --gray-10: #f0f0f0;
-  --background: #000000;
-  --foreground: #f0f0f0;
-  --primary: #f59e0b;
-  --border: #212629;
+  --gray-1: #fffdf8;
+  --gray-2: #f5f1e8;
+  --gray-3: #e7e1d5;
+  --gray-4: #d5cec0;
+  --gray-7: #716e65;
+  --gray-9: #4e4b44;
+  --gray-10: #1d1d1a;
+  --background: #f7f4ed;
+  --foreground: #1d1d1a;
+  --primary: #c98918;
+  --border: rgba(34, 32, 27, 0.12);
+}
+
+.dark {
+  --gray-1: #0d0d0b;
+  --gray-2: #121210;
+  --gray-3: #24231f;
+  --gray-4: #302f29;
+  --gray-7: #696860;
+  --gray-9: #9c9a91;
+  --gray-10: #f1efe7;
+  --background: #11120f;
+  --foreground: #eeeade;
+  --primary: #d5a74d;
+  --border: rgba(255, 255, 255, 0.075);
 }
 
 @theme inline {
@@ -31,30 +45,19 @@
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-}
-
-.docs-content-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.docs-toc-aside {
-  display: none;
-}
-
-@media (min-width: 1280px) {
-  .docs-content-grid {
-    grid-template-columns: minmax(0, 900px) 240px;
-    gap: 2.5rem;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1,
+      "ss01" 1;
   }
 
-  .docs-toc-aside {
-    display: block;
+  ::selection {
+    background: #e9aa31;
+    color: #1c160b;
   }
 }

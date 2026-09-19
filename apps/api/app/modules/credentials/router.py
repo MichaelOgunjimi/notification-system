@@ -1,6 +1,7 @@
 """Credential module HTTP interface."""
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Query, status
 
@@ -52,6 +53,8 @@ async def list_api_keys(
     db: SessionDep,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
+    environment: Literal["test", "live"] | None = Query(default=None),
+    status: Literal["active", "revoked"] | None = Query(default=None),
 ) -> Page[ApiKeyView]:
     return await list_project_api_keys(
         db,
@@ -59,6 +62,8 @@ async def list_api_keys(
         project_id=project_id,
         page=page,
         per_page=per_page,
+        environment=environment,
+        status=status,
     )
 
 

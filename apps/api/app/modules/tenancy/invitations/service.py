@@ -14,13 +14,20 @@ from sqlmodel import col
 from app.core.config import settings
 from app.core.crypto import hash_api_key
 from app.core.datetime import utc_now
+from app.modules.delivery import notify
 from app.modules.delivery.adapters.email import EmailAdapter
+from app.modules.delivery.templates.transactional import organization_invitation_email
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
 from app.modules.tenancy.authorization import OrganizationCapability, authorize_organization
 from app.modules.tenancy.invitations.model import OrganizationInvitation
-from app.modules.tenancy.models.organization import OrganizationMembership, OrganizationRole
+from app.modules.tenancy.invitations.schemas import OrganizationInvitationPreview
+from app.modules.tenancy.models.organization import (
+    Organization,
+    OrganizationMembership,
+    OrganizationRole,
+)
 
 
 def _normalize_email(email: str) -> str:
@@ -131,14 +138,21 @@ async def create_invitation(
     await db.commit()
 
     link = f"{settings.FRONTEND_URL.rstrip('/')}/invitations/accept?token={quote(raw_token)}"
+    email_message = organization_invitation_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=normalized_email,
+        inviter_name=actor.name,
+        organization_name=access.organization.name,
+        role=role.value,
+        action_url=link,
+        expires_days=max(1, settings.ORGANIZATION_INVITATION_TTL_SECONDS // 86400),
+    )
     result = await asyncio.to_thread(
         EmailAdapter().send,
         normalized_email,
-        f"Join {access.organization.name}",
-        (
-            f"<p>You were invited to join {access.organization.name}.</p>"
-            f'<p><a href="{link}">Accept invitation</a></p>'
-        ),
+        email_message.subject,
+        email_message.html,
+        plain_text=email_message.text,
     )
     if not result.success:
         invitation.revoked_at = utc_now()
@@ -150,6 +164,45 @@ async def create_invitation(
             detail="Unable to send organization invitation",
         )
     return invitation
+
+
+async def preview_invitation(
+    db: AsyncSession,
+    *,
+    token: str,
+) -> OrganizationInvitationPreview:
+    invitation = (
+        await db.execute(
+            select(OrganizationInvitation).where(
+                col(OrganizationInvitation.token_hash) == hash_api_key(token)
+            )
+        )
+    ).scalar_one_or_none()
+    if (
+        invitation is None
+        or invitation.accepted_at is not None
+        or invitation.revoked_at is not None
+        or invitation.expires_at <= utc_now()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid or expired organization invitation",
+        )
+    organization = (
+        await db.execute(
+            select(Organization).where(col(Organization.id) == invitation.organization_id)
+        )
+    ).scalar_one()
+    inviter = (
+        await db.execute(select(User).where(col(User.id) == invitation.invited_by_user_id))
+    ).scalar_one_or_none()
+    return OrganizationInvitationPreview(
+        organization_name=organization.name,
+        email=invitation.email,
+        role=invitation.role,
+        inviter_name=inviter.name if inviter is not None else "A teammate",
+        expires_at=invitation.expires_at,
+    )
 
 
 async def accept_invitation(
@@ -219,8 +272,43 @@ async def accept_invitation(
         resource_id=str(membership.id),
         metadata={"invitation_id": str(invitation.id), "role": membership.role},
     )
+    invited_by_user_id = invitation.invited_by_user_id
+    invitee_email = invitation.email
+    invitee_role = str(invitation.role)
+    organization_id = invitation.organization_id
     await db.commit()
+
+    await _notify_inviter_of_acceptance(
+        db,
+        invited_by_user_id=invited_by_user_id,
+        organization_id=organization_id,
+        invitee_email=invitee_email,
+        invitee_role=invitee_role,
+    )
     return membership
+
+
+async def _notify_inviter_of_acceptance(
+    db: AsyncSession,
+    *,
+    invited_by_user_id: uuid.UUID | None,
+    organization_id: uuid.UUID,
+    invitee_email: str,
+    invitee_role: str,
+) -> None:
+    """Best-effort note to the inviter. Silent when the inviter row is gone."""
+    if invited_by_user_id is None:
+        return
+    inviter = await db.get(User, invited_by_user_id)
+    organization = await db.get(Organization, organization_id)
+    if inviter is None or organization is None:
+        return
+    await notify.invitation_accepted(
+        inviter,
+        organization=organization,
+        member_email=invitee_email,
+        role=invitee_role,
+    )
 
 
 async def revoke_invitation(

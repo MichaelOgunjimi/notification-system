@@ -1,0 +1,388 @@
+.workspace-selector {
+  max-width: 570px;
+  width: 100%;
+}
+
+.workspace-selector__eyebrow {
+  align-items: center;
+  color: var(--workspace-accent);
+  display: flex;
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  gap: 7px;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.workspace-selector > h2,
+.workspace-selector--message h2 {
+  font-size: clamp(1.9rem, 4vw, 2.7rem);
+  font-weight: 620;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin-top: 16px;
+}
+
+.workspace-selector__intro,
+.workspace-selector--message > p {
+  color: var(--workspace-muted-bright);
+  font-size: 13px;
+  line-height: 1.7;
+  margin-top: 14px;
+}
+
+.workspace-selector__section {
+  border-top: 1px solid var(--workspace-line);
+  margin-top: 28px;
+  padding-top: 18px;
+}
+
+.workspace-selector__section-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.workspace-selector__section-heading h3 {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.workspace-selector__section-heading p {
+  color: var(--workspace-muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.workspace-selector__step {
+  color: var(--workspace-accent);
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+}
+
+.workspace-selector__options {
+  display: grid;
+  gap: 7px;
+}
+
+.workspace-selector__add {
+  align-items: center;
+  background: transparent;
+  border: 1px dashed var(--workspace-line-strong);
+  border-radius: 10px;
+  color: var(--workspace-muted-bright);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  justify-content: center;
+  min-height: 44px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+  width: 100%;
+}
+
+.workspace-selector__add:hover {
+  background: var(--workspace-overlay);
+  color: var(--workspace-ink);
+}
+
+.workspace-selector__empty-projects {
+  align-items: flex-start;
+  border: 1px dashed var(--workspace-line-strong);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+}
+
+.workspace-selector__empty-projects > p {
+  align-items: center;
+  color: var(--workspace-muted-bright);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.workspace-selector__empty-projects button {
+  align-items: center;
+  background: var(--workspace-accent);
+  border-radius: 8px;
+  color: var(--workspace-accent-ink);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 640;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+}
+
+.workspace-selector__option {
+  align-items: center;
+  background: var(--workspace-overlay);
+  border: 1px solid var(--workspace-line);
+  border-radius: 10px;
+  color: var(--workspace-ink);
+  display: flex;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 12px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+  width: 100%;
+}
+
+.workspace-selector__option:hover {
+  background: var(--workspace-overlay-hover);
+  border-color: var(--workspace-line-strong);
+  transform: translateY(-1px);
+}
+
+.workspace-selector__option[data-selected="true"] {
+  background: rgba(233, 170, 49, 0.075);
+  border-color: rgba(233, 170, 49, 0.48);
+}
+
+.workspace-selector__option:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 2px;
+}
+
+.workspace-selector__option-icon,
+.workspace-selector__check {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.workspace-selector__option-icon {
+  background: var(--workspace-overlay-hover);
+  border: 1px solid var(--workspace-line);
+  border-radius: 8px;
+  color: var(--workspace-accent);
+  height: 36px;
+  width: 36px;
+}
+
+.workspace-selector__check {
+  border: 1px solid var(--workspace-line-strong);
+  border-radius: 999px;
+  color: transparent;
+  height: 22px;
+  width: 22px;
+}
+
+.workspace-selector__option[data-selected="true"] .workspace-selector__check {
+  background: var(--workspace-accent);
+  border-color: var(--workspace-accent);
+  color: var(--workspace-accent-ink);
+}
+
+.workspace-selector__option strong,
+.workspace-selector__option small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-selector__option strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.workspace-selector__option small {
+  color: var(--workspace-muted);
+  font-size: 10px;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+.workspace-selector__loading {
+  align-items: center;
+  color: var(--workspace-muted-bright);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  min-height: 58px;
+}
+
+.workspace-selector__context {
+  align-items: center;
+  background: linear-gradient(120deg, rgba(233, 170, 49, 0.08), transparent 70%);
+  border-left: 1px solid var(--workspace-accent);
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-top: 28px;
+  padding: 8px 0 8px 16px;
+}
+
+.workspace-selector__context span {
+  color: var(--workspace-accent);
+  display: block;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspace-selector__context strong {
+  display: block;
+  font-size: 13px;
+  margin-top: 7px;
+}
+
+.workspace-selector__context p {
+  color: var(--workspace-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 7px;
+}
+
+.workspace-selector__enter {
+  align-items: center;
+  background: var(--workspace-accent);
+  border-radius: 8px;
+  color: var(--workspace-accent-ink);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  transition:
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+.workspace-selector__enter:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.workspace-selector__enter:focus-visible {
+  outline: 2px solid var(--workspace-ink);
+  outline-offset: 3px;
+}
+
+.workspace-selector--message {
+  max-width: 460px;
+}
+
+.workspace-selector__message-icon {
+  color: var(--workspace-accent);
+}
+
+.workspace-selector__primary {
+  align-items: center;
+  background: var(--workspace-accent);
+  border-radius: 9px;
+  color: var(--workspace-accent-ink);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 18px;
+  justify-content: space-between;
+  margin-top: 28px;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-selector__option,
+  .workspace-selector__enter {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-selector__context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-selector__enter {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+.workspace-selector__archived {
+  margin-top: 12px;
+}
+
+.workspace-selector__archived summary {
+  align-items: center;
+  color: var(--workspace-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 6px;
+  list-style: none;
+}
+
+.workspace-selector__archived summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-selector__archived summary:hover {
+  color: var(--workspace-muted-bright);
+}
+
+.workspace-selector__archived-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.workspace-selector__archived-row {
+  align-items: center;
+  background: var(--workspace-overlay);
+  border: 1px solid var(--workspace-line);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  padding: 8px 10px;
+}
+
+.workspace-selector__archived-row strong,
+.workspace-selector__archived-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-selector__archived-row strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.workspace-selector__archived-row small {
+  color: var(--workspace-muted);
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.workspace-selector__archived-row button {
+  align-items: center;
+  color: var(--workspace-accent);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 10px;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.workspace-selector__archived-row button:hover {
+  text-decoration: underline;
+}

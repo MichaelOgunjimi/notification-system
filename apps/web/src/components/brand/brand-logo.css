@@ -1,0 +1,19 @@
+.brand-mark--light {
+  opacity: 1;
+}
+
+.brand-mark--dark {
+  opacity: 0;
+}
+
+.dark .brand-mark--light {
+  opacity: 0;
+}
+
+.dark .brand-mark--dark {
+  opacity: 1;
+}
+
+.brand-mark {
+  transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}

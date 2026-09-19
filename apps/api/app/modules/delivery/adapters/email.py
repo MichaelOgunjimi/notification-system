@@ -42,12 +42,15 @@ class EmailAdapter(BaseAdapter):
         recipient: str,
         subject: str | None,
         body: str,
+        plain_text: str | None = None,
     ) -> DeliveryResult:
         message = EmailMessage()
         message["From"] = self.from_address
         message["To"] = recipient
         message["Subject"] = subject or "(no subject)"
-        message.set_content("This message contains HTML. View it in an HTML-capable client.")
+        message.set_content(
+            plain_text or "This message contains HTML. View it in an HTML-capable client."
+        )
         message.add_alternative(body, subtype="html")
 
         try:
@@ -81,6 +84,9 @@ class EmailAdapter(BaseAdapter):
         **kwargs: object,
     ) -> DeliveryResult:
         provider = self._resolved_provider()
+        plain_text = kwargs.get("plain_text")
+        if plain_text is not None and not isinstance(plain_text, str):
+            plain_text = None
         if provider == "mock":
             logger.warning("Using mock email delivery")
             return DeliveryResult(
@@ -88,7 +94,7 @@ class EmailAdapter(BaseAdapter):
                 provider_response={"mock": True, "to": recipient},
             )
         if provider == "smtp":
-            return self._send_smtp(recipient, subject, body)
+            return self._send_smtp(recipient, subject, body, plain_text)
         if provider != "resend":
             return DeliveryResult(
                 success=False,
@@ -103,14 +109,15 @@ class EmailAdapter(BaseAdapter):
             )
 
         try:
-            response = resend.Emails.send(
-                {
-                    "from": self.from_address,
-                    "to": [recipient],
-                    "subject": subject or "(no subject)",
-                    "html": body,
-                }
-            )
+            payload: resend.Emails.SendParams = {
+                "from": self.from_address,
+                "to": [recipient],
+                "subject": subject or "(no subject)",
+                "html": body,
+            }
+            if plain_text:
+                payload["text"] = plain_text
+            response = resend.Emails.send(payload)
             return DeliveryResult(
                 success=True,
                 provider_response={"id": response["id"]},

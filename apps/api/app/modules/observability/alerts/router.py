@@ -1,129 +1,159 @@
-"""Alert rule endpoints."""
+"""Session-auth alert rule endpoints — a project's own delivery health rules.
+
+Distinct from the deleted api-key-scoped /alerts CRUD: these rules are owned
+by a project (matching the same pivot Templates made), not an individual key.
+"""
 
 import uuid
-from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
-from sqlmodel import col
+from fastapi import APIRouter, Query, Request, status
 
 from app.core.http.dependencies import SessionDep
-from app.modules.credentials.dependencies import (
-    AlertsReadApiKeyDep,
-    AlertsWriteApiKeyDep,
-)
+from app.core.http.schemas import PaginatedResponse
+from app.core.pagination import Page
+from app.modules.identity.dependencies import CurrentUserDep
+from app.modules.observability.alerts import service as alert_service
 from app.modules.observability.alerts.model import AlertRule
+from app.modules.observability.alerts.schemas import (
+    AlertRuleCreate,
+    AlertRuleResponse,
+    AlertRuleUpdate,
+)
+from app.modules.observability.audit.service import log_action
+from app.modules.tenancy.authorization import OrganizationCapability, authorize_project
+from app.modules.tenancy.errors import TenantResourceNotFoundError
 
-router = APIRouter(prefix="/alerts", tags=["alerts"])
-
-
-class AlertRuleResponse(BaseModel):
-    id: uuid.UUID
-    api_key_id: uuid.UUID
-    name: str
-    metric: str
-    threshold: float
-    window_minutes: int
-    notify_email: str | None
-    is_active: bool
-    last_triggered_at: datetime | None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+router = APIRouter(tags=["tenant-alert-rules"])
 
 
-class AlertRuleCreate(BaseModel):
-    name: str = Field(max_length=255)
-    metric: str = Field(max_length=100)
-    threshold: float
-    window_minutes: int = 60
-    notify_email: EmailStr | None = None
-    is_active: bool = True
-
-
-class AlertRuleUpdate(BaseModel):
-    name: str | None = None
-    metric: str | None = None
-    threshold: float | None = None
-    window_minutes: int | None = None
-    notify_email: EmailStr | None = None
-    is_active: bool | None = None
-
-
-@router.get("", response_model=list[AlertRuleResponse])
-async def list_alert_rules(
-    *, db: SessionDep, api_key: AlertsReadApiKeyDep
-) -> list[AlertRuleResponse]:
-    query = (
-        select(AlertRule)
-        .where(col(AlertRule.api_key_id) == api_key.id)
-        .order_by(col(AlertRule.created_at).desc())
-    )
-    items = (await db.execute(query)).scalars().all()
-    return [AlertRuleResponse.model_validate(item) for item in items]
-
-
-@router.post("", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert_rule(
-    body: AlertRuleCreate,
-    *,
+@router.get(
+    "/projects/{project_id}/alert-rules",
+    response_model=PaginatedResponse[AlertRuleResponse],
+)
+async def list_project_alert_rules(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
     db: SessionDep,
-    api_key: AlertsWriteApiKeyDep,
-) -> AlertRuleResponse:
-    rule = AlertRule(
-        api_key_id=api_key.id,
-        name=body.name,
-        metric=body.metric,
-        threshold=body.threshold,
-        window_minutes=body.window_minutes,
-        notify_email=body.notify_email,
-        is_active=body.is_active,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+) -> Page[AlertRule]:
+    await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
     )
-    db.add(rule)
+    return await alert_service.list_alert_rules_for_project(
+        db, project_id=project_id, page=page, per_page=per_page
+    )
+
+
+@router.post(
+    "/projects/{project_id}/alert-rules",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_alert_rule(
+    project_id: uuid.UUID,
+    body: AlertRuleCreate,
+    user: CurrentUserDep,
+    db: SessionDep,
+    request: Request,
+) -> AlertRuleResponse:
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    rule = await alert_service.create_alert_rule(db, body, project_id=access.project.id)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=access.project.organization_id,
+        project_id=access.project.id,
+        actor_user_id=user.id,
+        action="alert_rule.created",
+        resource_type="alert_rule",
+        resource_id=str(rule.id),
+        metadata={"name": rule.name, "metric": str(rule.metric)},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
-    await db.refresh(rule)
     return AlertRuleResponse.model_validate(rule)
 
 
-@router.put("/{rule_id}", response_model=AlertRuleResponse)
-async def update_alert_rule(
+@router.put(
+    "/projects/{project_id}/alert-rules/{rule_id}",
+    response_model=AlertRuleResponse,
+)
+async def update_project_alert_rule(
+    project_id: uuid.UUID,
     rule_id: uuid.UUID,
     body: AlertRuleUpdate,
-    *,
+    user: CurrentUserDep,
     db: SessionDep,
-    api_key: AlertsWriteApiKeyDep,
+    request: Request,
 ) -> AlertRuleResponse:
-    rule = (
-        await db.execute(select(AlertRule).where(col(AlertRule.id) == rule_id))
-    ).scalar_one_or_none()
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    rule = await alert_service.get_project_alert_rule(db, rule_id, project_id=project_id)
     if rule is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found")
-    if rule.api_key_id != api_key.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found")
+        raise TenantResourceNotFoundError("Alert rule")
 
-    for key, value in body.model_dump(exclude_unset=True).items():
-        setattr(rule, key, value)
-    db.add(rule)
+    updated = await alert_service.update_alert_rule(db, rule, body)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=access.project.organization_id,
+        project_id=access.project.id,
+        actor_user_id=user.id,
+        action="alert_rule.updated",
+        resource_type="alert_rule",
+        resource_id=str(updated.id),
+        metadata={"name": updated.name, "metric": str(updated.metric)},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
-    await db.refresh(rule)
-    return AlertRuleResponse.model_validate(rule)
+    return AlertRuleResponse.model_validate(updated)
 
 
-@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_alert_rule(
+@router.delete(
+    "/projects/{project_id}/alert-rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_project_alert_rule(
+    project_id: uuid.UUID,
     rule_id: uuid.UUID,
-    *,
+    user: CurrentUserDep,
     db: SessionDep,
-    api_key: AlertsWriteApiKeyDep,
+    request: Request,
 ) -> None:
-    rule = (
-        await db.execute(select(AlertRule).where(col(AlertRule.id) == rule_id))
-    ).scalar_one_or_none()
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    rule = await alert_service.get_project_alert_rule(db, rule_id, project_id=project_id)
     if rule is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found")
-    if rule.api_key_id != api_key.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found")
+        raise TenantResourceNotFoundError("Alert rule")
 
-    await db.delete(rule)
+    await alert_service.delete_alert_rule(db, rule)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=access.project.organization_id,
+        project_id=access.project.id,
+        actor_user_id=user.id,
+        action="alert_rule.deleted",
+        resource_type="alert_rule",
+        resource_id=str(rule.id),
+        metadata={"name": rule.name},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()

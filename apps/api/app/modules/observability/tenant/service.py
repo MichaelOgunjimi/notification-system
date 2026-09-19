@@ -4,16 +4,37 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import String, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from app.core.datetime import to_naive_utc
 from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
+from app.modules.delivery.dead_letter import service as dead_letter_service
+from app.modules.delivery.dead_letter.model import DeadLetterMessage
+from app.modules.delivery.enums import DeadLetterStatus
+from app.modules.events import service as event_service
+from app.modules.events.enums import EventPriority, EventStatus
+from app.modules.events.model import Event
+from app.modules.identity.models.user import User
+from app.modules.notifications.enums import NotificationChannel, NotificationStatus
+from app.modules.notifications.log_model import NotificationLog
+from app.modules.notifications.model import Notification
+from app.modules.observability.analytics import service as analytics_service
+from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
+    EventDetailView,
+    EventNotificationView,
+    EventView,
+    NotificationDetailView,
+    NotificationLogView,
+    NotificationView,
+    UsageEndpointView,
     UsageEnvironmentSummary,
+    UsageHourlyPointView,
     UsageSummaryView,
     UsageView,
 )
@@ -23,29 +44,128 @@ from app.modules.tenancy.authorization import (
     authorize_organization,
     authorize_project,
 )
+from app.modules.tenancy.models.organization import OrganizationMembership
 from app.modules.tenancy.models.project import Project
 
+# Which action namespaces each activity surface shows. The governance audit log is
+# "who changed the account"; the operational activity view is "what the integration
+# did". Anything outside these prefixes is admin-plane and never tenant-visible.
+_CATEGORY_PREFIXES: dict[str, tuple[str, ...]] = {
+    "governance": ("organization.", "project.", "api_key."),
+    "operational": ("event.", "template.", "scheduled_events.", "notification."),
+}
 
-def _usage_query(*, project_id: uuid.UUID | None, organization_id: uuid.UUID | None) -> Any:
-    selected: Any = select(
-        col(ApiKey.project_id).label("project_id"),
-        col(ApiKeyUsage.api_key_id).label("api_key_id"),
-        col(ApiKeyUsage.endpoint).label("endpoint"),
-        col(ApiKeyUsage.hour_bucket).label("hour_bucket"),
-        func.sum(col(ApiKeyUsage.request_count)).label("request_count"),
-    ).join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+
+def _scope_usage_query(
+    selected: Any,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    """Applies the project/organization, key, and date-range scoping shared by
+    every query over `ApiKeyUsage` — the caller supplies a query already joined
+    to `ApiKey`."""
     if organization_id is not None:
         selected = selected.join(Project, col(Project.id) == col(ApiKey.project_id)).where(
             col(Project.organization_id) == organization_id
         )
     elif project_id is not None:
         selected = selected.where(col(ApiKey.project_id) == project_id)
+    if api_key_id is not None:
+        selected = selected.where(col(ApiKeyUsage.api_key_id) == api_key_id)
+    if from_ is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) >= to_naive_utc(from_))
+    if to is not None:
+        selected = selected.where(col(ApiKeyUsage.hour_bucket) <= to_naive_utc(to))
+    return selected
+
+
+def _usage_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    selected: Any = select(
+        col(ApiKey.project_id).label("project_id"),
+        col(ApiKeyUsage.api_key_id).label("api_key_id"),
+        col(ApiKey.name).label("api_key_name"),
+        col(ApiKey.environment).label("api_key_environment"),
+        col(ApiKeyUsage.endpoint).label("endpoint"),
+        col(ApiKeyUsage.hour_bucket).label("hour_bucket"),
+        func.sum(col(ApiKeyUsage.request_count)).label("request_count"),
+    ).join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
     return selected.group_by(
         col(ApiKey.project_id),
         col(ApiKeyUsage.api_key_id),
+        col(ApiKey.name),
+        col(ApiKey.environment),
         col(ApiKeyUsage.endpoint),
         col(ApiKeyUsage.hour_bucket),
     )
+
+
+def _usage_hourly_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    hour = func.extract("hour", func.timezone("UTC", col(ApiKeyUsage.hour_bucket))).label("hour")
+    selected: Any = (
+        select(hour, func.sum(col(ApiKeyUsage.request_count)).label("request_count"))
+        .select_from(ApiKeyUsage)
+        .join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+    )
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    return selected.group_by(hour)
+
+
+def _usage_top_endpoints_query(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> Any:
+    total = func.sum(col(ApiKeyUsage.request_count))
+    selected: Any = (
+        select(col(ApiKeyUsage.endpoint).label("endpoint"), total.label("request_count"))
+        .select_from(ApiKeyUsage)
+        .join(ApiKey, col(ApiKey.id) == col(ApiKeyUsage.api_key_id))
+    )
+    selected = _scope_usage_query(
+        selected,
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    return selected.group_by(col(ApiKeyUsage.endpoint)).order_by(total.desc())
 
 
 async def _usage_page(
@@ -67,6 +187,8 @@ async def _usage_page(
         UsageView(
             project_id=row.project_id,
             api_key_id=row.api_key_id,
+            api_key_name=row.api_key_name,
+            api_key_environment=row.api_key_environment,
             endpoint=row.endpoint,
             hour_bucket=row.hour_bucket,
             request_count=int(row.request_count),
@@ -83,6 +205,9 @@ async def get_project_usage(
     project_id: uuid.UUID,
     page: int,
     per_page: int,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
 ) -> Page[UsageView]:
     await authorize_project(
         db,
@@ -92,7 +217,13 @@ async def get_project_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=project_id, organization_id=None),
+        query=_usage_query(
+            project_id=project_id,
+            organization_id=None,
+            api_key_id=api_key_id,
+            from_=from_,
+            to=to,
+        ),
         page=page,
         per_page=per_page,
     )
@@ -105,6 +236,9 @@ async def get_organization_usage(
     organization_id: uuid.UUID,
     page: int,
     per_page: int,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
 ) -> Page[UsageView]:
     await authorize_organization(
         db,
@@ -114,9 +248,165 @@ async def get_organization_usage(
     )
     return await _usage_page(
         db,
-        query=_usage_query(project_id=None, organization_id=organization_id),
+        query=_usage_query(
+            project_id=None,
+            organization_id=organization_id,
+            api_key_id=api_key_id,
+            from_=from_,
+            to=to,
+        ),
         page=page,
         per_page=per_page,
+    )
+
+
+async def _usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[UsageHourlyPointView]:
+    query = _usage_hourly_query(
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+    counts = {int(row.hour): int(row.request_count) for row in (await db.execute(query)).all()}
+    return [
+        UsageHourlyPointView(hour=hour, request_count=counts.get(hour, 0)) for hour in range(24)
+    ]
+
+
+async def get_project_usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> list[UsageHourlyPointView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _usage_hourly_distribution(
+        db,
+        project_id=project_id,
+        organization_id=None,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+async def get_organization_usage_hourly_distribution(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> list[UsageHourlyPointView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _usage_hourly_distribution(
+        db,
+        project_id=None,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    )
+
+
+async def _usage_top_endpoints(
+    db: AsyncSession,
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+    from_: datetime | None,
+    to: datetime | None,
+    limit: int,
+) -> list[UsageEndpointView]:
+    query = _usage_top_endpoints_query(
+        project_id=project_id,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+    ).limit(limit)
+    rows = (await db.execute(query)).all()
+    return [
+        UsageEndpointView(endpoint=row.endpoint, request_count=int(row.request_count))
+        for row in rows
+    ]
+
+
+async def get_project_top_endpoints(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    limit: int = 8,
+) -> list[UsageEndpointView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _usage_top_endpoints(
+        db,
+        project_id=project_id,
+        organization_id=None,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        limit=limit,
+    )
+
+
+async def get_organization_top_endpoints(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    limit: int = 8,
+) -> list[UsageEndpointView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _usage_top_endpoints(
+        db,
+        project_id=None,
+        organization_id=organization_id,
+        api_key_id=api_key_id,
+        from_=from_,
+        to=to,
+        limit=limit,
     )
 
 
@@ -125,6 +415,7 @@ async def _usage_summary(
     *,
     project_id: uuid.UUID | None,
     organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -133,6 +424,8 @@ async def _usage_summary(
         filters.append(col(ApiKey.project_id) == project_id)
     if organization_id is not None:
         filters.append(col(Project.organization_id) == organization_id)
+    if api_key_id is not None:
+        filters.append(col(ApiKeyUsage.api_key_id) == api_key_id)
     if from_ is not None:
         filters.append(col(ApiKeyUsage.hour_bucket) >= from_)
     if to is not None:
@@ -189,6 +482,7 @@ async def get_project_usage_summary(
     *,
     user_id: uuid.UUID,
     project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -202,6 +496,7 @@ async def get_project_usage_summary(
         db,
         project_id=project_id,
         organization_id=None,
+        api_key_id=api_key_id,
         from_=from_,
         to=to,
     )
@@ -212,6 +507,7 @@ async def get_organization_usage_summary(
     *,
     user_id: uuid.UUID,
     organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
     from_: datetime | None,
     to: datetime | None,
 ) -> UsageSummaryView:
@@ -223,11 +519,42 @@ async def get_organization_usage_summary(
     )
     return await _usage_summary(
         db,
+        api_key_id=api_key_id,
         project_id=None,
         organization_id=organization_id,
         from_=from_,
         to=to,
     )
+
+
+def _actor_filter(actor: str | None) -> Any | None:
+    """Translate the ``actor`` query value into an optional WHERE clause.
+
+    ``"user"`` / ``"api_key"`` match any entry attributed to that kind of actor;
+    a UUID matches that specific user or API key. Anything else is ignored.
+    """
+    if actor == "user":
+        return col(AuditLog.actor_user_id).is_not(None)
+    if actor == "api_key":
+        return col(AuditLog.api_key_id).is_not(None)
+    if not actor:
+        return None
+    try:
+        actor_id = uuid.UUID(actor)
+    except ValueError:
+        return None
+    return or_(
+        col(AuditLog.actor_user_id) == actor_id,
+        col(AuditLog.api_key_id) == actor_id,
+    )
+
+
+def _category_filter(category: str | None) -> Any | None:
+    """Restrict to the action namespaces of one activity surface, or nothing."""
+    prefixes = _CATEGORY_PREFIXES.get(category or "")
+    if not prefixes:
+        return None
+    return or_(*(col(AuditLog.action).like(f"{prefix}%") for prefix in prefixes))
 
 
 async def _audit_page(
@@ -238,7 +565,10 @@ async def _audit_page(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     resolved_project_id = func.coalesce(AuditLog.project_id, ApiKey.project_id)
     resolved_organization_id = func.coalesce(AuditLog.organization_id, Project.organization_id)
@@ -248,18 +578,48 @@ async def _audit_page(
     if organization_id is not None:
         filters.append(resolved_organization_id == organization_id)
     if action:
-        filters.append(col(AuditLog.action).ilike(f"%{action}%"))
+        # Free-text search: the action key, the affected resource's id, or
+        # who did it (person name or API key name).
+        filters.append(
+            or_(
+                col(AuditLog.action).ilike(f"%{action}%"),
+                col(AuditLog.resource_id).ilike(f"%{action}%"),
+                col(User.name).ilike(f"%{action}%"),
+                col(ApiKey.name).ilike(f"%{action}%"),
+            )
+        )
+    actor_clause = _actor_filter(actor)
+    if actor_clause is not None:
+        filters.append(actor_clause)
+    category_clause = _category_filter(category)
+    if category_clause is not None:
+        filters.append(category_clause)
     if from_:
-        filters.append(col(AuditLog.created_at) >= from_)
+        # created_at is TIMESTAMP WITHOUT TIME ZONE; drop any offset the client sent.
+        filters.append(col(AuditLog.created_at) >= to_naive_utc(from_))
+    if to:
+        filters.append(col(AuditLog.created_at) <= to_naive_utc(to))
 
-    query = (
+    query: Any = (
         select(
             AuditLog,
             resolved_organization_id.label("organization_id"),
             resolved_project_id.label("project_id"),
+            col(User.name).label("actor_name"),
+            col(ApiKey.name).label("api_key_name"),
+            col(ApiKey.environment).label("api_key_environment"),
+            col(OrganizationMembership.role).label("actor_role"),
         )
         .outerjoin(ApiKey, col(ApiKey.id) == col(AuditLog.api_key_id))
+        .outerjoin(User, col(User.id) == col(AuditLog.actor_user_id))
         .outerjoin(Project, col(Project.id) == resolved_project_id)
+        .outerjoin(
+            OrganizationMembership,
+            and_(
+                col(OrganizationMembership.user_id) == col(AuditLog.actor_user_id),
+                col(OrganizationMembership.organization_id) == resolved_organization_id,
+            ),
+        )
         .where(and_(*filters))
     )
     total = int(
@@ -273,10 +633,14 @@ async def _audit_page(
     items = [
         AuditLogView(
             id=audit_log.id,
-            organization_id=resolved_organization_id,
-            project_id=resolved_project_id,
+            organization_id=row_organization_id,
+            project_id=row_project_id,
             actor_user_id=audit_log.actor_user_id,
+            actor_name=actor_name,
+            actor_role=str(actor_role) if actor_role is not None else None,
             api_key_id=audit_log.api_key_id,
+            api_key_name=api_key_name,
+            api_key_environment=api_key_environment,
             action=audit_log.action,
             resource_type=audit_log.resource_type,
             resource_id=audit_log.resource_id,
@@ -284,7 +648,15 @@ async def _audit_page(
             ip_address=audit_log.ip_address,
             created_at=audit_log.created_at,
         )
-        for audit_log, resolved_organization_id, resolved_project_id in result.all()
+        for (
+            audit_log,
+            row_organization_id,
+            row_project_id,
+            actor_name,
+            api_key_name,
+            api_key_environment,
+            actor_role,
+        ) in result.all()
     ]
     return Page(items=items, total=total, page=page, per_page=per_page)
 
@@ -297,7 +669,10 @@ async def get_project_audit_log(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_project(
         db,
@@ -312,7 +687,10 @@ async def get_project_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
+        category=category,
         from_=from_,
+        to=to,
     )
 
 
@@ -324,7 +702,10 @@ async def get_organization_audit_log(
     page: int,
     per_page: int,
     action: str | None,
+    actor: str | None,
+    category: str | None,
     from_: datetime | None,
+    to: datetime | None,
 ) -> Page[AuditLogView]:
     await authorize_organization(
         db,
@@ -339,5 +720,661 @@ async def get_organization_audit_log(
         page=page,
         per_page=per_page,
         action=action,
+        actor=actor,
+        category=category,
         from_=from_,
+        to=to,
+    )
+
+
+def _api_key_scope_subquery(
+    *, project_id: uuid.UUID | None, organization_id: uuid.UUID | None
+) -> Any:
+    """Every API key id belonging to a project, or to every project in an
+    organization — the membership an unfiltered analytics/trend query is
+    scoped to."""
+    query = select(col(ApiKey.id))
+    if organization_id is not None:
+        query = query.join(Project, col(Project.id) == col(ApiKey.project_id)).where(
+            col(Project.organization_id) == organization_id
+        )
+    elif project_id is not None:
+        query = query.where(col(ApiKey.project_id) == project_id)
+    return query.scalar_subquery()
+
+
+def _tenant_event_filter(
+    *,
+    project_id: uuid.UUID | None,
+    organization_id: uuid.UUID | None,
+    api_key_id: uuid.UUID | None,
+) -> Any:
+    """Resolves the `Event.api_key_id` clause the shared analytics service
+    should filter by: one key when the caller picked one, otherwise every key
+    the project (or organization) owns. `get_analytics`/`get_trends` treat a
+    `None` filter as globally unscoped, so a tenant caller must never pass
+    that — this always returns a concrete clause."""
+    if api_key_id is not None:
+        return col(Event.api_key_id) == api_key_id
+    return col(Event.api_key_id).in_(
+        _api_key_scope_subquery(project_id=project_id, organization_id=organization_id)
+    )
+
+
+async def get_project_analytics(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> AnalyticsResponse:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=project_id, organization_id=None, api_key_id=api_key_id
+    )
+    return await analytics_service.get_analytics(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        default_to_today=False,
+    )
+
+
+async def get_organization_analytics(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+) -> AnalyticsResponse:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=None, organization_id=organization_id, api_key_id=api_key_id
+    )
+    return await analytics_service.get_analytics(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        default_to_today=False,
+    )
+
+
+async def get_project_trends(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    granularity: str = "day",
+) -> TrendResponse:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=project_id, organization_id=None, api_key_id=api_key_id
+    )
+    return await analytics_service.get_trends(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        granularity=granularity,
+        default_to_today=False,
+    )
+
+
+async def get_organization_trends(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    api_key_id: uuid.UUID | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    granularity: str = "day",
+) -> TrendResponse:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    event_filter = _tenant_event_filter(
+        project_id=None, organization_id=organization_id, api_key_id=api_key_id
+    )
+    return await analytics_service.get_trends(
+        db,
+        event_filter,
+        date_from=from_,
+        date_to=to,
+        granularity=granularity,
+        default_to_today=False,
+    )
+
+
+def _event_filters(
+    *,
+    event_filter: Any,
+    status: EventStatus | None,
+    priority: EventPriority | None,
+    event_type: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[Any]:
+    filters: list[Any] = [event_filter]
+    if status is not None:
+        filters.append(col(Event.status) == status)
+    if priority is not None:
+        filters.append(col(Event.priority) == priority)
+    if event_type:
+        # `event_type` is the surface's free-text search: matches the type,
+        # the event id, or the idempotency key.
+        escaped = event_type.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        filters.append(
+            or_(
+                col(Event.event_type).ilike(pattern, escape="\\"),
+                func.cast(col(Event.id), String).ilike(pattern, escape="\\"),
+                col(Event.idempotency_key).ilike(pattern, escape="\\"),
+            )
+        )
+    if from_ is not None:
+        filters.append(col(Event.created_at) >= to_naive_utc(from_))
+    if to is not None:
+        filters.append(col(Event.created_at) <= to_naive_utc(to))
+    return filters
+
+
+async def _event_page(
+    db: AsyncSession,
+    *,
+    event_filter: Any,
+    status: EventStatus | None,
+    priority: EventPriority | None,
+    event_type: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    filters = _event_filters(
+        event_filter=event_filter,
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+    )
+    total = int(
+        (await db.execute(select(func.count()).select_from(Event).where(*filters))).scalar() or 0
+    )
+    rows = (
+        await db.execute(
+            select(Event, col(ApiKey.name), col(ApiKey.environment))
+            .join(ApiKey, col(ApiKey.id) == col(Event.api_key_id))
+            .where(*filters)
+            .order_by(col(Event.created_at).desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).all()
+    failed = await event_service.bulk_has_failures(db, [event.id for event, _, _ in rows])
+    items = [
+        EventView(
+            id=event.id,
+            event_type=event.event_type,
+            priority=str(event.priority),
+            status=str(event.status),
+            recipient_count=event.recipient_count,
+            api_key_id=event.api_key_id,
+            api_key_name=key_name,
+            api_key_environment=key_environment,
+            has_failures=event.id in failed,
+            created_at=event.created_at,
+        )
+        for event, key_name, key_environment in rows
+    ]
+    return Page(items=items, total=total, page=page, per_page=per_page)
+
+
+async def get_project_events(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    status: EventStatus | None = None,
+    priority: EventPriority | None = None,
+    event_type: str | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    return await _event_page(
+        db,
+        event_filter=_tenant_event_filter(
+            project_id=project_id, organization_id=None, api_key_id=None
+        ),
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_organization_events(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    status: EventStatus | None = None,
+    priority: EventPriority | None = None,
+    event_type: str | None = None,
+    from_: datetime | None = None,
+    to: datetime | None = None,
+    page: int,
+    per_page: int,
+) -> Page[EventView]:
+    await authorize_organization(
+        db,
+        user_id=user_id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.READ_ORGANIZATION_USAGE,
+    )
+    return await _event_page(
+        db,
+        event_filter=_tenant_event_filter(
+            project_id=None, organization_id=organization_id, api_key_id=None
+        ),
+        status=status,
+        priority=priority,
+        event_type=event_type,
+        from_=from_,
+        to=to,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_project_event(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    event_id: uuid.UUID,
+) -> EventDetailView | None:
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_USAGE,
+    )
+    row = (
+        await db.execute(
+            select(Event, col(ApiKey.name), col(ApiKey.environment))
+            .join(ApiKey, col(ApiKey.id) == col(Event.api_key_id))
+            .where(
+                col(Event.id) == event_id,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    event, key_name, key_environment = row
+    notifications = (
+        (
+            await db.execute(
+                select(Notification)
+                .where(col(Notification.event_id) == event_id)
+                .order_by(col(Notification.created_at).asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return EventDetailView(
+        id=event.id,
+        event_type=event.event_type,
+        priority=str(event.priority),
+        status=str(event.status),
+        recipient_count=event.recipient_count,
+        api_key_id=event.api_key_id,
+        api_key_name=key_name,
+        api_key_environment=key_environment,
+        idempotency_key=event.idempotency_key,
+        batch_id=event.batch_id,
+        payload=event.payload,
+        metadata=event.metadata_,
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+        notifications=[
+            EventNotificationView(
+                id=notification.id,
+                channel=str(notification.channel),
+                status=str(notification.status),
+                recipient_address=notification.recipient_address,
+                error_message=notification.error_message,
+                created_at=notification.created_at,
+                delivered_at=notification.delivered_at,
+            )
+            for notification in notifications
+        ],
+    )
+
+
+def _notification_filters(
+    *,
+    project_id: uuid.UUID,
+    status: list[NotificationStatus] | None,
+    channel: NotificationChannel | None,
+    search: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+) -> list[Any]:
+    filters: list[Any] = [
+        col(Event.api_key_id).in_(
+            _api_key_scope_subquery(project_id=project_id, organization_id=None)
+        )
+    ]
+    if status:
+        filters.append(col(Notification.status).in_(status))
+    if channel is not None:
+        filters.append(col(Notification.channel) == channel)
+    if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        filters.append(
+            or_(
+                col(Notification.recipient_address).ilike(pattern, escape="\\"),
+                func.cast(col(Notification.id), String).ilike(pattern, escape="\\"),
+                func.cast(col(Notification.event_id), String).ilike(pattern, escape="\\"),
+                col(Event.event_type).ilike(pattern, escape="\\"),
+            )
+        )
+    if from_ is not None:
+        filters.append(col(Notification.created_at) >= to_naive_utc(from_))
+    if to is not None:
+        filters.append(col(Notification.created_at) <= to_naive_utc(to))
+    return filters
+
+
+async def get_project_notifications(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    status: list[NotificationStatus] | None,
+    channel: NotificationChannel | None,
+    search: str | None,
+    from_: datetime | None,
+    to: datetime | None,
+    page: int,
+    per_page: int,
+) -> Page[NotificationView]:
+    """Return one authorized project's delivery instances, newest first."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
+    )
+    filters = _notification_filters(
+        project_id=project_id,
+        status=status,
+        channel=channel,
+        search=search,
+        from_=from_,
+        to=to,
+    )
+    total = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Notification)
+                .join(Event, col(Event.id) == col(Notification.event_id))
+                .where(*filters)
+            )
+        ).scalar()
+        or 0
+    )
+    rows = (
+        await db.execute(
+            select(Notification, col(Event.event_type))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(*filters)
+            .order_by(col(Notification.created_at).desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).all()
+    return Page(
+        items=[
+            NotificationView(
+                id=notification.id,
+                event_id=notification.event_id,
+                event_type=event_type,
+                channel=str(notification.channel),
+                status=str(notification.status),
+                priority=str(notification.priority),
+                recipient_address=notification.recipient_address,
+                retry_count=notification.retry_count,
+                max_retries=notification.max_retries,
+                error_message=notification.error_message,
+                created_at=notification.created_at,
+                delivered_at=notification.delivered_at,
+                failed_at=notification.failed_at,
+            )
+            for notification, event_type in rows
+        ],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+async def get_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Return one delivery with its immutable attempt history."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
+    )
+    row = (
+        await db.execute(
+            select(Notification, col(Event.event_type))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(
+                col(Notification.id) == notification_id,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    notification, event_type = row
+    logs = (
+        (
+            await db.execute(
+                select(NotificationLog)
+                .where(col(NotificationLog.notification_id) == notification_id)
+                .order_by(col(NotificationLog.created_at).asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    dead_letter_status = (
+        await db.execute(
+            select(col(DeadLetterMessage.status)).where(
+                col(DeadLetterMessage.notification_id) == notification_id
+            )
+        )
+    ).scalar_one_or_none()
+    return NotificationDetailView(
+        id=notification.id,
+        event_id=notification.event_id,
+        event_type=event_type,
+        channel=str(notification.channel),
+        status=str(notification.status),
+        priority=str(notification.priority),
+        recipient_user_id=notification.recipient_user_id,
+        recipient_address=notification.recipient_address,
+        rendered_subject=notification.rendered_subject,
+        rendered_body=notification.rendered_body,
+        retry_count=notification.retry_count,
+        max_retries=notification.max_retries,
+        next_retry_at=notification.next_retry_at,
+        provider_response=notification.provider_response,
+        error_message=notification.error_message,
+        created_at=notification.created_at,
+        queued_at=notification.queued_at,
+        processing_started_at=notification.processing_started_at,
+        delivered_at=notification.delivered_at,
+        failed_at=notification.failed_at,
+        updated_at=notification.updated_at,
+        dead_letter_status=str(dead_letter_status) if dead_letter_status is not None else None,
+        logs=[
+            NotificationLogView(
+                id=log.id,
+                previous_status=log.previous_status,
+                new_status=log.new_status,
+                worker_id=log.worker_id,
+                error_type=log.error_type,
+                error_message=log.error_message,
+                provider_response=log.provider_response,
+                metadata=log.metadata_,
+                created_at=log.created_at,
+            )
+            for log in logs
+        ],
+    )
+
+
+async def _active_project_dead_letter(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> tuple[uuid.UUID, uuid.UUID] | None:
+    """Resolve an active dead letter to its owning key after manage authorization."""
+    await authorize_project(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    row = (
+        await db.execute(
+            select(col(DeadLetterMessage.id), col(Event.api_key_id))
+            .join(Notification, col(Notification.id) == col(DeadLetterMessage.notification_id))
+            .join(Event, col(Event.id) == col(Notification.event_id))
+            .where(
+                col(Notification.id) == notification_id,
+                col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE,
+                col(Event.api_key_id).in_(
+                    _api_key_scope_subquery(project_id=project_id, organization_id=None)
+                ),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    dead_letter_id, api_key_id = row
+    return dead_letter_id, api_key_id
+
+
+async def retry_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Retry an active dead letter and return the refreshed notification."""
+    resolved = await _active_project_dead_letter(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+    if resolved is None:
+        return None
+    dead_letter_id, api_key_id = resolved
+    if await dead_letter_service.retry_dead_letter(db, dead_letter_id, api_key_id) is None:
+        return None
+    return await get_project_notification(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+
+
+async def discard_project_notification(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID,
+    notification_id: uuid.UUID,
+) -> NotificationDetailView | None:
+    """Acknowledge an active dead letter and return the refreshed notification."""
+    resolved = await _active_project_dead_letter(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
+    )
+    if resolved is None:
+        return None
+    dead_letter_id, api_key_id = resolved
+    if await dead_letter_service.discard_dead_letter(db, dead_letter_id, api_key_id) is None:
+        return None
+    return await get_project_notification(
+        db,
+        user_id=user_id,
+        project_id=project_id,
+        notification_id=notification_id,
     )

@@ -10,8 +10,18 @@ from pathlib import Path
 from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# apps/api/app/core/config.py -> repository root
-_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+
+def _find_env_file() -> Path:
+    """Find the nearest project env file in source and container layouts."""
+    config_path = Path(__file__).resolve()
+    for directory in config_path.parents:
+        candidate = directory / ".env"
+        if candidate.is_file():
+            return candidate
+    return Path.cwd() / ".env"
+
+
+_ENV_FILE = _find_env_file()
 
 
 class Settings(BaseSettings):
@@ -19,6 +29,7 @@ class Settings(BaseSettings):
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Database
@@ -92,7 +103,7 @@ class Settings(BaseSettings):
     # Email
     EMAIL_PROVIDER: str = "auto"
     RESEND_API_KEY: str = ""
-    EMAIL_FROM_ADDRESS: str = "notifications@yourdomain.com"
+    EMAIL_FROM_ADDRESS: str = "no-reply@beaco.michaelogunjimi.com"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025
     SMTP_USERNAME: str = ""
@@ -127,6 +138,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     MAGIC_LINK_TTL_SECONDS: int = 900
     MAGIC_LINK_RATE_LIMIT_PER_HOUR: int = 5
+    EMAIL_VERIFICATION_TTL_SECONDS: int = 86400
+    EMAIL_VERIFICATION_RATE_LIMIT_PER_HOUR: int = 6
     ORGANIZATION_INVITATION_TTL_SECONDS: int = 604800
 
     # GitHub OAuth
@@ -135,6 +148,7 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:3000"
     OAUTH_STATE_TTL_SECONDS: int = 600
+    OAUTH_CODE_TTL_SECONDS: int = 60
 
     # CORS — space-separated list of allowed origins
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000 http://localhost:3001"

@@ -84,15 +84,18 @@ async def _clean_tables():
 
 @pytest.fixture(autouse=True)
 def _reset_adapter_cache():
-    """Clear the adapter singleton cache before each test.
+    """Clear adapters and prevent ordinary tests from sending external email.
 
     get_adapter() caches instances in a module-level dict. Without this
     fixture, adapter state from one test (or monkeypatched attributes)
     leaks into subsequent tests in the same process.
     """
+    original_email_provider = settings.EMAIL_PROVIDER
+    settings.EMAIL_PROVIDER = "mock"
     _integrations._adapter_instances.clear()
     yield
     _integrations._adapter_instances.clear()
+    settings.EMAIL_PROVIDER = original_email_provider
 
 
 @pytest.fixture

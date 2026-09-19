@@ -1,67 +1,85 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Menu, X } from "lucide-react"
-import { useState } from "react"
-
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { docsUrl } from "@/lib/urls"
+import Link from "next/link";
+import { List } from "@phosphor-icons/react/dist/csr/List";
+import { X } from "@phosphor-icons/react/dist/csr/X";
+import { ThemeToggle } from "@beaco/theme";
+import { useState } from "react";
+import { docsUrl } from "@/lib/urls";
 
 type MobileNavProps = {
-  links: Array<{ label: string; href: string }>
-}
+  links: Array<{ label: string; href: string }>;
+  /** Swaps the sign-in/start-building rows for a single dashboard link once a session is confirmed. */
+  authed?: boolean;
+};
 
-export default function MobileNav({ links }: MobileNavProps) {
-  const [open, setOpen] = useState(false)
+export default function MobileNav({ links, authed = false }: MobileNavProps) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative md:hidden">
+    <div className="relative flex items-center gap-2 md:hidden">
+      <ThemeToggle />
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex size-9 items-center justify-center rounded-lg border border-[var(--gray-4)] bg-[var(--gray-1)] text-[var(--gray-10)]"
+        className="inline-flex size-10 items-center justify-center rounded-[9px] border border-[var(--site-line-strong)] bg-[var(--site-overlay)] text-[var(--site-ink)] transition hover:bg-[var(--site-overlay-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
       >
-        {open ? <X className="size-4" /> : <Menu className="size-4" />}
+        {open ? <X size={16} weight="light" /> : <List size={17} weight="light" />}
       </button>
 
       {open ? (
-        <div className="absolute top-11 right-0 z-50 w-52 rounded-xl border border-[var(--gray-3)] bg-[var(--gray-1)] p-2 shadow-[0_0_36px_rgba(245,158,11,0.14)]">
+        <div className="absolute right-0 top-12 z-50 w-56 rounded-[14px] border border-[var(--site-line-strong)] bg-[var(--site-panel)]/95 p-2 shadow-[0_24px_70px_var(--site-shadow)] backdrop-blur-xl">
           <div className="flex flex-col gap-1">
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm text-[var(--gray-10)] hover:bg-[var(--gray-2)]"
+                className="rounded-[9px] px-3 py-2.5 text-sm text-[var(--site-muted)] transition hover:bg-[var(--site-soft)] hover:text-[var(--site-ink)]"
               >
                 {link.label}
               </Link>
             ))}
             <a
-              href="https://github.com/michaelowiti/notification-system"
+              href="https://github.com/MichaelOgunjimi/notification-system"
               target="_blank"
               rel="noreferrer"
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-2 text-sm text-[var(--gray-10)] hover:bg-[var(--gray-2)]"
+              className="rounded-[9px] px-3 py-2.5 text-sm text-[var(--site-muted)] transition hover:bg-[var(--site-soft)] hover:text-[var(--site-ink)]"
             >
               GitHub
             </a>
-            <Link
-              href={docsUrl("/quickstart")}
-              onClick={() => setOpen(false)}
-              className={cn(
-                buttonVariants(),
-                "mt-2 h-9 w-full bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[color:color-mix(in_oklab,var(--primary),black_18%)]"
-              )}
-            >
-              Get Started
-            </Link>
+            {authed ? (
+              <Link
+                href="/workspace"
+                onClick={() => setOpen(false)}
+                className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-[9px] bg-[var(--site-accent)] px-4 text-sm font-semibold text-[var(--site-accent-ink)] transition hover:bg-[var(--site-accent-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] active:translate-y-px"
+              >
+                Open dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="rounded-[9px] px-3 py-2.5 text-sm text-[var(--site-ink)] transition hover:bg-[var(--site-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)]"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href={docsUrl("/quickstart")}
+                  onClick={() => setOpen(false)}
+                  className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-[9px] bg-[var(--site-accent)] px-4 text-sm font-semibold text-[var(--site-accent-ink)] transition hover:bg-[var(--site-accent-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent)] active:translate-y-px"
+                >
+                  Start building
+                </Link>
+              </>
+            )}
           </div>
         </div>
       ) : null}
     </div>
-  )
+  );
 }

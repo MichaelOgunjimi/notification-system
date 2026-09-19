@@ -1,0 +1,47 @@
+.log-pill {
+  align-items: center;
+  background: var(--dashboard-overlay);
+  border: 1px solid var(--dashboard-line-strong);
+  border-radius: 999px;
+  color: var(--dashboard-muted-bright);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 560;
+  gap: 7px;
+  line-height: 1;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.log-pill::before {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  flex-shrink: 0;
+  height: 6px;
+  width: 6px;
+}
+
+.log-pill[data-tone="info"] {
+  background: color-mix(in srgb, #7c9cc4 14%, var(--dashboard-overlay));
+  border-color: color-mix(in srgb, #7c9cc4 45%, var(--dashboard-line-strong));
+  color: #7c9cc4;
+}
+
+.log-pill[data-tone="success"] {
+  background: color-mix(in srgb, #68b982 14%, var(--dashboard-overlay));
+  border-color: color-mix(in srgb, #68b982 45%, var(--dashboard-line-strong));
+  color: #68b982;
+}
+
+.log-pill[data-tone="warning"] {
+  background: color-mix(in srgb, #d8a35f 14%, var(--dashboard-overlay));
+  border-color: color-mix(in srgb, #d8a35f 45%, var(--dashboard-line-strong));
+  color: #d8a35f;
+}
+
+.log-pill[data-tone="danger"] {
+  background: color-mix(in srgb, #d88274 14%, var(--dashboard-overlay));
+  border-color: color-mix(in srgb, #d88274 45%, var(--dashboard-line-strong));
+  color: #d88274;
+}

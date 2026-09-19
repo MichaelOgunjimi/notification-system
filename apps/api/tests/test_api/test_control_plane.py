@@ -18,6 +18,57 @@ async def _headers(user: User, db: AsyncSession, redis: AsyncMock) -> dict[str, 
     return {"Authorization": f"Bearer {tokens.access_token}"}
 
 
+async def test_creating_an_organization_also_creates_its_first_project(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    user = User(email="org-creator@example.com", name="Creator")
+    db.add(user)
+    await db.flush()
+    await db.commit()
+    headers = await _headers(user, db, mock_redis)
+
+    created = await client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={
+            "name": "Fresh Co",
+            "slug": "fresh-co",
+            "project": {"name": "Web", "slug": "web"},
+        },
+    )
+    assert created.status_code == 201
+    organization_id = created.json()["id"]
+
+    projects = await client.get(
+        f"/api/v1/organizations/{organization_id}/projects",
+        headers=headers,
+    )
+    assert projects.status_code == 200
+    body = projects.json()
+    assert [(project["name"], project["slug"]) for project in body] == [("Web", "web")]
+
+
+async def test_creating_an_organization_requires_a_first_project(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    user = User(email="org-creator-2@example.com", name="Creator")
+    db.add(user)
+    await db.flush()
+    await db.commit()
+    headers = await _headers(user, db, mock_redis)
+
+    response = await client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={"name": "No Project Co", "slug": "no-project-co"},
+    )
+    assert response.status_code == 422
+
+
 async def test_owner_edits_and_archives_organization_and_project(
     client: AsyncClient,
     db: AsyncSession,
@@ -62,6 +113,69 @@ async def test_owner_edits_and_archives_organization_and_project(
     assert projects.json() == []
 
 
+async def test_project_restore_undoes_archive(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    owner = User(email="project-restore@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="proj-restore")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Api", slug="api"
+    )
+    await db.commit()
+    headers = await _headers(owner, db, mock_redis)
+
+    await client.delete(f"/api/v1/projects/{project.id}", headers=headers)
+    restored = await client.post(f"/api/v1/projects/{project.id}/restore", headers=headers)
+
+    assert restored.status_code == 200
+    assert restored.json()["archived_at"] is None
+    projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects", headers=headers
+    )
+    assert [project["id"] for project in projects.json()] == [str(project.id)]
+
+
+async def test_organization_restore_leaves_its_projects_archived(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+) -> None:
+    owner = User(email="org-restore@example.com", name="Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(db, owner=owner, name="Acme", slug="org-restore")
+    project = await create_project(
+        db, organization=organization, creator=owner, name="Api", slug="api"
+    )
+    await db.commit()
+    headers = await _headers(owner, db, mock_redis)
+
+    await client.delete(f"/api/v1/organizations/{organization.id}", headers=headers)
+    restored = await client.post(
+        f"/api/v1/organizations/{organization.id}/restore", headers=headers
+    )
+
+    assert restored.status_code == 200
+    assert restored.json()["archived_at"] is None
+    # The org is back, but archiving it archived the project too — that stays
+    # archived until restored on its own, deliberately.
+    projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects", headers=headers
+    )
+    assert projects.json() == []
+    all_projects = await client.get(
+        f"/api/v1/organizations/{organization.id}/projects",
+        params={"include_archived": "true"},
+        headers=headers,
+    )
+    assert [row["id"] for row in all_projects.json()] == [str(project.id)]
+    assert all_projects.json()[0]["archived_at"] is not None
+
+
 async def test_final_owner_cannot_be_demoted_or_removed(
     client: AsyncClient,
     db: AsyncSession,
@@ -90,6 +204,46 @@ async def test_final_owner_cannot_be_demoted_or_removed(
 
     assert demote.status_code == 409
     assert remove.status_code == 409
+
+
+async def test_invitation_preview_describes_the_pending_invitation(
+    client: AsyncClient,
+    db: AsyncSession,
+    mock_redis: AsyncMock,
+    monkeypatch,
+) -> None:
+    owner = User(email="preview-owner@example.com", name="Dana Owner")
+    db.add(owner)
+    await db.flush()
+    organization = await create_organization(
+        db, owner=owner, name="Preview Org", slug="preview-org"
+    )
+    await db.commit()
+    monkeypatch.setattr(
+        "app.modules.tenancy.invitations.service.secrets.token_urlsafe",
+        lambda _length: "preview-token",
+    )
+    await client.post(
+        f"/api/v1/organizations/{organization.id}/invitations",
+        headers=await _headers(owner, db, mock_redis),
+        json={"email": "newcomer@example.com", "role": "admin"},
+    )
+
+    preview = await client.get("/api/v1/invitations/preview-token")
+
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["organization_name"] == "Preview Org"
+    assert body["email"] == "newcomer@example.com"
+    assert body["role"] == "admin"
+    assert body["inviter_name"] == "Dana Owner"
+    assert "expires_at" in body
+
+
+async def test_invitation_preview_hides_an_unknown_token(client: AsyncClient) -> None:
+    preview = await client.get("/api/v1/invitations/does-not-exist")
+
+    assert preview.status_code == 404
 
 
 async def test_verified_invitee_accepts_invitation(
@@ -178,8 +332,32 @@ async def test_api_key_can_be_edited_and_rotated(
     assert rotated.status_code == 200
     assert rotated.json()["key"] != old_secret
     assert rotated.json()["environment"] == "test"
+    assert rotated.json()["rotated_from_id"] == key_id
     rejected = await client.get("/api/v1/templates", headers={"X-API-Key": old_secret})
     assert rejected.status_code == 401
+
+    listed = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"status": "active"},
+    )
+    assert listed.status_code == 200
+    active = listed.json()["items"]
+    assert [item["id"] for item in active] == [rotated.json()["id"]]
+
+    revoked = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"status": "revoked", "environment": "test"},
+    )
+    assert [item["id"] for item in revoked.json()["items"]] == [key_id]
+
+    live_only = await client.get(
+        f"/api/v1/projects/{project.id}/api-keys",
+        headers=headers,
+        params={"environment": "live"},
+    )
+    assert live_only.json()["items"] == []
 
 
 async def test_usage_summaries_roll_up_from_project_to_organization(

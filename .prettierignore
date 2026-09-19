@@ -1,0 +1,9 @@
+.next/
+coverage/
+graphify-out/
+node_modules/
+package-lock.json
+apps/web/previous-dashboard/
+apps/web/public/brand/
+apps/docs/public/brand/
+apps/api/

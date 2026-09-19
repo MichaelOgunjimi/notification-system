@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 import uuid
+from datetime import timedelta
 from enum import StrEnum
 from typing import Any
 from urllib.parse import quote
@@ -17,17 +18,24 @@ from sqlmodel import col
 
 from app.core.config import settings
 from app.core.datetime import utc_now
+from app.modules.delivery import notify
 from app.modules.delivery.adapters.email import EmailAdapter
+from app.modules.delivery.templates.transactional import (
+    email_verification_email,
+    magic_link_email,
+)
 from app.modules.identity.models.email_address import EmailAddress
 from app.modules.identity.models.oauth_account import OAuthAccount
 from app.modules.identity.models.refresh_token import RefreshToken
 from app.modules.identity.models.user import User
 from app.modules.identity.schemas import TokenResponse
 from app.modules.identity.tokens import create_access_token, create_refresh_token, decode_token
-from app.modules.tenancy.lifecycle import create_organization, create_project
+from app.modules.tenancy.lifecycle import create_organization_with_project
 
 _REFRESH_PREFIX = "refresh"
 _MAGIC_LINK_PREFIX = "magic_link"
+_OAUTH_CODE_PREFIX = "oauth_code"
+_EMAIL_VERIFY_PREFIX = "email_verify"
 _MAGIC_LINK_RATE_SCRIPT = """
 local count = redis.call('INCR', KEYS[1])
 if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
@@ -49,16 +57,28 @@ def magic_link_cache_key(token: str) -> str:
     return f"{_MAGIC_LINK_PREFIX}:{digest}"
 
 
+def oauth_code_cache_key(code: str) -> str:
+    digest = hashlib.sha256(code.encode()).hexdigest()
+    return f"{_OAUTH_CODE_PREFIX}:{digest}"
+
+
+def email_verify_cache_key(token: str) -> str:
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    return f"{_EMAIL_VERIFY_PREFIX}:{digest}"
+
+
 async def _create_user_with_workspace(
     db: AsyncSession,
     *,
     email: str,
     name: str,
+    avatar_url: str | None = None,
 ) -> tuple[User, EmailAddress]:
     verified_at = utc_now()
     user = User(
         email=email,
         name=name,
+        avatar_url=avatar_url,
         email_verified_at=verified_at,
     )
     db.add(user)
@@ -70,18 +90,11 @@ async def _create_user_with_workspace(
         verified_at=verified_at,
     )
     db.add(email_address)
-    organization = await create_organization(
+    await create_organization_with_project(
         db,
         owner=user,
         name=f"{user.name}'s Workspace",
         slug=f"workspace-{str(user.id)[:8]}",
-    )
-    await create_project(
-        db,
-        organization=organization,
-        creator=user,
-        name="Default",
-        slug="default",
     )
     return user, email_address
 
@@ -124,7 +137,216 @@ async def _attach_verified_email(
     return email_address
 
 
-async def request_magic_link(email: str, redis: Redis) -> None:
+async def _send_email_verification(redis: Redis, email_address: EmailAddress) -> None:
+    token = secrets.token_urlsafe(32)
+    await redis.setex(
+        email_verify_cache_key(token),
+        settings.EMAIL_VERIFICATION_TTL_SECONDS,
+        json.dumps({"email_address_id": str(email_address.id)}),
+    )
+    link = f"{settings.FRONTEND_URL.rstrip('/')}/auth/verify-email?token={quote(token)}"
+    message = email_verification_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=email_address.email,
+        action_url=link,
+        expires_hours=max(1, settings.EMAIL_VERIFICATION_TTL_SECONDS // 3600),
+    )
+    result = await asyncio.to_thread(
+        EmailAdapter().send,
+        email_address.email,
+        message.subject,
+        message.html,
+        plain_text=message.text,
+    )
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send the verification email",
+        )
+
+
+async def _rate_limit_email_verification(redis: Redis, *, user_id: uuid.UUID, email: str) -> None:
+    email_digest = hashlib.sha256(email.encode()).hexdigest()
+    for scope in (f"email_verify_rate:user:{user_id}", f"email_verify_rate:addr:{email_digest}"):
+        count = int(
+            await redis.eval(_MAGIC_LINK_RATE_SCRIPT, 1, scope, "3600")  # type: ignore[misc]
+        )
+        if count > settings.EMAIL_VERIFICATION_RATE_LIMIT_PER_HOUR:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many verification emails. Try again later.",
+            )
+
+
+async def list_user_emails(db: AsyncSession, *, user: User) -> list[EmailAddress]:
+    result = await db.execute(
+        select(EmailAddress)
+        .where(col(EmailAddress.user_id) == user.id)
+        .order_by(col(EmailAddress.is_primary).desc(), col(EmailAddress.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def add_user_email(db: AsyncSession, redis: Redis, *, user: User, email: str) -> EmailAddress:
+    normalized = email.strip().lower()
+    await _rate_limit_email_verification(redis, user_id=user.id, email=normalized)
+    existing = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.email) == normalized))
+    ).scalar_one_or_none()
+    if existing is not None:
+        if existing.user_id == user.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This address is already on your account",
+            )
+        lapsed = existing.created_at <= utc_now() - timedelta(
+            seconds=settings.EMAIL_VERIFICATION_TTL_SECONDS
+        )
+        if existing.verified_at is not None or not lapsed:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This address belongs to another account",
+            )
+        await db.delete(existing)
+        await db.flush()
+
+    # Always secondary + unverified: every caller here is an authenticated user who
+    # already owns a primary. This deliberately diverges from _attach_verified_email
+    # (OAuth path), which may mint a primary and refuses an address held by another
+    # user's *unverified* row rather than reclaiming a lapsed squat as we do above.
+    email_address = EmailAddress(user_id=user.id, email=normalized, verified_at=None)
+    db.add(email_address)
+    await db.flush()
+    await _send_email_verification(redis, email_address)
+    await db.commit()
+    await db.refresh(email_address)
+    return email_address
+
+
+async def resend_email_verification(
+    db: AsyncSession, redis: Redis, *, user: User, email_address_id: uuid.UUID
+) -> None:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.verified_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This address is already verified",
+        )
+    await _rate_limit_email_verification(redis, user_id=user.id, email=email_address.email)
+    await _send_email_verification(redis, email_address)
+
+
+async def verify_email_address(db: AsyncSession, redis: Redis, *, token: str) -> EmailAddress:
+    raw_payload = await redis.getdel(email_verify_cache_key(token))
+    if isinstance(raw_payload, bytes):
+        raw_payload = raw_payload.decode()
+    if not raw_payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        )
+    try:
+        email_address_id = uuid.UUID(str(json.loads(raw_payload)["email_address_id"]))
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        ) from exc
+    email_address = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.id) == email_address_id))
+    ).scalar_one_or_none()
+    if email_address is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has already been used",
+        )
+    if email_address.verified_at is None:
+        email_address.verified_at = utc_now()
+        db.add(email_address)
+        await db.commit()
+    return email_address
+
+
+async def _owned_email(
+    db: AsyncSession, *, user: User, email_address_id: uuid.UUID
+) -> EmailAddress:
+    email_address = (
+        await db.execute(select(EmailAddress).where(col(EmailAddress.id) == email_address_id))
+    ).scalar_one_or_none()
+    if email_address is None or email_address.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email address not found")
+    return email_address
+
+
+async def set_primary_email(
+    db: AsyncSession, *, user: User, email_address_id: uuid.UUID
+) -> EmailAddress:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.verified_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Verify this address before making it primary",
+        )
+    if email_address.is_primary:
+        return email_address
+    # Captured before the mutation below overwrites user.email — the security
+    # notification has to reach the address that is losing control.
+    previous_email = user.email
+    current = (
+        await db.execute(
+            select(EmailAddress).where(
+                col(EmailAddress.user_id) == user.id,
+                col(EmailAddress.is_primary).is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if current is not None:
+        current.is_primary = False
+        db.add(current)
+        await db.flush()
+    email_address.is_primary = True
+    user.email = email_address.email
+    db.add_all([email_address, user])
+    await db.commit()
+    await db.refresh(email_address)
+    if previous_email != email_address.email:
+        await notify.primary_email_changed(
+            previous_email, new_email=email_address.email, name=user.name
+        )
+    return email_address
+
+
+async def remove_user_email(db: AsyncSession, *, user: User, email_address_id: uuid.UUID) -> None:
+    email_address = await _owned_email(db, user=user, email_address_id=email_address_id)
+    if email_address.is_primary:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Set another address as primary before removing this one",
+        )
+    await db.delete(email_address)
+    await db.commit()
+
+
+def safe_next_path(value: str | None) -> str | None:
+    """Return ``value`` only when it is a same-origin relative path.
+
+    Guards the magic-link round-trip against open redirects: the path must be
+    rooted at a single ``/``, must not begin a protocol-relative or backslash
+    authority, and must not smuggle a scheme or control characters.
+    """
+    if not value:
+        return None
+    candidate = value.strip()
+    if not candidate.startswith("/") or candidate.startswith("//"):
+        return None
+    if candidate.startswith("/\\") or "\\" in candidate:
+        return None
+    if "://" in candidate or any(char < " " or char == "\x7f" for char in candidate):
+        return None
+    return candidate
+
+
+async def request_magic_link(email: str, redis: Redis, *, next_path: str | None = None) -> None:
     email_digest = hashlib.sha256(email.encode()).hexdigest()
     request_count = int(
         await redis.eval(  # type: ignore[misc]
@@ -144,17 +366,23 @@ async def request_magic_link(email: str, redis: Redis) -> None:
         json.dumps({"email": email}),
     )
     link = f"{settings.FRONTEND_URL.rstrip('/')}/auth/magic-link?token={quote(token)}"
-    body = (
-        "<p>Use this one-time link to sign in to Notification System:</p>"
-        f'<p><a href="{link}">Sign in</a></p>'
-        "<p>If you did not request this link, you can ignore this email.</p>"
+    destination = safe_next_path(next_path)
+    if destination is not None:
+        link = f"{link}&next={quote(destination, safe='')}"
+    email_message = magic_link_email(
+        frontend_url=settings.FRONTEND_URL,
+        recipient=email,
+        recipient_name=email.partition("@")[0],
+        action_url=link,
+        expires_minutes=max(1, settings.MAGIC_LINK_TTL_SECONDS // 60),
     )
     adapter = EmailAdapter()
     result = await asyncio.to_thread(
         adapter.send,
         email,
-        "Sign in to Notification System",
-        body,
+        email_message.subject,
+        email_message.html,
+        plain_text=email_message.text,
     )
     if not result.success:
         await redis.delete(magic_link_cache_key(token))
@@ -187,11 +415,13 @@ async def verify_magic_link(
 
     email_result = await db.execute(select(EmailAddress).where(col(EmailAddress.email) == email))
     email_address = email_result.scalar_one_or_none()
+    registered_name: str | None = None
     if email_address is None:
-        _user, email_address = await _create_user_with_workspace(
+        registered_name = email.partition("@")[0]
+        _new_user, email_address = await _create_user_with_workspace(
             db,
             email=email,
-            name=email.partition("@")[0],
+            name=registered_name,
         )
         await db.commit()
     if email_address.verified_at is None:
@@ -205,6 +435,8 @@ async def verify_magic_link(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    if registered_name is not None:
+        await notify.welcome(email=email, name=registered_name)
     return await create_user_tokens(user, db, redis)
 
 
@@ -253,10 +485,12 @@ async def get_or_create_oauth_user(
             detail="This email already has an account; sign in and connect this provider",
         )
 
+    registered_name = str(identity.get("name") or identity["login"])
     user, _email_address = await _create_user_with_workspace(
         db,
         email=email,
-        name=str(identity.get("name") or identity["login"]),
+        name=registered_name,
+        avatar_url=identity.get("avatar_url"),
     )
 
     db.add(
@@ -272,7 +506,99 @@ async def get_or_create_oauth_user(
     )
     await db.commit()
     await db.refresh(user)
+    await notify.welcome(email=email, name=registered_name)
     return user
+
+
+async def update_user_profile(
+    db: AsyncSession,
+    *,
+    user: User,
+    changes: dict[str, object],
+) -> User:
+    """Persist authenticated user-owned profile fields.
+
+    Args:
+        db: Active identity database session.
+        user: Authenticated user resolved from the bearer access token.
+        changes: Validated partial profile fields from the HTTP schema.
+
+    Returns:
+        The refreshed user record after committing the profile update.
+
+    Side Effects:
+        Commits the active database transaction and advances ``updated_at``.
+    """
+    for field, value in changes.items():
+        setattr(user, field, value)
+    user.updated_at = utc_now()
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def list_oauth_connections(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+) -> list[OAuthAccount]:
+    """List external identities linked to one authenticated user.
+
+    Args:
+        db: Active identity database session.
+        user_id: Authenticated user's stable application identifier.
+
+    Returns:
+        Connected provider accounts ordered by their original connection time.
+
+    Security:
+        Callers must supply the user identifier resolved from the access token;
+        provider records are never queried by a browser-provided user ID.
+    """
+    result = await db.execute(
+        select(OAuthAccount)
+        .where(col(OAuthAccount.user_id) == user_id)
+        .order_by(col(OAuthAccount.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def disconnect_oauth_account(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    provider: str,
+) -> None:
+    """Remove one provider connection from an authenticated user.
+
+    Args:
+        db: Active identity database session.
+        user_id: Authenticated user's stable application identifier.
+        provider: Provider key to disconnect.
+
+    Raises:
+        HTTPException: When the requested provider is not connected to the user.
+
+    Side Effects:
+        Deletes the OAuth account and commits the transaction. Verified email
+        addresses already attached to the user are intentionally retained.
+    """
+    result = await db.execute(
+        select(OAuthAccount).where(
+            col(OAuthAccount.user_id) == user_id,
+            col(OAuthAccount.provider) == provider,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No {provider} account is connected",
+        )
+
+    await db.delete(account)
+    await db.commit()
 
 
 async def connect_oauth_account(
@@ -329,6 +655,9 @@ async def connect_oauth_account(
             provider=provider,
             provider_account_id=provider_account_id,
         )
+        if user.avatar_url is None:
+            user.avatar_url = identity.get("avatar_url")
+            db.add(user)
     existing_account.provider_email = email
     existing_account.provider_name = identity.get("name")
     existing_account.provider_username = str(identity["login"])
@@ -360,6 +689,42 @@ async def create_user_tokens(
         str(user.id),
     )
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+async def create_oauth_authorization_code(user: User, redis: Redis) -> str:
+    """Create a short-lived, single-use code without issuing user tokens yet."""
+    code = secrets.token_urlsafe(32)
+    await redis.setex(
+        oauth_code_cache_key(code),
+        settings.OAUTH_CODE_TTL_SECONDS,
+        str(user.id),
+    )
+    return code
+
+
+async def exchange_oauth_authorization_code(
+    code: str,
+    db: AsyncSession,
+    redis: Redis,
+) -> TokenResponse:
+    """Consume an OAuth code and issue a fresh user session exactly once."""
+    user_id = await redis.getdel(oauth_code_cache_key(code))
+    if isinstance(user_id, bytes):
+        user_id = user_id.decode()
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth authorization code",
+        )
+
+    parsed_user_id = parse_user_id(str(user_id))
+    user_result = await db.execute(select(User).where(col(User.id) == parsed_user_id))
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    return await create_user_tokens(user, db, redis)
 
 
 def parse_user_id(value: str | None) -> uuid.UUID:

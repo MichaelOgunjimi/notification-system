@@ -70,8 +70,6 @@ SuppressionsReadApiKeyDep = Annotated[
 SuppressionsWriteApiKeyDep = Annotated[
     ApiKey, Depends(require_api_key_scope(ApiKeyScope.SUPPRESSIONS_WRITE))
 ]
-AlertsReadApiKeyDep = Annotated[ApiKey, Depends(require_api_key_scope(ApiKeyScope.ALERTS_READ))]
-AlertsWriteApiKeyDep = Annotated[ApiKey, Depends(require_api_key_scope(ApiKeyScope.ALERTS_WRITE))]
 AnalyticsReadApiKeyDep = Annotated[
     ApiKey, Depends(require_api_key_scope(ApiKeyScope.ANALYTICS_READ))
 ]

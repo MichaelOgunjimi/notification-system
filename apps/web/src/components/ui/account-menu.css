@@ -1,0 +1,209 @@
+.account-menu {
+  --am-surface: var(--dashboard-elevated, var(--workspace-elevated, var(--popover)));
+  --am-ink: var(--dashboard-ink, var(--workspace-ink, var(--popover-foreground)));
+  --am-muted: var(--dashboard-muted, var(--workspace-muted, var(--muted-foreground)));
+  --am-muted-bright: var(
+    --dashboard-muted-bright,
+    var(--workspace-muted-bright, var(--foreground))
+  );
+  --am-line: var(--dashboard-line, var(--workspace-line, var(--border)));
+  --am-line-strong: var(--dashboard-line-strong, var(--workspace-line-strong, var(--border)));
+  --am-accent: var(--dashboard-accent, var(--workspace-accent, var(--primary)));
+  --am-overlay: var(--dashboard-overlay, var(--workspace-overlay, transparent));
+  --am-overlay-hover: var(
+    --dashboard-overlay-hover,
+    var(--workspace-overlay-hover, var(--secondary))
+  );
+
+  position: relative;
+}
+
+.account-menu__trigger {
+  align-items: center;
+  background: var(--am-overlay);
+  border: 1px solid var(--am-line-strong);
+  border-radius: 10px;
+  color: var(--am-muted);
+  display: flex;
+  gap: 6px;
+  height: 40px;
+  padding: 0 8px 0 5px;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.account-menu__trigger > span,
+.account-menu__identity > span {
+  align-items: center;
+  background: rgba(233, 170, 49, 0.12);
+  border: 1px solid rgba(233, 170, 49, 0.24);
+  border-radius: 7px;
+  color: var(--am-accent);
+  display: inline-flex;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  height: 28px;
+  justify-content: center;
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  width: 28px;
+}
+
+.account-menu__trigger > span img,
+.account-menu__identity > span img {
+  border-radius: inherit;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.account-menu__trigger:hover,
+.account-menu[data-open="true"] .account-menu__trigger {
+  background: var(--am-overlay-hover);
+  border-color: var(--am-accent);
+  color: var(--am-ink);
+}
+
+.account-menu__trigger:focus-visible,
+.account-menu__items a:focus-visible,
+.account-menu__items button:focus-visible,
+.account-menu__signout:focus-visible {
+  outline: 2px solid var(--am-accent);
+  outline-offset: 2px;
+}
+
+.account-menu[data-open="true"] .account-menu__trigger > svg {
+  transform: rotate(180deg);
+}
+
+.account-menu__trigger > svg {
+  transition: transform 180ms ease;
+}
+
+.account-menu__popover {
+  background: var(--am-surface);
+  border: 1px solid var(--am-line-strong);
+  border-radius: 12px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+  min-width: 286px;
+  padding: 9px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 9px);
+  z-index: 20;
+}
+
+.account-menu__identity {
+  align-items: center;
+  border-bottom: 1px solid var(--am-line);
+  display: flex;
+  gap: 10px;
+  margin: 0 5px 7px;
+  padding: 7px 2px 14px;
+}
+
+.account-menu__identity > span {
+  height: 34px;
+  width: 34px;
+}
+
+.account-menu__identity > div {
+  min-width: 0;
+}
+
+.account-menu__identity strong,
+.account-menu__identity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu__identity strong {
+  font-size: 11px;
+}
+
+.account-menu__identity small {
+  color: var(--am-muted);
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.account-menu__items {
+  display: grid;
+  gap: 2px;
+}
+
+.account-menu__items a,
+.account-menu__items button,
+.account-menu__signout {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--am-muted-bright);
+  display: flex;
+  gap: 10px;
+  min-height: 46px;
+  padding: 7px 9px;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+  width: 100%;
+}
+
+.account-menu__items a:hover,
+.account-menu__items button:hover:not(:disabled),
+.account-menu__signout:hover {
+  background: var(--am-overlay-hover);
+  color: var(--am-ink);
+}
+
+.account-menu__items span {
+  min-width: 0;
+}
+
+.account-menu__items strong,
+.account-menu__items small {
+  display: block;
+}
+
+.account-menu__items strong {
+  font-size: 10px;
+  font-weight: 560;
+}
+
+.account-menu__items small {
+  color: var(--am-muted);
+  font-size: 8px;
+  margin-top: 3px;
+}
+
+.account-menu__signout {
+  border-top: 1px solid var(--am-line);
+  border-radius: 0 0 7px 7px;
+  color: #d88274;
+  font-size: 10px;
+  margin-top: 7px;
+  padding-top: 11px;
+}
+
+@media (max-width: 680px) {
+  .account-menu__popover {
+    min-width: 0;
+    width: min(286px, calc(100vw - 32px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-menu__trigger,
+  .account-menu__trigger > svg,
+  .account-menu__items a,
+  .account-menu__items button,
+  .account-menu__signout {
+    transition: none;
+  }
+}

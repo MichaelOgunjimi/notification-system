@@ -33,10 +33,12 @@ celery_app.conf.update(
     imports=[
         "app.modules.delivery.processing.dispatcher",
         "app.workers.email_worker",
+        "app.workers.identity_notifications",
         "app.workers.sms_worker",
         "app.workers.webhook_worker",
         "app.modules.delivery.processing.reconciliation",
         "app.modules.events.scheduled.task",
+        "app.modules.observability.alerts.evaluator",
     ],
 )
 
@@ -49,6 +51,11 @@ celery_app.conf.beat_schedule = {
     "dispatch-scheduled-events": {
         "task": "workers.dispatch_scheduled_events",
         "schedule": 60.0,
+        "options": {"queue": "notifications.reconciliation"},
+    },
+    "evaluate-alert-rules": {
+        "task": "alerts.evaluate",
+        "schedule": 300.0,
         "options": {"queue": "notifications.reconciliation"},
     },
 }

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from app.core.datetime import utc_now
+from app.modules.delivery import notify
 from app.modules.identity.models.user import User
 from app.modules.observability.audit.service import log_action
 from app.modules.tenancy.authorization import OrganizationCapability, authorize_organization
@@ -139,6 +140,8 @@ async def update_member_role(
     member = await db.get(User, membership.user_id)
     assert member is not None
     await db.commit()
+    if previous_role != role:
+        await notify.member_role_changed(member, organization=access.organization, role=str(role))
     return _member_view(membership, member)
 
 
@@ -167,6 +170,7 @@ async def remove_member(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="The final organization owner cannot be removed",
             )
+    member = await db.get(User, membership.user_id)
     await log_action(
         db,
         api_key_id=None,
@@ -179,3 +183,5 @@ async def remove_member(
     )
     await db.delete(membership)
     await db.commit()
+    if member is not None:
+        await notify.member_removed(member, organization=access.organization)

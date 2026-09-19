@@ -16,8 +16,6 @@ class ApiKeyScope(StrEnum):
     SCHEDULED_EVENTS_WRITE = "scheduled_events:write"
     SUPPRESSIONS_READ = "suppressions:read"
     SUPPRESSIONS_WRITE = "suppressions:write"
-    ALERTS_READ = "alerts:read"
-    ALERTS_WRITE = "alerts:write"
     ANALYTICS_READ = "analytics:read"
     DEAD_LETTERS_READ = "dead_letters:read"
     DEAD_LETTERS_WRITE = "dead_letters:write"
@@ -44,6 +42,7 @@ class ApiKeyView:
     updated_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+    rotated_from_id: uuid.UUID | None
 
 
 @dataclass(frozen=True, slots=True)

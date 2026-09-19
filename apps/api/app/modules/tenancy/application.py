@@ -14,9 +14,13 @@ from app.modules.tenancy.authorization import (
     OrganizationCapability,
     authorize_organization,
     authorize_project,
+    capabilities_for_role,
 )
 from app.modules.tenancy.errors import SlugConflictError
-from app.modules.tenancy.lifecycle import create_organization, create_project
+from app.modules.tenancy.lifecycle import (
+    create_organization_with_project,
+    create_project,
+)
 from app.modules.tenancy.models.organization import (
     Organization,
     OrganizationMembership,
@@ -36,6 +40,7 @@ def _organization_view(
         slug=organization.slug,
         description=organization.description,
         role=role,
+        capabilities=capabilities_for_role(role),
         created_at=organization.created_at,
         updated_at=organization.updated_at,
         archived_at=organization.archived_at,
@@ -86,15 +91,19 @@ async def create_organization_for_user(
     user: User,
     name: str,
     slug: str,
+    project_name: str,
+    project_slug: str,
     description: str | None = None,
 ) -> OrganizationView:
     try:
-        organization = await create_organization(
+        organization = await create_organization_with_project(
             db,
             owner=user,
             name=name,
             slug=slug,
             description=description,
+            project_name=project_name,
+            project_slug=project_slug,
         )
         await log_action(
             db,
@@ -268,6 +277,37 @@ async def archive_organization_for_user(
     return _organization_view(access.organization, access.membership.role)
 
 
+async def restore_organization_for_user(
+    db: AsyncSession,
+    *,
+    user: User,
+    organization_id: uuid.UUID,
+) -> OrganizationView:
+    """Un-archives the organization only. Its projects, archived at the same
+    time the organization was, stay archived — restore each deliberately."""
+    access = await authorize_organization(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.DELETE,
+    )
+    if access.organization.archived_at is not None:
+        access.organization.archived_at = None
+        access.organization.updated_at = utc_now()
+        db.add(access.organization)
+        await log_action(
+            db,
+            api_key_id=None,
+            organization_id=organization_id,
+            actor_user_id=user.id,
+            action="organization.restored",
+            resource_type="organization",
+            resource_id=str(organization_id),
+        )
+        await db.commit()
+    return _organization_view(access.organization, access.membership.role)
+
+
 async def get_project_for_user(
     db: AsyncSession,
     *,
@@ -347,6 +387,37 @@ async def archive_project_for_user(
             project_id=access.project.id,
             actor_user_id=user.id,
             action="project.archived",
+            resource_type="project",
+            resource_id=str(access.project.id),
+        )
+        await db.commit()
+    return _project_view(access.project)
+
+
+async def restore_project_for_user(
+    db: AsyncSession,
+    *,
+    user: User,
+    project_id: uuid.UUID,
+) -> ProjectView:
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT,
+        allow_archived=True,
+    )
+    if access.project.archived_at is not None:
+        access.project.archived_at = None
+        access.project.updated_at = utc_now()
+        db.add(access.project)
+        await log_action(
+            db,
+            api_key_id=None,
+            organization_id=access.project.organization_id,
+            project_id=access.project.id,
+            actor_user_id=user.id,
+            action="project.restored",
             resource_type="project",
             resource_id=str(access.project.id),
         )

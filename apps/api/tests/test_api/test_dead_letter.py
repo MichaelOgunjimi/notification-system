@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.datetime import utc_now
 from app.modules.credentials.model import ApiKey
 from app.modules.delivery.dead_letter.model import DeadLetterMessage
+from app.modules.delivery.dead_letter.service import _scoped_queries
 from app.modules.delivery.enums import DeadLetterStatus
 from app.modules.events.enums import EventStatus
 from app.modules.events.model import Event
@@ -19,6 +20,14 @@ from app.modules.notifications.enums import NotificationChannel, NotificationSta
 from app.modules.notifications.model import Notification
 
 BASE_URL = "/api/v1/dead-letter"
+
+
+def test_scoped_queries_share_tenant_scope():
+    """Build both DLQ list queries with the same API-key restriction."""
+    query, count_query = _scoped_queries(uuid.uuid4())
+
+    assert query.whereclause is not None
+    assert count_query.whereclause is not None
 
 
 async def _seed_dlq(

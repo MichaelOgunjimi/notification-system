@@ -8,6 +8,14 @@ The platform accepts notification events for isolated customer workspaces and de
 A human identity that signs in to manage the platform.
 _Avoid_: API client, account
 
+**Session**:
+An authenticated relationship between a **User** and one client application. Browser sessions use server-managed HTTP-only cookies; native clients may use a platform secure-storage adapter.
+_Avoid_: Token, login state
+
+**Magic Link**:
+A short-lived, single-use credential delivered to a **User** by email to create a **Session** without a password.
+_Avoid_: Email token, passwordless code
+
 **Organization**:
 The customer workspace that owns memberships, projects, aggregate usage, audit history, and a future subscription.
 _Avoid_: Tenant, account

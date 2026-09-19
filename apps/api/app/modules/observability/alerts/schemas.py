@@ -1,14 +1,16 @@
-"""Alert rule schemas."""
+"""Alert rule schemas — project-scoped delivery health monitoring."""
 
 import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr
 
+from app.modules.observability.alerts.enums import AlertMetric
+
 
 class AlertRuleCreate(BaseModel):
     name: str
-    metric: str
+    metric: AlertMetric
     threshold: float
     window_minutes: int = 60
     notify_email: EmailStr | None = None
@@ -17,7 +19,7 @@ class AlertRuleCreate(BaseModel):
 
 class AlertRuleUpdate(BaseModel):
     name: str | None = None
-    metric: str | None = None
+    metric: AlertMetric | None = None
     threshold: float | None = None
     window_minutes: int | None = None
     notify_email: EmailStr | None = None
@@ -26,9 +28,9 @@ class AlertRuleUpdate(BaseModel):
 
 class AlertRuleResponse(BaseModel):
     id: uuid.UUID
-    api_key_id: uuid.UUID
+    project_id: uuid.UUID
     name: str
-    metric: str
+    metric: AlertMetric
     threshold: float
     window_minutes: int
     notify_email: str | None

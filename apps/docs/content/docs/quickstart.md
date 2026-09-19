@@ -5,15 +5,12 @@ Send your first event with Beaco in minutes.
 ## 1) Get Your API Key
 
 1. Sign in at `https://beaco.michaelogunjimi.com`
-2. Open **Settings → API Keys**
-3. Create a **Project key**
+2. Open the organization and project your service belongs to.
+3. Create a project API key and grant at least `events:write`.
 
-Beaco uses `X-API-Key` for authentication on protected endpoints.
+Beaco uses `X-API-Key` for notification operations. The secret is shown once, so store it in your secret manager rather than source control.
 
-Key types:
-
-- **Master key**: Admin operations (settings, global controls)
-- **Project key**: Send events and query project data
+Human sign-in is a separate control plane: bearer access tokens manage organizations, projects, members, invitations, and project API keys. Project API keys authenticate your application and are limited by their assigned scopes.
 
 ## 2) Base URL
 
@@ -45,10 +42,15 @@ Example response:
 
 ```json
 {
-  "event_id": "evt_01j4y8q9w6v0m9xk7k3x7a2p8m",
+  "id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
+  "event_type": "user.welcome",
+  "priority": "medium",
   "status": "accepted",
-  "notification_ids": ["ntf_01j4y8r0j3f0j6g6v9q3m0d2a1"],
-  "created_at": "2026-01-12T10:34:11Z"
+  "recipient_count": 1,
+  "has_failures": false,
+  "idempotency_key": null,
+  "created_at": "2026-01-12T10:34:11Z",
+  "updated_at": "2026-01-12T10:34:11Z"
 }
 ```
 
@@ -63,11 +65,15 @@ Example response:
 
 ```json
 {
-  "id": "evt_01j4y8q9w6v0m9xk7k3x7a2p8m",
+  "id": "3d434cf3-2f63-4a82-aae4-fbead6877445",
   "event_type": "user.welcome",
   "status": "processing",
   "priority": "medium",
-  "created_at": "2026-01-12T10:34:11Z"
+  "recipient_count": 1,
+  "has_failures": false,
+  "notifications": [],
+  "created_at": "2026-01-12T10:34:11Z",
+  "updated_at": "2026-01-12T10:34:12Z"
 }
 ```
 
@@ -99,8 +105,8 @@ Example response:
 
 Continue with:
 
-- [Events](/docs/events)
-- [Templates](/docs/templates)
-- [Channels](/docs/channels)
-- [Delivery Pipeline](/docs/delivery)
-- [API Reference](/docs/api-reference)
+- [Events](/events)
+- [Templates](/templates)
+- [Channels](/channels)
+- [Delivery Pipeline](/delivery)
+- [API Reference](/api-reference)

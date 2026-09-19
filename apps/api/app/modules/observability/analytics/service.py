@@ -1,7 +1,7 @@
 """Analytics service — aggregation queries for delivery metrics."""
 
-import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,20 +29,33 @@ def _today_start() -> datetime:
 
 async def get_analytics(
     db: AsyncSession,
-    api_key_id: uuid.UUID | None,
+    event_filter: Any | None,
     *,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    default_to_today: bool = True,
 ) -> AnalyticsResponse:
-    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    """Return delivery aggregates within an optional time window.
+
+    ``default_to_today`` preserves the public API's historical default while
+    allowing tenant dashboards to request genuinely unbounded history.
+    """
+    start = (
+        to_naive_utc(date_from)
+        if date_from is not None
+        else (_today_start() if default_to_today else None)
+    )
     end = to_naive_utc(date_to) if date_to is not None else None
+    event_dates = [col(Event.created_at) >= start] if start is not None else []
+    notification_dates = [col(Notification.created_at) >= start] if start is not None else []
+    dead_letter_dates = [col(DeadLetterMessage.failed_at) >= start] if start is not None else []
 
     event_status_rows = (
         await db.execute(
             select(col(Event.status), func.count().label("cnt"))
-            .where(col(Event.created_at) >= start)
+            .where(*event_dates)
             .where(*([col(Event.created_at) <= end] if end is not None else []))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .group_by(col(Event.status))
         )
     ).all()
@@ -62,8 +75,8 @@ async def get_analytics(
         await db.execute(
             select(col(Notification.status), func.count().label("cnt"))
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*([event_filter] if event_filter is not None else []))
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.status))
         )
@@ -84,20 +97,29 @@ async def get_analytics(
         "epoch",
         func.age(Notification.delivered_at, Notification.queued_at),
     )
-    latency_result = (
+    latency_ms = latency_expr * 1000
+    latency_row = (
         await db.execute(
-            select(func.avg(latency_expr * 1000).label("avg_ms"))
+            select(
+                func.avg(latency_ms).label("avg_ms"),
+                func.percentile_cont(0.5).within_group(latency_ms).label("p50_ms"),
+                func.percentile_cont(0.95).within_group(latency_ms).label("p95_ms"),
+                func.percentile_cont(0.99).within_group(latency_ms).label("p99_ms"),
+            )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(Notification.delivered_at).isnot(None))
             .where(col(Notification.queued_at).isnot(None))
-            .where(col(Notification.created_at) >= start)
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             # Exclude outliers — notifications delayed by system downtime / worker issues
             .where(latency_expr < 300)  # cap at 5 minutes
         )
-    ).scalar_one_or_none()
-    avg_latency = float(latency_result) if latency_result is not None else None
+    ).one()
+    avg_latency = float(latency_row.avg_ms) if latency_row.avg_ms is not None else None
+    p50_latency = float(latency_row.p50_ms) if latency_row.p50_ms is not None else None
+    p95_latency = float(latency_row.p95_ms) if latency_row.p95_ms is not None else None
+    p99_latency = float(latency_row.p99_ms) if latency_row.p99_ms is not None else None
 
     dlq_active = (
         await db.execute(
@@ -108,9 +130,9 @@ async def get_analytics(
                 col(DeadLetterMessage.notification_id) == col(Notification.id),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
+            .where(*([event_filter] if event_filter is not None else []))
             .where(col(DeadLetterMessage.status) == DeadLetterStatus.ACTIVE)
-            .where(col(DeadLetterMessage.failed_at) >= start)
+            .where(*dead_letter_dates)
             .where(*([col(DeadLetterMessage.failed_at) <= end] if end is not None else []))
         )
     ).scalar() or 0
@@ -123,8 +145,8 @@ async def get_analytics(
                 func.count().label("cnt"),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*([event_filter] if event_filter is not None else []))
+            .where(*notification_dates)
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(col(Notification.channel), col(Notification.status))
         )
@@ -166,20 +188,32 @@ async def get_analytics(
         dlq_active=dlq_active,
         success_rate=round(success_rate, 1),
         avg_delivery_latency_ms=round(avg_latency, 1) if avg_latency is not None else None,
+        p50_delivery_latency_ms=round(p50_latency, 1) if p50_latency is not None else None,
+        p95_delivery_latency_ms=round(p95_latency, 1) if p95_latency is not None else None,
+        p99_delivery_latency_ms=round(p99_latency, 1) if p99_latency is not None else None,
         channel_stats=channel_stats,
     )
 
 
 async def get_trends(
     db: AsyncSession,
-    api_key_id: uuid.UUID | None,
+    event_filter: Any | None,
     *,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     granularity: str = "hour",
+    default_to_today: bool = True,
 ) -> TrendResponse:
-    """Return notification status counts bucketed by hour or day."""
-    start = to_naive_utc(date_from) if date_from is not None else _today_start()
+    """Return notification status counts bucketed by hour or day.
+
+    ``default_to_today`` preserves the public API default while tenant callers
+    may opt into an unbounded lower range.
+    """
+    start = (
+        to_naive_utc(date_from)
+        if date_from is not None
+        else (_today_start() if default_to_today else None)
+    )
     end = to_naive_utc(date_to) if date_to is not None else None
 
     bucket = granularity if granularity in ("hour", "day") else "hour"
@@ -193,8 +227,8 @@ async def get_trends(
                 func.count().label("cnt"),
             )
             .join(Event, col(Notification.event_id) == col(Event.id))
-            .where(*([col(Event.api_key_id) == api_key_id] if api_key_id is not None else []))
-            .where(col(Notification.created_at) >= start)
+            .where(*([event_filter] if event_filter is not None else []))
+            .where(*([col(Notification.created_at) >= start] if start is not None else []))
             .where(*([col(Notification.created_at) <= end] if end is not None else []))
             .group_by(time_trunc, col(Notification.status))
             .order_by(time_trunc)

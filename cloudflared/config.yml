@@ -1,0 +1,13 @@
+tunnel: 569d24f3-0047-40fc-a799-8c8aa7e8d78d
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: beaco.michaelogunjimi.com
+    service: http://web:3000
+  - hostname: beaco-api.michaelogunjimi.com
+    service: http://api:8000
+  - hostname: beaco-docs.michaelogunjimi.com
+    service: http://docs:3001
+  - hostname: beaco-mail.michaelogunjimi.com
+    service: http://mailpit:8025
+  - service: http_status:404

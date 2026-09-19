@@ -42,6 +42,8 @@ async def create_organization(
         name=body.name,
         slug=body.slug,
         description=body.description,
+        project_name=body.project.name,
+        project_slug=body.project.slug,
     )
 
 
@@ -80,6 +82,19 @@ async def archive_organization(
     db: SessionDep,
 ) -> OrganizationView:
     return await application.archive_organization_for_user(
+        db,
+        user=user,
+        organization_id=organization_id,
+    )
+
+
+@router.post("/{organization_id}/restore", response_model=OrganizationResponse)
+async def restore_organization(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> OrganizationView:
+    return await application.restore_organization_for_user(
         db,
         user=user,
         organization_id=organization_id,

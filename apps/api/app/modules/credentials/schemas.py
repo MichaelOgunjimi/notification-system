@@ -40,6 +40,7 @@ class ProjectApiKeyResponse(BaseModel):
     updated_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+    rotated_from_id: uuid.UUID | None
 
 
 class CreatedProjectApiKeyResponse(ProjectApiKeyResponse):

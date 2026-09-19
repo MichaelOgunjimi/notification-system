@@ -2,7 +2,7 @@
 
 Beaco is a hosted, event-driven notification platform built for reliable multi-channel delivery.
 
-For endpoint-level details, see [API Reference](/docs/api-reference).
+For endpoint-level details, see [API Reference](/api-reference).
 
 ## System Overview
 
@@ -70,25 +70,27 @@ When retry limits are exceeded, notifications enter dead-letter state for operat
 
 Client-provided idempotency keys prevent duplicate event creation during request retries.
 
-## Multi-Tenancy Model
+## Tenancy and Access Model
 
-Beaco is multi-tenant by API key.
+Beaco separates the human control plane from the notification data plane.
 
-### Project key isolation
+### Organizations and projects
 
-- Project keys can only read/write their own events, notifications, templates, and related operational data.
-- Query filters are always scoped by owning API key identity.
+- Users join organizations through memberships with viewer, member, admin, or owner roles.
+- Organizations contain projects, which form the operational boundary for integrations.
+- Projects own API keys and the events, notifications, templates, suppressions, and observability data created through them.
 
-### Master key capabilities
+### Project API keys
 
-- Full visibility across projects.
-- Access to admin/system endpoints (`/settings/*`, `/admin/*`).
-- Key management and cross-project analytics.
+- Applications authenticate with `X-API-Key`.
+- Each key belongs to one project and has explicit read or write scopes.
+- API queries are filtered by the authenticated key so one integration cannot inspect another key's data.
 
-### Data sharing rules
+### Human and platform administration
 
-- Project data is isolated.
-- Shared/global system templates may be visible across projects depending on policy.
+- Human users authenticate with bearer access tokens created through magic-link or GitHub sign-in.
+- Organization roles control member, project, invitation, and API-key administration.
+- Platform administration uses separately permissioned admin users and system credentials; there is no shared master API key.
 
 > Multi-tenancy is enforced in the API layer and query layer together, not by frontend-only filtering.
 
@@ -96,9 +98,9 @@ Beaco is multi-tenant by API key.
 
 Key security controls:
 
-- Header-based API key authentication (`X-API-Key`).
-- Permission checks by key type and endpoint.
-- Per-key data scoping for non-admin routes.
+- Bearer authentication and role checks for the human control plane.
+- Header-based project API-key authentication (`X-API-Key`) for notification operations.
+- Scope checks plus per-key data filtering for project resources.
 - Audit logs for sensitive operations.
 
 ## Scalability Characteristics
@@ -119,6 +121,6 @@ Beaco’s architecture is intentionally simple in composition but strong in oper
 - Async ingestion for low latency.
 - Queue-based execution for resilience.
 - Retry + dead-letter workflows for reliability.
-- API key tenancy for secure project isolation.
+- Organization roles and scoped project API keys for isolation.
 
-For integration details, continue to [API Reference](/docs/api-reference), [Delivery Pipeline](/docs/delivery), and [Webhooks](/docs/webhooks).
+For integration details, continue to [API Reference](/api-reference), [Delivery Pipeline](/delivery), and [Webhooks](/webhooks).

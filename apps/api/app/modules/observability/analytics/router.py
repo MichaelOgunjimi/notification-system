@@ -3,9 +3,11 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Query
+from sqlmodel import col
 
 from app.core.http.dependencies import SessionDep
 from app.modules.credentials.dependencies import AnalyticsReadApiKeyDep, api_key_filter_id
+from app.modules.events.model import Event
 from app.modules.observability.analytics import service as analytics_service
 from app.modules.observability.analytics.schemas import AnalyticsResponse, TrendResponse
 
@@ -26,7 +28,10 @@ async def get_analytics(
 ) -> AnalyticsResponse:
     """Return delivery metrics and channel statistics for a date range (defaults to today)."""
     return await analytics_service.get_analytics(
-        db, api_key_filter_id(api_key), date_from=date_from, date_to=date_to
+        db,
+        col(Event.api_key_id) == api_key_filter_id(api_key),
+        date_from=date_from,
+        date_to=date_to,
     )
 
 
@@ -46,7 +51,7 @@ async def get_trends(
     """Return notification status counts bucketed by hour or day."""
     return await analytics_service.get_trends(
         db,
-        api_key_filter_id(api_key),
+        col(Event.api_key_id) == api_key_filter_id(api_key),
         date_from=date_from,
         date_to=date_to,
         granularity=granularity,

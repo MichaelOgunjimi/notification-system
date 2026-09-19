@@ -1,0 +1,64 @@
+/* Dashboard-era layout rules extracted from the active global stylesheet. */
+
+:root {
+  --gray-1: #141517;
+  --gray-2: #191b1e;
+  --gray-3: #212629;
+  --gray-4: #293034;
+  --gray-5: #333b3e;
+  --gray-6: #3b4345;
+  --gray-7: #434a4d;
+  --gray-8: #52595b;
+  --gray-9: #a1a4a5;
+  --gray-10: #f0f0f0;
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --status-delivered: #22c55e;
+  --status-delivered-bg: rgba(34, 197, 94, 0.1);
+  --status-delivered-border: rgba(34, 197, 94, 0.2);
+  --status-failed: #ef4444;
+  --status-failed-bg: rgba(239, 68, 68, 0.1);
+  --status-failed-border: rgba(239, 68, 68, 0.2);
+  --status-retrying: #f97316;
+  --status-retrying-bg: rgba(249, 115, 22, 0.1);
+  --status-retrying-border: rgba(249, 115, 22, 0.2);
+  --status-pending: #6b7280;
+  --status-pending-bg: rgba(107, 114, 128, 0.1);
+  --status-pending-border: rgba(107, 114, 128, 0.2);
+}
+
+.docs-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.docs-toc-aside {
+  display: none;
+}
+
+.template-detail-grid,
+.notification-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .template-detail-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .notification-detail-grid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .docs-content-grid {
+    grid-template-columns: minmax(0, 900px) 240px;
+    gap: 2.5rem;
+  }
+
+  .docs-toc-aside {
+    display: block;
+  }
+}

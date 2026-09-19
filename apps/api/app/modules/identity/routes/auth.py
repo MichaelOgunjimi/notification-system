@@ -9,14 +9,21 @@ from app.modules.identity.schemas import (
     MagicLinkRequest,
     MagicLinkVerifyRequest,
     MessageResponse,
+    OAuthCodeExchangeRequest,
+    OAuthConnectionResponse,
     RefreshRequest,
     TokenResponse,
+    UserProfileUpdate,
     UserResponse,
 )
 from app.modules.identity.service import (
+    disconnect_oauth_account,
+    exchange_oauth_authorization_code,
+    list_oauth_connections,
     refresh_access_token,
     request_magic_link,
     revoke_refresh_token,
+    update_user_profile,
     verify_magic_link,
 )
 
@@ -44,7 +51,7 @@ async def send_magic_link(
     body: MagicLinkRequest,
     redis: RedisDep,
 ) -> MessageResponse:
-    await request_magic_link(body.email, redis)
+    await request_magic_link(body.email, redis, next_path=body.next)
     return MessageResponse(message=_MAGIC_LINK_RESPONSE)
 
 
@@ -56,6 +63,16 @@ async def consume_magic_link(
     redis: RedisDep,
 ) -> TokenResponse:
     return await verify_magic_link(body.token, db, redis)
+
+
+@router.post("/oauth/exchange", response_model=TokenResponse)
+async def exchange_oauth_code(
+    body: OAuthCodeExchangeRequest,
+    *,
+    db: SessionDep,
+    redis: RedisDep,
+) -> TokenResponse:
+    return await exchange_oauth_authorization_code(body.code, db, redis)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -71,4 +88,41 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: CurrentUserDep) -> User:
+    """Return the profile for the authenticated human user."""
     return user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UserProfileUpdate,
+    *,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> User:
+    """Update user-owned profile fields without changing login identity."""
+    return await update_user_profile(
+        db,
+        user=user,
+        changes=body.model_dump(exclude_unset=True),
+    )
+
+
+@router.get("/me/connections", response_model=list[OAuthConnectionResponse])
+async def get_my_oauth_connections(
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> list[OAuthConnectionResponse]:
+    """Return external identities linked to the authenticated user."""
+    connections = await list_oauth_connections(db, user_id=user.id)
+    return [OAuthConnectionResponse.model_validate(connection) for connection in connections]
+
+
+@router.delete("/me/connections/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_oauth_connection(
+    provider: str,
+    user: CurrentUserDep,
+    db: SessionDep,
+) -> Response:
+    """Disconnect one provider from the authenticated user account."""
+    await disconnect_oauth_account(db, user_id=user.id, provider=provider)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

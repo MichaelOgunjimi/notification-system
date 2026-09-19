@@ -1,0 +1,134 @@
+.toast-viewport {
+  --toast-surface: #101010;
+  --toast-ink: #f1efe7;
+  --toast-muted: #b9b7ad;
+  --toast-line: rgba(255, 255, 255, 0.1);
+  --toast-shadow: rgba(0, 0, 0, 0.55);
+  --toast-success: #68b982;
+  --toast-error: #d88274;
+  --toast-info: #e9aa31;
+
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 16px;
+  pointer-events: none;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 90;
+}
+
+.light .toast-viewport {
+  --toast-surface: #fffdf8;
+  --toast-ink: #1d1d1a;
+  --toast-muted: #4e4b44;
+  --toast-line: rgba(34, 32, 27, 0.14);
+  --toast-shadow: rgba(28, 25, 19, 0.18);
+  --toast-success: #3f9d5d;
+  --toast-error: #c25b49;
+  --toast-info: #d99416;
+}
+
+.toast {
+  align-items: flex-start;
+  animation: toast-in 160ms ease-out;
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--toast-accent, var(--toast-info)) 6%, transparent),
+      transparent 42%
+    ),
+    var(--toast-surface);
+  border: 1px solid var(--toast-line);
+  border-left: 3px solid var(--toast-accent, var(--toast-info));
+  border-radius: 12px;
+  box-shadow: 0 20px 50px -14px var(--toast-shadow);
+  color: var(--toast-ink);
+  display: flex;
+  gap: 10px;
+  padding: 12px 12px 12px 13px;
+  pointer-events: auto;
+  touch-action: pan-y;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.toast[data-swiping] {
+  cursor: grabbing;
+  transition: none;
+  user-select: none;
+}
+
+.toast[data-dismissing] {
+  pointer-events: none;
+}
+
+.toast[data-tone="success"] {
+  --toast-accent: var(--toast-success);
+}
+
+.toast[data-tone="error"] {
+  --toast-accent: var(--toast-error);
+}
+
+.toast[data-tone="info"] {
+  --toast-accent: var(--toast-info);
+}
+
+.toast__icon {
+  color: var(--toast-accent, var(--toast-info));
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toast__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toast__body strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast__body span {
+  color: var(--toast-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.toast__dismiss {
+  color: var(--toast-muted);
+  flex-shrink: 0;
+  padding: 2px;
+  transition: color 140ms ease;
+}
+
+.toast__dismiss:hover {
+  color: var(--toast-ink);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
