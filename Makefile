@@ -1,4 +1,4 @@
-.PHONY: install setup dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed docker-up docker-down docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: install setup new-worktree dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed docker-up docker-down docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 API_DIR := apps/api
 
@@ -8,6 +8,9 @@ install:
 
 setup: install
 	cd $(API_DIR) && uv run pre-commit install
+
+new-worktree:
+	./scripts/setup-worktree.py $(if $(name),$(name),) $(if $(suffix),--suffix $(suffix),)
 
 dev:
 	npm run dev

@@ -12,3 +12,9 @@
 - Document parameters, return values, errors, security boundaries, and side effects when they are part of the contract.
 - Keep documentation synchronized with behavior when an existing public contract changes.
 - Prefer intent-focused documentation over comments that only restate the implementation.
+
+## New worktrees
+
+- Run `make new-worktree` immediately after creating or entering a new worktree. It derives an isolated Compose project name from the branch, assigns a free three-digit port suffix, and writes the ignored root `.env` and `apps/web/.env.local` files.
+- Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
+- Start the isolated stack with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.
