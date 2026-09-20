@@ -91,6 +91,11 @@
   font-size: 11px;
 }
 
+.templates-page__count-skeleton {
+  height: 11px;
+  width: 20px;
+}
+
 .templates-page__section-note {
   color: var(--dashboard-muted);
   font-size: 11.5px;
@@ -192,6 +197,47 @@
 
 .templates-page__card[data-default] {
   background: var(--dashboard-overlay);
+}
+
+.templates-page__card--skeleton {
+  min-height: 140px;
+}
+
+.templates-page__card--skeleton .templates-page__card-top {
+  justify-content: flex-start;
+}
+
+.templates-page__skeleton-icon {
+  flex: 0 0 auto;
+  height: 30px;
+  width: 30px;
+}
+
+.templates-page__skeleton-title {
+  display: grid;
+  gap: 7px;
+  width: min(55%, 180px);
+}
+
+.templates-page__skeleton-title .skeleton:first-child {
+  height: 13px;
+}
+
+.templates-page__skeleton-title .skeleton:last-child {
+  height: 18px;
+  width: 58px;
+}
+
+.templates-page__skeleton-subject {
+  height: 12px;
+  margin-top: 4px;
+  width: 82%;
+}
+
+.templates-page__skeleton-footer {
+  height: 10px;
+  margin-top: auto;
+  width: 104px;
 }
 
 .templates-page__card-top {

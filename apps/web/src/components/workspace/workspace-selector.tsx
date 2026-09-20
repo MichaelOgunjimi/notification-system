@@ -23,6 +23,7 @@ import {
 import type { Organization, Project } from "@beaco/control-plane";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { SessionRecovery } from "@/components/auth/session-recovery";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { dashboardPath } from "@/lib/dashboard-route";
 import { CreateOrganizationDialog } from "./create-organization-dialog";
@@ -82,6 +83,36 @@ function WorkspaceError({ message, retry }: { message: string; retry: () => void
           <span>Try again</span>
           <ArrowRight size={17} />
         </button>
+      </div>
+    </WorkspaceShell>
+  );
+}
+
+function WorkspaceSelectorSkeleton() {
+  return (
+    <WorkspaceShell>
+      <div className="workspace-selector workspace-selector__skeleton" aria-busy="true">
+        <span className="sr-only" role="status">
+          Loading workspace context
+        </span>
+        <Skeleton className="workspace-selector__skeleton-eyebrow" />
+        <Skeleton className="workspace-selector__skeleton-title" />
+        <Skeleton className="workspace-selector__skeleton-intro" />
+        {["organization", "project"].map((section) => (
+          <div className="workspace-selector__section" key={section} aria-hidden="true">
+            <div className="workspace-selector__skeleton-heading">
+              <Skeleton />
+              <div>
+                <Skeleton />
+                <Skeleton />
+              </div>
+            </div>
+            <div className="workspace-selector__skeleton-options">
+              <Skeleton />
+              <Skeleton />
+            </div>
+          </div>
+        ))}
       </div>
     </WorkspaceShell>
   );
@@ -225,15 +256,9 @@ export function WorkspaceSelector() {
     );
   }
   if (organizations.isPending) {
-    return (
-      <WorkspaceShell>
-        <div aria-live="polite" className="workspace-selector__loading">
-          <SpinnerGap size={19} className="animate-spin" /> Loading workspace context
-        </div>
-      </WorkspaceShell>
-    );
+    return <WorkspaceSelectorSkeleton />;
   }
-  if (organizations.isError) {
+  if (organizations.isError && !organizations.data) {
     return (
       <WorkspaceError
         message={organizations.error.message}
@@ -281,7 +306,7 @@ export function WorkspaceSelector() {
 
   return (
     <WorkspaceShell>
-      <div className="workspace-selector">
+      <div className="workspace-selector" aria-busy={organizations.isFetching || undefined}>
         <div className="workspace-selector__eyebrow">
           <Check size={13} weight="bold" /> {session.user.email}
         </div>
@@ -289,6 +314,14 @@ export function WorkspaceSelector() {
         <p className="workspace-selector__intro">
           Choose the organization and project that should scope this workspace view.
         </p>
+        {organizations.isError ? (
+          <p className="workspace-selector__refresh-error" role="alert">
+            <WarningCircle size={15} /> {organizations.error.message}
+            <button type="button" onClick={() => void organizations.refetch()}>
+              Retry
+            </button>
+          </p>
+        ) : null}
 
         <section className="workspace-selector__section" aria-labelledby="organization-heading">
           <div className="workspace-selector__section-heading">
@@ -339,7 +372,11 @@ export function WorkspaceSelector() {
           />
         </section>
 
-        <section className="workspace-selector__section" aria-labelledby="project-heading">
+        <section
+          className="workspace-selector__section"
+          aria-labelledby="project-heading"
+          aria-busy={projects.isFetching || undefined}
+        >
           <div className="workspace-selector__section-heading">
             <span className="workspace-selector__step">02</span>
             <div>
@@ -348,10 +385,14 @@ export function WorkspaceSelector() {
             </div>
           </div>
           {projects.isPending ? (
-            <div className="workspace-selector__loading">
-              <SpinnerGap size={16} className="animate-spin" /> Loading projects
+            <div className="workspace-selector__skeleton-options" aria-busy="true">
+              <span className="sr-only" role="status">
+                Loading projects
+              </span>
+              <Skeleton />
+              <Skeleton />
             </div>
-          ) : projects.isError ? (
+          ) : projects.isError && !projects.data ? (
             <button
               type="button"
               className="workspace-selector__loading"
@@ -384,7 +425,10 @@ export function WorkspaceSelector() {
               ) : null}
             </div>
           ) : (
-            <div className="workspace-selector__options">
+            <div
+              className="workspace-selector__options"
+              aria-busy={projects.isFetching || undefined}
+            >
               {activeProjects.map((project: Project) => (
                 <button
                   type="button"
@@ -427,6 +471,14 @@ export function WorkspaceSelector() {
                 })
               }
             />
+          ) : null}
+          {projects.isError && projects.data ? (
+            <p className="workspace-selector__refresh-error" role="alert">
+              <WarningCircle size={15} /> {projects.error.message}
+              <button type="button" onClick={() => void projects.refetch()}>
+                Retry
+              </button>
+            </p>
           ) : null}
         </section>
 

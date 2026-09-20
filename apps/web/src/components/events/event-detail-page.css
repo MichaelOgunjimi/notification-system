@@ -339,3 +339,57 @@
 .event-detail-page__notification-id {
   color: var(--dashboard-accent);
 }
+
+.event-detail-page__skeleton-title {
+  height: 20px;
+  width: min(42vw, 260px);
+}
+
+.event-detail-page__skeleton-meta {
+  height: 11px;
+  margin-top: 9px;
+  width: min(62vw, 360px);
+}
+
+.event-detail-page__skeleton-tag {
+  border-radius: 8px;
+  height: 27px;
+  width: 92px;
+}
+
+.event-detail-page__skeleton-cell .skeleton:first-child {
+  height: 9px;
+  width: 62px;
+}
+
+.event-detail-page__skeleton-cell .skeleton:last-child {
+  height: 12px;
+  margin-top: 7px;
+  width: min(78%, 210px);
+}
+
+.event-detail-page__skeleton-table {
+  display: grid;
+}
+
+.event-detail-page__skeleton-table .skeleton {
+  border-bottom: 1px solid var(--dashboard-line);
+  border-radius: 0;
+  height: 45px;
+}
+
+.event-detail-page__skeleton-timeline {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.event-detail-page__skeleton-timeline .skeleton {
+  height: 22px;
+  width: min(45%, 180px);
+}
+
+.event-detail-page__skeleton-payload {
+  border-radius: 0;
+  height: 150px;
+}

@@ -16,6 +16,7 @@ import { authClient } from "@beaco/auth";
 import { useDisconnectOAuth, useOAuthConnections, useUpdateProfile } from "@beaco/auth/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { EmailAddressesSection } from "@/components/settings/email-addresses-section";
+import { Skeleton } from "@/components/ui/skeleton";
 import { accountSettingsReturnPath } from "@/lib/oauth-return";
 import "./account-settings.css";
 
@@ -197,37 +198,52 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
             </div>
           </div>
 
-          <div className="account-settings__provider">
-            <span className="account-settings__provider-icon">
-              <GithubLogo size={24} weight="fill" />
-            </span>
-            <div className="account-settings__provider-copy">
-              <strong>GitHub</strong>
-              {connections.isPending ? (
-                <small>Checking connection</small>
-              ) : githubConnection ? (
-                <small>
-                  @{githubConnection.providerUsername ?? "connected"}
-                  {githubConnection.providerEmail ? ` · ${githubConnection.providerEmail}` : ""}
-                </small>
-              ) : (
-                <small>Not connected</small>
-              )}
-            </div>
+          <div
+            className="account-settings__provider"
+            aria-busy={connections.isFetching || undefined}
+          >
             {connections.isPending ? (
-              <SpinnerGap size={17} className="animate-spin" />
-            ) : githubConnection ? (
-              <button type="button" onClick={() => setDisconnectOpen(true)}>
-                <LinkBreak size={15} /> Disconnect
-              </button>
-            ) : (
-              <a
-                href={authClient.getOAuthConnectUrl("github", {
-                  next: accountSettingsReturnPath(returnPath) ?? undefined,
-                })}
-              >
-                Connect GitHub <ArrowSquareOut size={15} />
-              </a>
+              <>
+                <span className="sr-only" role="status">
+                  Loading connected accounts
+                </span>
+                <Skeleton className="account-settings__provider-skeleton-icon" />
+                <span className="account-settings__provider-skeleton-copy" aria-hidden="true">
+                  <Skeleton />
+                  <Skeleton />
+                </span>
+                <Skeleton className="account-settings__provider-skeleton-action" />
+              </>
+            ) : connections.isError && !connections.data ? null : (
+              <>
+                <span className="account-settings__provider-icon">
+                  <GithubLogo size={24} weight="fill" />
+                </span>
+                <div className="account-settings__provider-copy">
+                  <strong>GitHub</strong>
+                  {githubConnection ? (
+                    <small>
+                      @{githubConnection.providerUsername ?? "connected"}
+                      {githubConnection.providerEmail ? ` · ${githubConnection.providerEmail}` : ""}
+                    </small>
+                  ) : (
+                    <small>Not connected</small>
+                  )}
+                </div>
+                {githubConnection ? (
+                  <button type="button" onClick={() => setDisconnectOpen(true)}>
+                    <LinkBreak size={15} /> Disconnect
+                  </button>
+                ) : (
+                  <a
+                    href={authClient.getOAuthConnectUrl("github", {
+                      next: accountSettingsReturnPath(returnPath) ?? undefined,
+                    })}
+                  >
+                    Connect GitHub <ArrowSquareOut size={15} />
+                  </a>
+                )}
+              </>
             )}
           </div>
 

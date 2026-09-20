@@ -11,12 +11,12 @@ import {
   Key,
   PaperPlaneTilt,
   Pulse,
-  SpinnerGap,
   TrendUp,
   WarningCircle,
 } from "@phosphor-icons/react";
 import { useProjectAnalytics, useProjectEvents } from "@beaco/control-plane/react";
 import { LogFilters, type DateRangeKey } from "@/components/ui/log-filters";
+import { Skeleton } from "@/components/ui/skeleton";
 import { dateWindowFor, useLogUrlState } from "@/components/ui/use-log-url-state";
 import { relativeTime } from "@/lib/audit-log";
 import { docsUrl } from "@/lib/urls";
@@ -162,7 +162,11 @@ export function DashboardOverview() {
         <LogFilters value={state} onChange={patch} projects={[project]} hideSearch />
       </div>
 
-      <section className="dashboard-overview__metrics" aria-labelledby="delivery-health-title">
+      <section
+        className="dashboard-overview__metrics"
+        aria-labelledby="delivery-health-title"
+        aria-busy={analytics.isFetching || analyticsLoading || undefined}
+      >
         <div className="dashboard-overview__section-heading">
           <div>
             <span>Delivery health</span>
@@ -189,11 +193,15 @@ export function DashboardOverview() {
                   <Icon size={15} /> {metric.label}
                 </dt>
                 <dd>
-                  {metric.value === undefined
-                    ? analytics.isError
-                      ? "Unavailable"
-                      : "Loading…"
-                    : metric.value}
+                  {metric.value === undefined ? (
+                    analytics.isError ? (
+                      "Unavailable"
+                    ) : (
+                      <Skeleton className="dashboard-overview__metric-skeleton" />
+                    )
+                  ) : (
+                    metric.value
+                  )}
                 </dd>
                 <span>{metric.detail}</span>
               </div>
@@ -202,7 +210,11 @@ export function DashboardOverview() {
         </dl>
       </section>
 
-      <section className="dashboard-overview__events" aria-labelledby="recent-events-title">
+      <section
+        className="dashboard-overview__events"
+        aria-labelledby="recent-events-title"
+        aria-busy={recentEvents.isFetching || eventsLoading || undefined}
+      >
         <div className="dashboard-overview__section-heading">
           <div>
             <span>Recent activity</span>
@@ -216,9 +228,25 @@ export function DashboardOverview() {
         </div>
 
         {eventsLoading ? (
-          <p className="dashboard-overview__message" role="status">
-            <SpinnerGap className="animate-spin" size={15} /> Loading recent events
-          </p>
+          <div className="dashboard-overview__event-list" role="status">
+            <span className="sr-only">Loading recent events</span>
+            <div className="dashboard-overview__event-columns" aria-hidden>
+              <span>Event</span>
+              <span>Status</span>
+              <span>Received</span>
+              <span />
+            </div>
+            <ul aria-hidden="true">
+              {Array.from({ length: 5 }, (_, index) => (
+                <li className="dashboard-overview__event-skeleton" key={index}>
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
 
         {recentEvents.isError ? (

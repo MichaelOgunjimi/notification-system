@@ -119,8 +119,12 @@ make dev-docs  # http://localhost:3001
 
 `make new-worktree` writes ignored `.env` and `apps/web/.env.local` files. It derives
 the Compose project name from the current branch and chooses one shared three-digit
-port suffix. Override either value with `make new-worktree name=my-feature suffix=123`.
-The command prints the URLs assigned to that checkout.
+port suffix. Issue-prefixed branches such as `feat/67-stop-all` produce a short name
+such as `beaco-67-stop-all-<hash>`; the hash prevents truncated branch names from
+colliding. Later runs preserve that worktree's existing assignment. Override either value with
+`make new-worktree name=my-feature suffix=123`. The command prints the URLs assigned
+to that checkout and links the ignored tunnel credentials from the main checkout when
+they are available.
 
 Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so stop it
 in its current checkout with `make docker-stop-tunnel`, then run

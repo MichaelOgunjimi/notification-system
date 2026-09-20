@@ -8,7 +8,6 @@ import {
   Key,
   PencilSimple,
   Plus,
-  SpinnerGap,
   Trash,
   WarningCircle,
 } from "@phosphor-icons/react";
@@ -27,6 +26,7 @@ import {
   useUpdateProjectApiKey,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePager } from "@/components/ui/table-pager";
 import { useToast } from "@/components/ui/toast";
 import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
@@ -199,7 +199,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
   }
 
   return (
-    <div className="api-keys">
+    <div className="api-keys" aria-busy={apiKeys.isFetching || undefined}>
       <header className="api-keys__heading">
         <div>
           <p>Project security</p>
@@ -250,9 +250,25 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
       ) : null}
 
       {apiKeys.isPending ? (
-        <p className="api-keys__empty">
-          <SpinnerGap className="animate-spin" size={16} /> Loading keys
-        </p>
+        <div className="api-keys__list" aria-busy="true">
+          <span className="sr-only" role="status">
+            Loading API keys
+          </span>
+          {[0, 1, 2].map((row) => (
+            <div className="api-keys__row api-keys__row--skeleton" key={row} aria-hidden="true">
+              <span className="api-keys__row-skeleton-copy">
+                <Skeleton />
+                <Skeleton />
+                <Skeleton />
+              </span>
+              <span className="api-keys__row-skeleton-actions">
+                <Skeleton />
+                <Skeleton />
+                <Skeleton />
+              </span>
+            </div>
+          ))}
+        </div>
       ) : null}
 
       {apiKeys.isError ? (
@@ -290,7 +306,7 @@ export function ApiKeysSettings({ organization, project }: ApiKeysSettingsProps)
       ) : null}
 
       {items.length > 0 ? (
-        <div className="api-keys__list">
+        <div className="api-keys__list" aria-busy={apiKeys.isFetching || undefined}>
           {items.map((apiKey) => {
             const rotatedFrom = apiKey.rotatedFromId
               ? keysById.get(apiKey.rotatedFromId)

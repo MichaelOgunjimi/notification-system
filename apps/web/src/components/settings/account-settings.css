@@ -347,6 +347,27 @@
   padding: 12px 14px;
 }
 
+.account-settings__email-row--skeleton > span:first-child {
+  display: grid;
+  flex: 1;
+  gap: 7px;
+}
+
+.account-settings__email-row--skeleton > span:first-child .skeleton:first-child {
+  height: 12px;
+  width: min(230px, 70%);
+}
+
+.account-settings__email-row--skeleton > span:first-child .skeleton:last-child {
+  height: 18px;
+  width: 78px;
+}
+
+.account-settings__email-row--skeleton > .skeleton:last-child {
+  height: 30px;
+  width: 92px;
+}
+
 .account-settings__email-row > div:first-child {
   min-width: 0;
 }
@@ -449,6 +470,34 @@
   height: 40px;
   justify-content: center;
   width: 40px;
+}
+
+.account-settings__provider-skeleton-icon {
+  border-radius: 10px;
+  flex: 0 0 auto;
+  height: 40px;
+  width: 40px;
+}
+
+.account-settings__provider-skeleton-copy {
+  display: grid;
+  flex: 1;
+  gap: 7px;
+}
+
+.account-settings__provider-skeleton-copy .skeleton:first-child {
+  height: 12px;
+  width: 84px;
+}
+
+.account-settings__provider-skeleton-copy .skeleton:last-child {
+  height: 10px;
+  width: min(190px, 70%);
+}
+
+.account-settings__provider-skeleton-action {
+  height: 36px;
+  width: 108px;
 }
 
 .account-settings__provider-copy {
@@ -563,6 +612,11 @@
 
   .account-settings__provider > a,
   .account-settings__provider > button {
+    margin-left: 54px;
+    width: calc(100% - 54px);
+  }
+
+  .account-settings__provider-skeleton-action {
     margin-left: 54px;
     width: calc(100% - 54px);
   }

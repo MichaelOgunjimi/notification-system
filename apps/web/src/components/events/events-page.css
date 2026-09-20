@@ -209,6 +209,11 @@
   white-space: nowrap;
 }
 
+.events-page__count-skeleton {
+  height: 9px;
+  width: 58px;
+}
+
 .events-page__twrap {
   overflow-x: auto;
 }
@@ -254,6 +259,27 @@
 
 .events-page__row:last-child td {
   border-bottom: none;
+}
+
+.events-page__skeleton-row .skeleton {
+  height: 11px;
+  width: min(100%, 96px);
+}
+
+.events-page__skeleton-row td:nth-child(2) .skeleton {
+  height: 28px;
+  width: min(100%, 170px);
+}
+
+.events-page__skeleton-row td:nth-child(4) .skeleton,
+.events-page__skeleton-row td:nth-child(5) .skeleton {
+  border-radius: 999px;
+  height: 22px;
+  width: 72px;
+}
+
+.events-page__skeleton-row td:last-child .skeleton {
+  width: 12px;
 }
 
 .events-page__time {

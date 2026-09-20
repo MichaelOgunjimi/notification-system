@@ -12,6 +12,7 @@ import {
   useProjectTemplates,
 } from "@beaco/control-plane/react";
 import { AppSelect } from "@/components/ui/app-select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePager } from "@/components/ui/table-pager";
 import { useToast } from "@/components/ui/toast";
 import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
@@ -41,6 +42,22 @@ const CHANNEL_ICON: Record<TemplateChannel, typeof Envelope> = {
   sms: ChatText,
   webhook: Code,
 };
+
+function TemplateCardSkeleton() {
+  return (
+    <div className="templates-page__card templates-page__card--skeleton" aria-hidden="true">
+      <div className="templates-page__card-top">
+        <Skeleton className="templates-page__skeleton-icon" />
+        <div className="templates-page__skeleton-title">
+          <Skeleton />
+          <Skeleton />
+        </div>
+      </div>
+      <Skeleton className="templates-page__skeleton-subject" />
+      <Skeleton className="templates-page__skeleton-footer" />
+    </div>
+  );
+}
 
 type TemplatesUrlState = Readonly<{
   project: string;
@@ -320,15 +337,30 @@ export function TemplatesPage({ organization, project, projects }: TemplatesPage
         ) : null}
       </div>
 
-      <section className="templates-page__section">
+      <section className="templates-page__section" aria-busy={query.isFetching || undefined}>
         <div className="templates-page__section-head">
           <h2>{scopeProjectId ? "Owned by this project" : "Across all projects"}</h2>
-          <span>{total.toLocaleString()}</span>
+          <span>
+            {query.data ? (
+              total.toLocaleString()
+            ) : (
+              <Skeleton className="templates-page__count-skeleton" />
+            )}
+          </span>
         </div>
-        {items.length === 0 ? (
-          <p className="templates-page__empty">
-            {query.isPending ? "Loading…" : "No templates yet."}
+        {query.isPending ? (
+          <div className="templates-page__grid" role="status">
+            <span className="sr-only">Loading templates</span>
+            {Array.from({ length: 4 }, (_, index) => (
+              <TemplateCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : query.isError ? (
+          <p className="templates-page__empty" role="alert">
+            {query.error.message}
           </p>
+        ) : items.length === 0 ? (
+          <p className="templates-page__empty">No templates yet.</p>
         ) : (
           <div className="templates-page__grid">
             {items.map((template) => renderCard(template, { isDefault: false }))}
@@ -350,7 +382,10 @@ export function TemplatesPage({ organization, project, projects }: TemplatesPage
         ) : null}
       </section>
 
-      <section className="templates-page__section templates-page__section--defaults">
+      <section
+        className="templates-page__section templates-page__section--defaults"
+        aria-busy={defaults.isFetching || undefined}
+      >
         <button
           type="button"
           className="templates-page__defaults-toggle"
@@ -359,7 +394,13 @@ export function TemplatesPage({ organization, project, projects }: TemplatesPage
         >
           <CaretRight size={10} weight="bold" aria-hidden />
           <h2>Shared defaults</h2>
-          <span>{defaultItems.length}</span>
+          <span>
+            {defaults.data ? (
+              defaultItems.length
+            ) : (
+              <Skeleton className="templates-page__count-skeleton" />
+            )}
+          </span>
         </button>
         {defaultsOpen ? (
           <>
@@ -367,7 +408,18 @@ export function TemplatesPage({ organization, project, projects }: TemplatesPage
               System templates every project can use. Forking makes an editable copy owned by this
               project — the original is never changed.
             </p>
-            {defaultItems.length === 0 ? (
+            {defaults.isPending ? (
+              <div className="templates-page__grid" role="status">
+                <span className="sr-only">Loading shared templates</span>
+                {Array.from({ length: 2 }, (_, index) => (
+                  <TemplateCardSkeleton key={index} />
+                ))}
+              </div>
+            ) : defaults.isError ? (
+              <p className="templates-page__empty" role="alert">
+                {defaults.error.message}
+              </p>
+            ) : defaultItems.length === 0 ? (
               <p className="templates-page__empty">No system defaults yet.</p>
             ) : (
               <div className="templates-page__grid">
