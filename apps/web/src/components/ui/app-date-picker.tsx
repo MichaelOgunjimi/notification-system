@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { CalendarBlank, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import "./app-date-picker.css";
 
@@ -38,8 +44,14 @@ function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function parseDateKey(value?: string): Date | undefined {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.valueOf()) || dateKey(date) !== value ? undefined : date;
+}
+
 function monthStart(value: string): Date {
-  const date = value ? new Date(`${value}T00:00:00.000Z`) : new Date();
+  const date = parseDateKey(value) ?? new Date();
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
@@ -64,7 +76,7 @@ function calendarDays(month: Date): Date[] {
 }
 
 function displayDate(value: string): string {
-  if (!value) return "dd/mm/yyyy";
+  if (!parseDateKey(value)) return "dd/mm/yyyy";
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 }
@@ -85,7 +97,12 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => monthStart(value));
   const [view, setView] = useState<CalendarView>("days");
+  const [focusedDay, setFocusedDay] = useState(() => dateKey(parseDateKey(value) ?? new Date()));
+  const [focusedMonth, setFocusedMonth] = useState(() => monthStart(value).getUTCMonth());
+  const [focusedYear, setFocusedYear] = useState(() => monthStart(value).getUTCFullYear());
   const today = dateKey(new Date());
+  const minKey = parseDateKey(min) ? min : undefined;
+  const maxKey = parseDateKey(max) ? max : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -113,10 +130,10 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
   const currentYear = month.getUTCFullYear();
   const yearBlockStart = Math.floor(currentYear / 12) * 12;
   const years = Array.from({ length: 12 }, (_, index) => yearBlockStart + index);
-  const minimumMonth = min ? monthIndex(min) : undefined;
-  const maximumMonth = max ? monthIndex(max) : undefined;
-  const minimumYear = min ? monthStart(min).getUTCFullYear() : undefined;
-  const maximumYear = max ? monthStart(max).getUTCFullYear() : undefined;
+  const minimumMonth = minKey ? monthIndex(minKey) : undefined;
+  const maximumMonth = maxKey ? monthIndex(maxKey) : undefined;
+  const minimumYear = minKey ? monthStart(minKey).getUTCFullYear() : undefined;
+  const maximumYear = maxKey ? monthStart(maxKey).getUTCFullYear() : undefined;
   const previousDisabled =
     view === "days"
       ? minimumMonth !== undefined && monthIndex(shiftMonth(month, -1)) < minimumMonth
@@ -129,7 +146,44 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
       : view === "months"
         ? maximumMonth !== undefined && (currentYear + 1) * 12 > maximumMonth
         : maximumYear !== undefined && yearBlockStart + 12 > maximumYear;
-  const todayDisabled = Boolean((min && today < min) || (max && today > max));
+  const todayDisabled = Boolean((minKey && today < minKey) || (maxKey && today > maxKey));
+  const enabledDays = days.filter((day) => {
+    const key = dateKey(day);
+    return (!minKey || key >= minKey) && (!maxKey || key <= maxKey);
+  });
+  const selectedKey = parseDateKey(value) ? value : undefined;
+  const fallbackDay =
+    enabledDays.find((day) => day.getUTCMonth() === currentMonth) ?? enabledDays[0];
+  const activeDay = enabledDays.some((day) => dateKey(day) === focusedDay)
+    ? focusedDay
+    : enabledDays.some((day) => dateKey(day) === selectedKey)
+      ? selectedKey
+      : fallbackDay
+        ? dateKey(fallbackDay)
+        : "";
+  const monthDisabled = (index: number) => {
+    const indexValue = currentYear * 12 + index;
+    return (
+      (minimumMonth !== undefined && indexValue < minimumMonth) ||
+      (maximumMonth !== undefined && indexValue > maximumMonth)
+    );
+  };
+  const activeMonth = !monthDisabled(focusedMonth)
+    ? focusedMonth
+    : MONTH_NAMES.findIndex((_, index) => !monthDisabled(index));
+  const yearDisabled = (year: number) =>
+    (minimumYear !== undefined && year < minimumYear) ||
+    (maximumYear !== undefined && year > maximumYear);
+  const activeYear =
+    years.includes(focusedYear) && !yearDisabled(focusedYear)
+      ? focusedYear
+      : (years.find((year) => !yearDisabled(year)) ?? -1);
+
+  useEffect(() => {
+    if (!open) return;
+    const focusKey = view === "days" ? activeDay : view === "months" ? activeMonth : activeYear;
+    rootRef.current?.querySelector<HTMLButtonElement>(`[data-focus-key="${focusKey}"]`)?.focus();
+  }, [activeDay, activeMonth, activeYear, month, open, view]);
 
   function navigate(amount: number) {
     setMonth((current) => {
@@ -145,6 +199,72 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
     triggerRef.current?.focus();
   }
 
+  function moveDay(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const current = parseDateKey(activeDay);
+    if (!current) return;
+    const weekday = (current.getUTCDay() + 6) % 7;
+    const offsets: Readonly<Record<string, number>> = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -7,
+      ArrowDown: 7,
+      Home: -weekday,
+      End: 6 - weekday,
+    };
+    let next: Date | undefined;
+    if (offsets[event.key] !== undefined) {
+      next = new Date(current);
+      next.setUTCDate(current.getUTCDate() + offsets[event.key]);
+    }
+    if (event.key === "PageUp" || event.key === "PageDown") {
+      const targetMonth = shiftMonth(current, event.key === "PageUp" ? -1 : 1);
+      const lastDay = new Date(
+        Date.UTC(targetMonth.getUTCFullYear(), targetMonth.getUTCMonth() + 1, 0),
+      ).getUTCDate();
+      next = new Date(
+        Date.UTC(
+          targetMonth.getUTCFullYear(),
+          targetMonth.getUTCMonth(),
+          Math.min(current.getUTCDate(), lastDay),
+        ),
+      );
+    }
+    if (!next) return;
+    event.preventDefault();
+    let key = dateKey(next);
+    if (minKey && key < minKey) key = minKey;
+    if (maxKey && key > maxKey) key = maxKey;
+    setFocusedDay(key);
+    setMonth(monthStart(key));
+  }
+
+  function moveChoice(
+    event: ReactKeyboardEvent<HTMLDivElement>,
+    current: number,
+    minimum: number,
+    maximum: number,
+    onMove: (next: number) => void,
+    onPage: (amount: number) => void,
+  ) {
+    const offsets: Readonly<Record<string, number>> = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -3,
+      ArrowDown: 3,
+      Home: -(current % 3),
+      End: 2 - (current % 3),
+    };
+    if (event.key === "PageUp" || event.key === "PageDown") {
+      event.preventDefault();
+      onPage(event.key === "PageUp" ? -1 : 1);
+      return;
+    }
+    const offset = offsets[event.key];
+    if (offset === undefined) return;
+    event.preventDefault();
+    onMove(Math.max(minimum, Math.min(maximum, current + offset)));
+  }
+
   return (
     <div className="app-date-picker" ref={rootRef}>
       <button
@@ -156,8 +276,12 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
         aria-controls={calendarId}
         aria-haspopup="dialog"
         onClick={() => {
-          if (!open && value) setMonth(monthStart(value));
-          if (!open) setView("days");
+          if (!open) {
+            const next = dateKey(parseDateKey(value) ?? new Date());
+            setMonth(monthStart(next));
+            setFocusedDay(next);
+            setView("days");
+          }
           setOpen((current) => !current);
         }}
       >
@@ -212,15 +336,17 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
                 ))}
               </div>
 
-              <div className="app-date-picker__days" role="grid">
+              <div className="app-date-picker__days" role="grid" onKeyDown={moveDay}>
                 {days.map((day) => {
                   const key = dateKey(day);
-                  const disabled = Boolean((min && key < min) || (max && key > max));
+                  const disabled = Boolean((minKey && key < minKey) || (maxKey && key > maxKey));
                   return (
                     <button
                       key={key}
                       type="button"
                       role="gridcell"
+                      data-focus-key={key}
+                      tabIndex={key === activeDay ? 0 : -1}
                       aria-label={DAY_FORMATTER.format(day)}
                       aria-selected={key === value}
                       aria-current={key === today ? "date" : undefined}
@@ -235,22 +361,31 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
               </div>
             </>
           ) : view === "months" ? (
-            <div className="app-date-picker__choices" role="grid" aria-label="Choose month">
+            <div
+              className="app-date-picker__choices"
+              role="grid"
+              aria-label="Choose month"
+              onKeyDown={(event) =>
+                moveChoice(event, activeMonth, 0, 11, setFocusedMonth, (amount) => {
+                  navigate(amount);
+                  setFocusedYear(currentYear + amount);
+                })
+              }
+            >
               {MONTH_NAMES.map((name, index) => {
-                const indexValue = currentYear * 12 + index;
                 return (
                   <button
                     key={name}
                     type="button"
                     role="gridcell"
+                    data-focus-key={index}
+                    tabIndex={index === activeMonth ? 0 : -1}
                     aria-label={`${name} ${currentYear}`}
                     aria-selected={index === currentMonth}
-                    disabled={
-                      (minimumMonth !== undefined && indexValue < minimumMonth) ||
-                      (maximumMonth !== undefined && indexValue > maximumMonth)
-                    }
+                    disabled={monthDisabled(index)}
                     onClick={() => {
                       setMonth(new Date(Date.UTC(currentYear, index, 1)));
+                      setFocusedMonth(index);
                       setView("days");
                     }}
                   >
@@ -260,19 +395,36 @@ export function AppDatePicker({ label, value, min, max, onChange }: AppDatePicke
               })}
             </div>
           ) : (
-            <div className="app-date-picker__choices" role="grid" aria-label="Choose year">
+            <div
+              className="app-date-picker__choices"
+              role="grid"
+              aria-label="Choose year"
+              onKeyDown={(event) =>
+                moveChoice(
+                  event,
+                  activeYear,
+                  years[0],
+                  years[years.length - 1],
+                  setFocusedYear,
+                  (amount) => {
+                    navigate(amount);
+                    setFocusedYear((year) => year + amount * 12);
+                  },
+                )
+              }
+            >
               {years.map((year) => (
                 <button
                   key={year}
                   type="button"
                   role="gridcell"
+                  data-focus-key={year}
+                  tabIndex={year === activeYear ? 0 : -1}
                   aria-selected={year === currentYear}
-                  disabled={
-                    (minimumYear !== undefined && year < minimumYear) ||
-                    (maximumYear !== undefined && year > maximumYear)
-                  }
+                  disabled={yearDisabled(year)}
                   onClick={() => {
                     setMonth(new Date(Date.UTC(year, currentMonth, 1)));
+                    setFocusedYear(year);
                     setView("months");
                   }}
                 >

@@ -68,6 +68,8 @@ export function DashboardOverview() {
   const analyticsLoading = analytics.isPending || analytics.isPlaceholderData;
   const eventsLoading = recentEvents.isPending || recentEvents.isPlaceholderData;
   const hasError = analytics.isError || recentEvents.isError;
+  const dataUnavailable =
+    analytics.isError && recentEvents.isError && !analyticsData && !eventsData;
   const basePath = `/app/${organization.slug}/${project.slug}`;
   const eventSearch = new URLSearchParams();
   if (state.range !== "all") eventSearch.set("range", state.range);
@@ -144,7 +146,9 @@ export function DashboardOverview() {
         >
           <i />
           {hasError
-            ? "Partial data"
+            ? dataUnavailable
+              ? "Data unavailable"
+              : "Partial data"
             : analyticsLoading || eventsLoading
               ? "Loading project data"
               : "Project data live"}

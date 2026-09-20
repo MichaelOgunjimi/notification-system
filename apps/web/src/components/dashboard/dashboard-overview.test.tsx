@@ -192,6 +192,16 @@ describe("DashboardOverview", () => {
     expect(html).not.toContain("Send your first event");
   });
 
+  it("reports complete failure when neither query has data", () => {
+    mocks.analytics = failedQuery();
+    mocks.events = failedQuery();
+
+    const html = renderOverview();
+
+    expect(html).toContain("Data unavailable");
+    expect(html).not.toContain("Partial data");
+  });
+
   it("queries the URL-resolved project and hides stale placeholder data", () => {
     mocks.scope.project = { id: "project-2", name: "Secondary", slug: "secondary" };
     mocks.analytics = pendingQuery(analyticsData);
