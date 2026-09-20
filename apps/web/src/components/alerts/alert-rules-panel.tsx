@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { PencilSimple, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
 import type { AlertMetric, AlertRule, Organization, Project } from "@beaco/control-plane";
 import { useDeleteProjectAlertRule, useProjectAlertRules } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { AlertRuleFormDialog } from "./alert-rule-form-dialog";
 import "./alert-rules-panel.css";
@@ -62,7 +63,7 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
   const items = rules.data?.items ?? [];
 
   return (
-    <section className="alert-rules-panel">
+    <section className="alert-rules-panel" aria-busy={rules.isFetching || undefined}>
       <header>
         <div>
           <h2>Alert rules</h2>
@@ -76,12 +77,38 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
         ) : null}
       </header>
 
-      {items.length === 0 ? (
-        <p className="alert-rules-panel__empty">
-          {rules.isPending ? "Loading rules…" : "No alert rules yet."}
-        </p>
+      {rules.isPending ? (
+        <>
+          <span className="sr-only" role="status">
+            Loading alert rules
+          </span>
+          <ul className="alert-rules-panel__list" aria-busy="true">
+            {[0, 1, 2].map((row) => (
+              <li className="alert-rules-panel__skeleton-row" key={row} aria-hidden="true">
+                <span className="alert-rules-panel__skeleton-summary">
+                  <Skeleton />
+                  <Skeleton />
+                </span>
+                <span className="alert-rules-panel__skeleton-meta">
+                  <Skeleton />
+                  {canManage ? <Skeleton /> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : rules.isError && items.length === 0 ? (
+        <div className="alert-rules-panel__error" role="alert">
+          <WarningCircle size={15} />
+          <span>{rules.error.message}</span>
+          <button type="button" onClick={() => void rules.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : items.length === 0 ? (
+        <p className="alert-rules-panel__empty">No alert rules yet.</p>
       ) : (
-        <ul className="alert-rules-panel__list">
+        <ul className="alert-rules-panel__list" aria-busy={rules.isFetching || undefined}>
           {items.map((rule) => (
             <li key={rule.id}>
               <div className="alert-rules-panel__summary">
@@ -122,6 +149,16 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
           ))}
         </ul>
       )}
+
+      {rules.isError && items.length > 0 ? (
+        <div className="alert-rules-panel__error" role="alert">
+          <WarningCircle size={15} />
+          <span>{rules.error.message}</span>
+          <button type="button" onClick={() => void rules.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       {formOpen ? (
         <AlertRuleFormDialog

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Organization, Project, UsageEntry } from "@beaco/control-plane";
 import {
   useOrganizationAnalytics,
@@ -20,6 +20,7 @@ import {
 import { AppSelect } from "@/components/ui/app-select";
 import { LogTable, type LogColumn } from "@/components/ui/log-table";
 import { LogFilters } from "@/components/ui/log-filters";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePager } from "@/components/ui/table-pager";
 import {
   LOG_PER_PAGE_OPTIONS,
@@ -61,6 +62,10 @@ function formatCount(value: number): string {
 function successRate(successful: number, total: number): string {
   if (total === 0) return "—";
   return `${Math.round((successful / total) * 100)}%`;
+}
+
+function metricValue(pending: boolean, value: ReactNode): ReactNode {
+  return pending ? <Skeleton className="usage-page__stat-skeleton" /> : value;
 }
 
 /**
@@ -149,6 +154,14 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
     endpointCount === 0
       ? "—"
       : `${endpointCount}${endpointCount === TOP_ENDPOINTS_LIMIT ? "+" : ""}`;
+  const summaryPending = summary.isPending && !summary.data;
+  const hourlyPending = hourly.isPending && !hourly.data;
+  const topEndpointsPending = topEndpoints.isPending && !topEndpoints.data;
+  const analyticsPending = analytics.isPending && !analytics.data;
+  const trendsPending = trends.isPending && !trends.data;
+  const metricsPending = summaryPending || hourlyPending || topEndpointsPending || analyticsPending;
+  const metricsFetching =
+    summary.isFetching || hourly.isFetching || topEndpoints.isFetching || analytics.isFetching;
 
   const columns: ReadonlyArray<LogColumn<UsageEntry>> = [
     {
@@ -231,104 +244,201 @@ export function UsagePage({ organization, project, projects }: UsagePageProps) {
         />
       </LogFilters>
 
-      <div className="usage-page__stats">
+      <div className="usage-page__stats" aria-busy={metricsFetching || undefined}>
+        {metricsPending ? (
+          <span className="sr-only" role="status">
+            Loading usage metrics
+          </span>
+        ) : null}
         <div className="usage-page__stat">
           <span>API requests</span>
-          <strong>{summary.data ? formatCount(summary.data.totalRequests) : "—"}</strong>
+          <strong>
+            {metricValue(
+              summaryPending,
+              summary.data ? formatCount(summary.data.totalRequests) : "—",
+            )}
+          </strong>
         </div>
         <div className="usage-page__stat" data-tone="success">
           <span>Successful</span>
-          <strong>{summary.data ? formatCount(summary.data.successfulRequests) : "—"}</strong>
+          <strong>
+            {metricValue(
+              summaryPending,
+              summary.data ? formatCount(summary.data.successfulRequests) : "—",
+            )}
+          </strong>
           <em>
-            {summary.data
-              ? successRate(summary.data.successfulRequests, summary.data.totalRequests)
-              : null}
+            {summaryPending
+              ? null
+              : summary.data
+                ? successRate(summary.data.successfulRequests, summary.data.totalRequests)
+                : null}
           </em>
         </div>
         <div className="usage-page__stat" data-tone="danger">
           <span>Failed</span>
-          <strong>{summary.data ? formatCount(summary.data.failedRequests) : "—"}</strong>
+          <strong>
+            {metricValue(
+              summaryPending,
+              summary.data ? formatCount(summary.data.failedRequests) : "—",
+            )}
+          </strong>
         </div>
         <div className="usage-page__stat">
           <span>Endpoints hit</span>
-          <strong>{endpointCountLabel}</strong>
+          <strong>{metricValue(topEndpointsPending, endpointCountLabel)}</strong>
         </div>
         <div className="usage-page__stat">
           <span>Peak hour</span>
-          <strong>{peakHour !== null ? `${String(peakHour).padStart(2, "0")}:00` : "—"}</strong>
-          {peakHour !== null ? <em>UTC</em> : null}
+          <strong>
+            {metricValue(
+              hourlyPending,
+              peakHour !== null ? `${String(peakHour).padStart(2, "0")}:00` : "—",
+            )}
+          </strong>
+          {!hourlyPending && peakHour !== null ? <em>UTC</em> : null}
         </div>
         <div className="usage-page__stat">
           <span>Avg latency</span>
           <strong>
-            {analytics.data?.avgDeliveryLatencyMs != null
-              ? `${Math.round(analytics.data.avgDeliveryLatencyMs)}ms`
-              : "—"}
+            {metricValue(
+              analyticsPending,
+              analytics.data?.avgDeliveryLatencyMs != null
+                ? `${Math.round(analytics.data.avgDeliveryLatencyMs)}ms`
+                : "—",
+            )}
           </strong>
         </div>
         <div className="usage-page__stat">
           <span>p50 latency</span>
           <strong>
-            {analytics.data?.p50DeliveryLatencyMs != null
-              ? `${Math.round(analytics.data.p50DeliveryLatencyMs)}ms`
-              : "—"}
+            {metricValue(
+              analyticsPending,
+              analytics.data?.p50DeliveryLatencyMs != null
+                ? `${Math.round(analytics.data.p50DeliveryLatencyMs)}ms`
+                : "—",
+            )}
           </strong>
         </div>
         <div className="usage-page__stat">
           <span>p95 latency</span>
           <strong>
-            {analytics.data?.p95DeliveryLatencyMs != null
-              ? `${Math.round(analytics.data.p95DeliveryLatencyMs)}ms`
-              : "—"}
+            {metricValue(
+              analyticsPending,
+              analytics.data?.p95DeliveryLatencyMs != null
+                ? `${Math.round(analytics.data.p95DeliveryLatencyMs)}ms`
+                : "—",
+            )}
           </strong>
         </div>
         <div className="usage-page__stat">
           <span>p99 latency</span>
           <strong>
-            {analytics.data?.p99DeliveryLatencyMs != null
-              ? `${Math.round(analytics.data.p99DeliveryLatencyMs)}ms`
-              : "—"}
+            {metricValue(
+              analyticsPending,
+              analytics.data?.p99DeliveryLatencyMs != null
+                ? `${Math.round(analytics.data.p99DeliveryLatencyMs)}ms`
+                : "—",
+            )}
           </strong>
         </div>
       </div>
 
       <div className="usage-page__charts">
-        <section className="usage-page__chart usage-page__chart--wide">
+        <section
+          className="usage-page__chart usage-page__chart--wide"
+          aria-busy={trends.isFetching || undefined}
+        >
           <header>
             <h2>Delivery status over time</h2>
             <p>Delivered, failed, queued, and processing notifications per {granularity}.</p>
           </header>
-          <TrendChart
-            points={trendPoints}
-            granularity={granularity}
-            from={chartFrom}
-            to={chartTo}
-          />
+          {trendsPending ? (
+            <div className="usage-page__trend-skeleton" role="status">
+              <span className="sr-only">Loading delivery status chart</span>
+              <Skeleton />
+              <div aria-hidden="true">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <Skeleton key={index} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <TrendChart
+              points={trendPoints}
+              granularity={granularity}
+              from={chartFrom}
+              to={chartTo}
+            />
+          )}
         </section>
-        <section className="usage-page__chart usage-page__chart--wide">
+        <section
+          className="usage-page__chart usage-page__chart--wide"
+          aria-busy={hourly.isFetching || undefined}
+        >
           <header>
             <h2>Hourly distribution</h2>
             <p>Request intensity by hour of day, UTC.</p>
           </header>
-          <HourlyHeatmap
-            points={
-              hourly.data ?? Array.from({ length: 24 }, (_, hour) => ({ hour, requestCount: 0 }))
-            }
-          />
+          {hourlyPending ? (
+            <div className="usage-page__heatmap-skeleton" role="status">
+              <span className="sr-only">Loading hourly distribution</span>
+              {Array.from({ length: 24 }, (_, hour) => (
+                <Skeleton key={hour} />
+              ))}
+            </div>
+          ) : (
+            <HourlyHeatmap
+              points={
+                hourly.data ?? Array.from({ length: 24 }, (_, hour) => ({ hour, requestCount: 0 }))
+              }
+            />
+          )}
         </section>
-        <section className="usage-page__chart usage-page__chart--endpoints">
+        <section
+          className="usage-page__chart usage-page__chart--endpoints"
+          aria-busy={topEndpoints.isFetching || undefined}
+        >
           <header>
             <h2>Top endpoints</h2>
             <p>By request count.</p>
           </header>
-          <EndpointBars rows={topEndpoints.data ?? []} />
+          {topEndpointsPending ? (
+            <div className="usage-page__bars-skeleton" role="status">
+              <span className="sr-only">Loading top endpoints</span>
+              {Array.from({ length: 6 }, (_, row) => (
+                <div key={row} aria-hidden="true">
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EndpointBars rows={topEndpoints.data ?? []} />
+          )}
         </section>
-        <section className="usage-page__chart">
+        <section className="usage-page__chart" aria-busy={analytics.isFetching || undefined}>
           <header>
             <h2>Channel mix</h2>
             <p>Notifications by delivery channel.</p>
           </header>
-          <ChannelDonut stats={analytics.data?.channelStats ?? []} />
+          {analyticsPending ? (
+            <div className="usage-page__donut-skeleton" role="status">
+              <span className="sr-only">Loading channel mix</span>
+              <Skeleton />
+              <div aria-hidden="true">
+                {Array.from({ length: 3 }, (_, row) => (
+                  <div key={row}>
+                    <Skeleton />
+                    <Skeleton />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ChannelDonut stats={analytics.data?.channelStats ?? []} />
+          )}
         </section>
       </div>
 

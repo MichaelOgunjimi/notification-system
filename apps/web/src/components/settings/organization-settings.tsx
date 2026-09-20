@@ -34,6 +34,7 @@ import {
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { AppSelect } from "@/components/ui/app-select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { dashboardPath } from "@/lib/dashboard-route";
 import "./organization-settings.css";
@@ -335,11 +336,30 @@ export function OrganizationSettings({
               {inviteMember.error.message}
             </p>
           ) : null}
-          <div className="organization-settings__list">
+          <div className="organization-settings__list" aria-busy={members.isFetching || undefined}>
             {members.isPending ? (
-              <p className="organization-settings__empty">
-                <SpinnerGap className="animate-spin" size={16} /> Loading members
-              </p>
+              <>
+                <span className="sr-only" role="status">
+                  Loading organization members
+                </span>
+                {[0, 1, 2].map((row) => (
+                  <div
+                    className="organization-settings__row organization-settings__member"
+                    key={row}
+                    aria-hidden="true"
+                  >
+                    <Skeleton className="organization-settings__member-skeleton-avatar" />
+                    <span
+                      className="organization-settings__member-skeleton-copy"
+                      aria-hidden="true"
+                    >
+                      <Skeleton />
+                      <Skeleton />
+                    </span>
+                    <Skeleton className="organization-settings__member-skeleton-role" />
+                  </div>
+                ))}
+              </>
             ) : null}
             {members.isError ? (
               <p className="organization-settings__message" data-tone="error">
@@ -404,8 +424,25 @@ export function OrganizationSettings({
               </article>
             ))}
           </div>
-          {canManageMembers && activeInvitations?.length ? (
-            <div className="organization-settings__pending">
+          {canManageMembers && invitations.isPending ? (
+            <div className="organization-settings__pending" aria-busy="true">
+              <span className="sr-only" role="status">
+                Loading pending invitations
+              </span>
+              <Skeleton className="organization-settings__pending-skeleton-label" />
+              <div aria-hidden="true">
+                <span className="organization-settings__pending-skeleton-copy">
+                  <Skeleton />
+                  <Skeleton />
+                </span>
+                <Skeleton className="organization-settings__pending-skeleton-action" />
+              </div>
+            </div>
+          ) : canManageMembers && activeInvitations?.length ? (
+            <div
+              className="organization-settings__pending"
+              aria-busy={invitations.isFetching || undefined}
+            >
               <p>Pending invitations</p>
               {activeInvitations.map((invitation) => (
                 <div key={invitation.id}>

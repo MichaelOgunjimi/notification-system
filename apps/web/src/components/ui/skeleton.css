@@ -1,0 +1,29 @@
+.skeleton {
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(
+    100deg,
+    var(--dashboard-overlay, var(--workspace-overlay, var(--muted))) 25%,
+    var(--dashboard-overlay-hover, var(--workspace-overlay-hover, var(--accent))) 48%,
+    var(--dashboard-overlay, var(--workspace-overlay, var(--muted))) 72%
+  );
+  background-size: 220% 100%;
+  border-radius: 5px;
+  display: block;
+  min-height: 0.75rem;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

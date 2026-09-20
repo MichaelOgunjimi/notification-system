@@ -12,6 +12,7 @@ import type {
 } from "@beaco/control-plane";
 import { useProjectNotifications } from "@beaco/control-plane/react";
 import { AppSelect } from "@/components/ui/app-select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePager } from "@/components/ui/table-pager";
 import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { relativeTime } from "@/lib/audit-log";
@@ -151,9 +152,11 @@ export function DeliveryPage({
           <strong>{project.name}</strong>
         </span>
         <em>
-          {query.data
-            ? `${total.toLocaleString()} ${restrictToIssues ? "needing attention" : "deliveries"}`
-            : "Counting…"}
+          {query.data ? (
+            `${total.toLocaleString()} ${restrictToIssues ? "needing attention" : "deliveries"}`
+          ) : (
+            <Skeleton className="delivery-page__count-skeleton" />
+          )}
         </em>
       </section>
 
@@ -215,7 +218,7 @@ export function DeliveryPage({
         onChange={(event) => patch({ search: event.target.value })}
       />
 
-      <section className="delivery-page__table">
+      <section className="delivery-page__table" aria-busy={query.isFetching || undefined}>
         <header>
           <div>
             <h2>{restrictToIssues ? "Attention needed" : "Notification stream"}</h2>
@@ -243,6 +246,17 @@ export function DeliveryPage({
               </tr>
             </thead>
             <tbody>
+              {query.isPending
+                ? Array.from({ length: 6 }, (_, row) => (
+                    <tr className="delivery-page__skeleton-row" aria-hidden="true" key={row}>
+                      {Array.from({ length: 7 }, (_, cell) => (
+                        <td key={cell}>
+                          <Skeleton />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : null}
               {notifications.map((notification) => (
                 <tr
                   key={notification.id}
@@ -284,13 +298,12 @@ export function DeliveryPage({
             </tbody>
           </table>
         </div>
-        {notifications.length === 0 ? (
-          <p className="delivery-page__empty">
-            {query.isPending
-              ? "Loading deliveries…"
-              : query.isError
-                ? "Delivery data could not be loaded."
-                : "No deliveries match these filters."}
+        {query.isPending ? <span className="sr-only">Loading deliveries</span> : null}
+        {!query.isPending && notifications.length === 0 ? (
+          <p className="delivery-page__empty" role={query.isError ? "alert" : undefined}>
+            {query.isError
+              ? query.error.message || "Delivery data could not be loaded."
+              : "No deliveries match these filters."}
           </p>
         ) : null}
         {total > 0 ? (

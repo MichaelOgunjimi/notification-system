@@ -304,6 +304,33 @@
   width: 34px;
 }
 
+.organization-settings__member-skeleton-avatar {
+  border-radius: 8px;
+  height: 34px;
+  width: 34px;
+}
+
+.organization-settings__member-skeleton-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.organization-settings__member-skeleton-copy .skeleton:first-child {
+  height: 11px;
+  width: min(180px, 55%);
+}
+
+.organization-settings__member-skeleton-copy .skeleton:last-child {
+  height: 9px;
+  width: min(240px, 72%);
+}
+
+.organization-settings__member-skeleton-role {
+  border-radius: 7px;
+  height: 36px;
+  width: 128px;
+}
+
 .organization-settings__row strong,
 .organization-settings__row small {
   display: block;
@@ -371,6 +398,32 @@
   display: flex;
   font-size: 9px;
   gap: 5px;
+}
+
+.organization-settings__pending-skeleton-label {
+  height: 9px;
+  width: 124px;
+}
+
+.organization-settings__pending-skeleton-copy {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+}
+
+.organization-settings__pending-skeleton-copy .skeleton:first-child {
+  height: 10px;
+  width: min(220px, 60%);
+}
+
+.organization-settings__pending-skeleton-copy .skeleton:last-child {
+  height: 9px;
+  width: 145px;
+}
+
+.organization-settings__pending-skeleton-action {
+  height: 28px;
+  width: 120px;
 }
 
 .organization-settings__pending-actions {
@@ -530,6 +583,10 @@
   }
 
   .organization-settings__member-role {
+    width: 116px;
+  }
+
+  .organization-settings__member-skeleton-role {
     width: 116px;
   }
 

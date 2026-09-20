@@ -12,6 +12,7 @@ import type {
 } from "@beaco/control-plane";
 import { useOrganizationEvents, useProjectEvents } from "@beaco/control-plane/react";
 import { AppSelect } from "@/components/ui/app-select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePager } from "@/components/ui/table-pager";
 import { useRememberedSearchParams } from "@/components/ui/use-remembered-search-params";
 import { relativeTime } from "@/lib/audit-log";
@@ -274,7 +275,7 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
         onChange={(event) => patch({ search: event.target.value })}
       />
 
-      <div className="events-page__table">
+      <div className="events-page__table" aria-busy={query.isFetching || undefined}>
         <div className="events-page__table-head">
           <div>
             <h2>Event log</h2>
@@ -282,7 +283,11 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
           </div>
           <span className="events-page__count" title="Refreshes automatically">
             <span className="events-page__live-dot" aria-hidden />
-            {query.data ? `${total.toLocaleString()} events` : "Counting…"}
+            {query.data ? (
+              `${total.toLocaleString()} events`
+            ) : (
+              <Skeleton className="events-page__count-skeleton" />
+            )}
           </span>
         </div>
         <div className="events-page__twrap">
@@ -298,6 +303,17 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
               </tr>
             </thead>
             <tbody>
+              {query.isPending
+                ? Array.from({ length: 6 }, (_, row) => (
+                    <tr className="events-page__skeleton-row" aria-hidden="true" key={row}>
+                      {Array.from({ length: 6 }, (_, cell) => (
+                        <td key={cell}>
+                          <Skeleton />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : null}
               {events.map((event) => {
                 const badgeStatus =
                   event.hasFailures && event.status === "completed"
@@ -340,10 +356,11 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
             </tbody>
           </table>
         </div>
-        {events.length === 0 ? (
-          <p className="events-page__empty">
-            {query.isPending
-              ? "Loading…"
+        {query.isPending ? <span className="sr-only">Loading events</span> : null}
+        {!query.isPending && events.length === 0 ? (
+          <p className="events-page__empty" role={query.isError ? "alert" : undefined}>
+            {query.isError
+              ? query.error.message
               : filtersActive
                 ? "No events match these filters."
                 : "No events received yet."}

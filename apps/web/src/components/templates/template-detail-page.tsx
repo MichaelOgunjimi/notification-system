@@ -20,6 +20,7 @@ import {
   useProjectTemplate,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { absoluteFormatter } from "@/lib/audit-log";
 import { TemplateFormDialog } from "./template-form-dialog";
@@ -37,6 +38,50 @@ const CHANNEL_ICON: Record<TemplateChannel, typeof Envelope> = {
   sms: ChatText,
   webhook: Code,
 };
+
+function TemplateDetailSkeleton({ backHref }: Readonly<{ backHref: string }>) {
+  return (
+    <div
+      className="template-detail-page template-detail-page--skeleton"
+      aria-busy="true"
+      role="status"
+    >
+      <Link href={backHref} className="template-detail-page__back">
+        <ArrowLeft size={13} />
+        All templates
+      </Link>
+      <span className="sr-only">Loading template</span>
+      <header className="template-detail-page__head" aria-hidden="true">
+        <div className="template-detail-page__title-row">
+          <Skeleton className="template-detail-page__skeleton-icon" />
+          <div>
+            <Skeleton className="template-detail-page__skeleton-title" />
+            <Skeleton className="template-detail-page__skeleton-meta" />
+          </div>
+        </div>
+        <Skeleton className="template-detail-page__skeleton-action" />
+      </header>
+      <div className="template-detail-page__grid" aria-hidden="true">
+        <div className="template-detail-page__col">
+          <section className="template-detail-page__card">
+            <Skeleton className="template-detail-page__skeleton-heading" />
+            <Skeleton className="template-detail-page__skeleton-line" />
+          </section>
+          <section className="template-detail-page__card">
+            <Skeleton className="template-detail-page__skeleton-heading" />
+            <Skeleton className="template-detail-page__skeleton-body" />
+          </section>
+        </div>
+        <section className="template-detail-page__card template-detail-page__variables">
+          <Skeleton className="template-detail-page__skeleton-heading" />
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton className="template-detail-page__skeleton-variable" key={index} />
+          ))}
+        </section>
+      </div>
+    </div>
+  );
+}
 
 /**
  * A single template's source, variables, and (for an owned template) edit —
@@ -84,15 +129,7 @@ export function TemplateDetailPage({ organization, project, templateId }: Templa
   }
 
   if (query.isPending) {
-    return (
-      <div className="template-detail-page">
-        <Link href={backHref} className="template-detail-page__back">
-          <ArrowLeft size={13} />
-          All templates
-        </Link>
-        <p className="template-detail-page__empty">Loading…</p>
-      </div>
-    );
+    return <TemplateDetailSkeleton backHref={backHref} />;
   }
 
   if (query.isError || !query.data) {
@@ -114,7 +151,7 @@ export function TemplateDetailPage({ organization, project, templateId }: Templa
   const Icon = CHANNEL_ICON[template.channel];
 
   return (
-    <div className="template-detail-page">
+    <div className="template-detail-page" aria-busy={query.isFetching || undefined}>
       <Link href={backHref} className="template-detail-page__back">
         <ArrowLeft size={13} />
         All templates

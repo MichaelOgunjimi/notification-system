@@ -16,6 +16,7 @@ import {
   useResendEmailVerification,
   useSetPrimaryEmailAddress,
 } from "@beaco/auth/react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
@@ -101,11 +102,26 @@ export function EmailAddressesSection() {
         </p>
       ) : null}
 
-      <ul className="account-settings__email-list">
+      <ul className="account-settings__email-list" aria-busy={emails.isFetching || undefined}>
         {emails.isPending ? (
-          <li className="account-settings__email-empty">
-            <SpinnerGap size={15} className="animate-spin" /> Loading addresses
-          </li>
+          <>
+            <li className="sr-only" role="status">
+              Loading email addresses
+            </li>
+            {[0, 1].map((row) => (
+              <li
+                className="account-settings__email-row account-settings__email-row--skeleton"
+                key={row}
+                aria-hidden="true"
+              >
+                <span aria-hidden="true">
+                  <Skeleton />
+                  <Skeleton />
+                </span>
+                <Skeleton />
+              </li>
+            ))}
+          </>
         ) : null}
         {emails.isError ? (
           <li className="account-settings__message" data-tone="error" role="alert">

@@ -330,3 +330,44 @@
   color: var(--dashboard-muted);
   font-size: 11.5px;
 }
+
+.template-detail-page__skeleton-icon {
+  height: 34px;
+  width: 34px;
+}
+
+.template-detail-page__skeleton-title {
+  height: 20px;
+  width: min(45vw, 260px);
+}
+
+.template-detail-page__skeleton-meta {
+  height: 11px;
+  margin-top: 8px;
+  width: min(38vw, 210px);
+}
+
+.template-detail-page__skeleton-action {
+  height: 36px;
+  width: 88px;
+}
+
+.template-detail-page__skeleton-heading {
+  height: 13px;
+  margin-bottom: 12px;
+  width: 92px;
+}
+
+.template-detail-page__skeleton-line {
+  height: 13px;
+  width: 72%;
+}
+
+.template-detail-page__skeleton-body {
+  height: 280px;
+}
+
+.template-detail-page__skeleton-variable {
+  height: 30px;
+  margin-bottom: 8px;
+}

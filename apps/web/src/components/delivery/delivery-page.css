@@ -48,6 +48,10 @@
   font: 10px var(--font-geist-mono);
   margin-left: auto;
 }
+.delivery-page__count-skeleton {
+  height: 9px;
+  width: 92px;
+}
 .delivery-page__filters {
   align-items: center;
   display: flex;
@@ -143,6 +147,23 @@
 }
 .delivery-page tbody tr:hover {
   background: var(--dashboard-overlay);
+}
+.delivery-page__skeleton-row .skeleton {
+  height: 11px;
+  width: min(100%, 100px);
+}
+.delivery-page__skeleton-row td:nth-child(2) .skeleton {
+  height: 28px;
+  width: min(100%, 150px);
+}
+.delivery-page__skeleton-row td:nth-child(3) .skeleton,
+.delivery-page__skeleton-row td:nth-child(6) .skeleton {
+  border-radius: 999px;
+  height: 24px;
+  width: 68px;
+}
+.delivery-page__skeleton-row td:last-child .skeleton {
+  width: 12px;
 }
 .delivery-page td strong,
 .delivery-page td small {

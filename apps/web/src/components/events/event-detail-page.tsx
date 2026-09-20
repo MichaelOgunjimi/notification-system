@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react";
 import type { Organization, Project } from "@beaco/control-plane";
 import { useProjectEvent } from "@beaco/control-plane/react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { absoluteFormatter } from "@/lib/audit-log";
 import "./event-detail-page.css";
 
@@ -33,6 +34,56 @@ function statusTone(status: string): "success" | "danger" | "warning" | "muted" 
   return "muted";
 }
 
+function EventDetailSkeleton({ backHref }: Readonly<{ backHref: string }>) {
+  return (
+    <div className="event-detail-page event-detail-page--skeleton" aria-busy="true" role="status">
+      <Link href={backHref} className="event-detail-page__back">
+        <ArrowLeft size={13} />
+        All events
+      </Link>
+      <span className="sr-only">Loading event</span>
+      <header className="event-detail-page__head" aria-hidden="true">
+        <div>
+          <Skeleton className="event-detail-page__skeleton-title" />
+          <Skeleton className="event-detail-page__skeleton-meta" />
+        </div>
+        <Skeleton className="event-detail-page__skeleton-tag" />
+      </header>
+      <section className="event-detail-page__card" aria-hidden="true">
+        <h2>Metadata</h2>
+        <div className="event-detail-page__mgrid">
+          {Array.from({ length: 8 }, (_, index) => (
+            <div className="event-detail-page__mcell event-detail-page__skeleton-cell" key={index}>
+              <Skeleton />
+              <Skeleton />
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="event-detail-page__card" aria-hidden="true">
+        <h2>Fan-out notifications</h2>
+        <div className="event-detail-page__skeleton-table">
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} />
+          ))}
+        </div>
+      </section>
+      <section className="event-detail-page__card" aria-hidden="true">
+        <h2>Timeline</h2>
+        <div className="event-detail-page__skeleton-timeline">
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} />
+          ))}
+        </div>
+      </section>
+      <section className="event-detail-page__card" aria-hidden="true">
+        <h2>Payload</h2>
+        <Skeleton className="event-detail-page__skeleton-payload" />
+      </section>
+    </div>
+  );
+}
+
 /**
  * One event's metadata, fan-out notifications, delivery timeline, and raw
  * payload.
@@ -46,15 +97,7 @@ export function EventDetailPage({ organization, project, eventId }: EventDetailP
   const backHref = `/app/${organization.slug}/${project.slug}/events`;
 
   if (query.isPending) {
-    return (
-      <div className="event-detail-page">
-        <Link href={backHref} className="event-detail-page__back">
-          <ArrowLeft size={13} />
-          All events
-        </Link>
-        <p className="event-detail-page__empty">Loading…</p>
-      </div>
-    );
+    return <EventDetailSkeleton backHref={backHref} />;
   }
 
   if (query.isError || !query.data) {
@@ -85,7 +128,7 @@ export function EventDetailPage({ organization, project, eventId }: EventDetailP
   ];
 
   return (
-    <div className="event-detail-page">
+    <div className="event-detail-page" aria-busy={query.isFetching || undefined}>
       <Link href={backHref} className="event-detail-page__back">
         <ArrowLeft size={13} />
         All events

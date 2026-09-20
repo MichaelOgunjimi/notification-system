@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { CaretRight, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { CaretRight, WarningCircle } from "@phosphor-icons/react";
 import type { AuditLogEntry } from "@beaco/control-plane";
 import {
   absoluteFormatter,
@@ -10,6 +10,8 @@ import {
   resultForAction,
 } from "@/lib/audit-log";
 import { LogPill } from "./log-pill";
+import { getLogTableState } from "./log-table-state";
+import { Skeleton } from "./skeleton";
 import "./log-table.css";
 
 /** One column in a {@link LogTable}. */
@@ -68,6 +70,7 @@ export function LogTable<T>({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const gridTemplate = ["20px", ...columns.map((c) => c.width ?? "minmax(120px, 1fr)")].join(" ");
   const minWidth = 620 + columns.length * 40;
+  const state = getLogTableState(error, pending, rows.length);
 
   return (
     <div className="log-table" aria-busy={busy || undefined}>
@@ -82,15 +85,28 @@ export function LogTable<T>({
           ))}
         </div>
 
-        {error ? (
+        {state === "error" ? (
           <div className="log-table__state" data-tone="error" role="alert" style={{ minWidth }}>
             <WarningCircle size={15} /> {error}
           </div>
-        ) : pending ? (
-          <div className="log-table__state" style={{ minWidth }}>
-            <SpinnerGap size={16} className="animate-spin" /> Loading
+        ) : state === "pending" ? (
+          <div className="log-table__skeleton" style={{ minWidth }} role="status">
+            <span className="sr-only">Loading activity</span>
+            {Array.from({ length: 6 }, (_, row) => (
+              <div
+                className="log-table__grid log-table__skeleton-row"
+                style={{ gridTemplateColumns: gridTemplate }}
+                aria-hidden="true"
+                key={row}
+              >
+                <Skeleton />
+                {columns.map((column) => (
+                  <Skeleton key={column.key} />
+                ))}
+              </div>
+            ))}
           </div>
-        ) : rows.length === 0 ? (
+        ) : state === "empty" ? (
           <div className="log-table__state" style={{ minWidth }}>
             {emptyLabel}
           </div>

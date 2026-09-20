@@ -18,6 +18,7 @@ import {
   useRetryProjectNotification,
 } from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { absoluteFormatter } from "@/lib/audit-log";
 import "./delivery-detail-page.css";
@@ -39,6 +40,66 @@ function statusTone(status: NotificationStatus): "success" | "danger" | "warning
 
 function formattedJson(value: Record<string, unknown> | null): string {
   return value ? JSON.stringify(value, null, 2) : "No provider response recorded.";
+}
+
+function DeliveryDetailSkeleton({ href, label }: Readonly<{ href: string; label: string }>) {
+  return (
+    <div className="delivery-detail delivery-detail--skeleton" aria-busy="true" role="status">
+      <Link href={href} className="delivery-detail__back">
+        <ArrowLeft size={13} />
+        {label}
+      </Link>
+      <span className="sr-only">Loading delivery</span>
+      <header className="delivery-detail__heading" aria-hidden="true">
+        <div>
+          <Skeleton className="delivery-detail__skeleton-eyebrow" />
+          <Skeleton className="delivery-detail__skeleton-title" />
+          <Skeleton className="delivery-detail__skeleton-meta" />
+        </div>
+        <Skeleton className="delivery-detail__skeleton-status" />
+      </header>
+      <section className="delivery-detail__facts" aria-hidden="true">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index}>
+            <Skeleton />
+            <Skeleton />
+          </div>
+        ))}
+      </section>
+      <div className="delivery-detail__split" aria-hidden="true">
+        <section className="delivery-detail__card delivery-detail__skeleton-timeline">
+          <header>
+            <Skeleton />
+          </header>
+          <div>
+            {Array.from({ length: 4 }, (_, index) => (
+              <Skeleton key={index} />
+            ))}
+          </div>
+        </section>
+        <aside className="delivery-detail__side">
+          {Array.from({ length: 2 }, (_, index) => (
+            <section className="delivery-detail__card delivery-detail__skeleton-side" key={index}>
+              <header>
+                <Skeleton />
+              </header>
+              <Skeleton />
+              <Skeleton />
+            </section>
+          ))}
+        </aside>
+      </div>
+      <section
+        className="delivery-detail__card delivery-detail__message delivery-detail__skeleton-message"
+        aria-hidden="true"
+      >
+        <header>
+          <Skeleton />
+        </header>
+        <Skeleton />
+      </section>
+    </div>
+  );
 }
 
 /** Notification detail with attempt history, provider evidence, content, and source event. */
@@ -76,7 +137,11 @@ export function DeliveryDetailPage({
     }
   }
 
-  if (query.isPending || query.isError || !query.data) {
+  if (query.isPending) {
+    return <DeliveryDetailSkeleton href={deliveryHref} label={backLabel} />;
+  }
+
+  if (query.isError || !query.data) {
     return (
       <div className="delivery-detail">
         <Link href={deliveryHref} className="delivery-detail__back">
@@ -84,11 +149,7 @@ export function DeliveryDetailPage({
           {backLabel}
         </Link>
         <p className="delivery-detail__empty">
-          {query.isPending
-            ? "Loading delivery…"
-            : query.error instanceof Error
-              ? query.error.message
-              : "Delivery not found."}
+          {query.error instanceof Error ? query.error.message : "Delivery not found."}
         </p>
       </div>
     );
@@ -97,7 +158,7 @@ export function DeliveryDetailPage({
   const notification = query.data;
   const eventHref = `/app/${organization.slug}/${project.slug}/events/${notification.eventId}`;
   return (
-    <div className="delivery-detail">
+    <div className="delivery-detail" aria-busy={query.isFetching || undefined}>
       <Link href={deliveryHref} className="delivery-detail__back">
         <ArrowLeft size={13} />
         {backLabel}

@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 WEB_ENV_FILE = ROOT / "apps/web/.env.local"
+TUNNEL_CREDENTIALS = ROOT / "cloudflared/credentials.json"
 PORT_KEYS = (
     "FRONTEND_PORT",
     "DOCS_PORT",
@@ -33,6 +34,25 @@ def slug(value: str) -> str:
     return value[:63] or "notification-system-worktree"
 
 
+def branch_fragment(value: str) -> str:
+    """Return about ten characters without cutting the final branch-name word."""
+    prefix = value[:10]
+    if len(value) > 10 and value[10] not in "-_":
+        boundary = max(prefix.rfind("-"), prefix.rfind("_"))
+        return prefix[:boundary] if boundary >= 0 else re.split(r"[-_]", value, 1)[0]
+    return prefix.rstrip("-_")
+
+
+def project_name(worktree_name: str) -> str:
+    """Return a short project name, including an issue number when available."""
+    branch = slug(worktree_name.rsplit("/", 1)[-1])
+    issue = re.search(r"(?:^|-)(\d+)(?:-|$)", branch)
+    if not issue:
+        return slug(f"beaco-{branch_fragment(branch)}")
+    summary = re.sub(rf"(?:^|-){issue.group(1)}(?:-|$)", "-", branch).strip("-_")
+    return slug(f"beaco-{issue.group(1)}-{branch_fragment(summary)}")
+
+
 def default_name() -> str:
     """Derive the project name from the repository and branch or worktree directory."""
     branch = subprocess.run(
@@ -43,7 +63,7 @@ def default_name() -> str:
         text=True,
     ).stdout.strip()
     worktree_name = branch or ROOT.parent.name
-    return slug(f"{ROOT.name}-{worktree_name}")
+    return project_name(worktree_name)
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -84,6 +104,15 @@ def existing_suffix(env: dict[str, str]) -> int | None:
     return None
 
 
+def resolve_name(requested: str | None, existing: dict[str, str]) -> str:
+    """Prefer an explicit name, then a valid existing worktree assignment."""
+    if requested:
+        return slug(requested)
+    if existing.get("COMPOSE_PROJECT_NAME") and existing_suffix(existing) is not None:
+        return existing["COMPOSE_PROJECT_NAME"]
+    return default_name()
+
+
 def allocate_suffix(name: str) -> int:
     """Find a deterministic free three-digit port suffix."""
     # ponytail: ports are checked, not reserved; add a file lock if worktrees are created concurrently.
@@ -115,6 +144,14 @@ def update_env(
     path.write_text("\n".join(lines) + "\n")
 
 
+def link_tunnel_credentials(source: Path, destination: Path) -> bool:
+    """Link shared tunnel credentials when this worktree does not have them."""
+    if destination.exists() or destination.is_symlink() or not source.is_file():
+        return False
+    destination.symlink_to(source)
+    return True
+
+
 def main() -> None:
     """Configure this worktree and print its local service URLs."""
     parser = argparse.ArgumentParser()
@@ -123,8 +160,8 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    name = slug(args.name) if args.name else default_name()
     existing = read_env(ENV_FILE)
+    name = resolve_name(args.name, existing)
     if args.suffix:
         if not re.fullmatch(r"\d{3}", args.suffix):
             parser.error("--suffix must be exactly three digits")
@@ -159,6 +196,19 @@ def main() -> None:
                 "NEXT_PUBLIC_SITE_URL": f"http://localhost:{values['FRONTEND_PORT']}",
             },
         )
+        common_git_dir = Path(
+            subprocess.run(
+                ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        )
+        shared_credentials = common_git_dir.parent / "cloudflared/credentials.json"
+        linked_credentials = link_tunnel_credentials(
+            shared_credentials, TUNNEL_CREDENTIALS
+        )
 
     print(f"Compose project: {name}")
     print(f"Port suffix: {suffix:03d}")
@@ -167,6 +217,8 @@ def main() -> None:
     if not args.dry_run:
         print(f"\nWrote: {ENV_FILE}")
         print(f"Wrote: {WEB_ENV_FILE}")
+        if linked_credentials:
+            print(f"Linked: {TUNNEL_CREDENTIALS}")
     print(f"\nStart: cd '{ROOT}' && docker compose up -d --build")
 
 

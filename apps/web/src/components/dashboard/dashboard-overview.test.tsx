@@ -171,7 +171,9 @@ describe("DashboardOverview", () => {
 
     expect(html).toContain("Loading project data");
     expect(html).toContain("Loading recent events");
-    expect(html).toContain("Loading…");
+    expect(html).toContain("dashboard-overview__metric-skeleton");
+    expect(html).toContain("dashboard-overview__event-skeleton");
+    expect(html).not.toContain("Loading…");
     expect(html).not.toContain("Send your first event");
   });
 

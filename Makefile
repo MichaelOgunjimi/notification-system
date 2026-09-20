@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 -include .env
 
-.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke docker-up docker-up-tunnel docker-stop-tunnel docker-down docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke docker-up docker-up-tunnel docker-stop-tunnel docker-down stop-all docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 API_DIR := apps/api
 
@@ -95,8 +95,11 @@ docker-up-tunnel: ## Start the shared Cloudflare tunnel
 docker-stop-tunnel: ## Stop the shared Cloudflare tunnel
 	docker compose --profile tunnel stop cloudflared
 
+stop-all: COMPOSE_PROFILE_ARGS := --profile "*"
+stop-all: docker-down ## Stop all services for this worktree; keep volumes and images
+
 docker-down: ## Stop the isolated Compose stack
-	docker compose down
+	docker compose $(COMPOSE_PROFILE_ARGS) down
 
 docker-migrate: ## Apply migrations inside Compose
 	docker compose exec -T api alembic upgrade head
