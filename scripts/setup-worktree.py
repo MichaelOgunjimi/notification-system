@@ -45,12 +45,19 @@ def branch_fragment(value: str) -> str:
 
 def project_name(worktree_name: str) -> str:
     """Return a short project name, including an issue number when available."""
-    branch = slug(worktree_name.rsplit("/", 1)[-1])
+    normalized_name = re.sub(r"[^a-z0-9_-]+", "-", worktree_name.lower()).strip("-_")
+    branch = (
+        re.sub(r"[^a-z0-9_-]+", "-", worktree_name.rsplit("/", 1)[-1].lower()).strip(
+            "-_"
+        )
+        or "worktree"
+    )
+    fingerprint = f"{zlib.crc32((normalized_name or branch).encode()):08x}"
     issue = re.search(r"(?:^|-)(\d+)(?:-|$)", branch)
     if not issue:
-        return slug(f"beaco-{branch_fragment(branch)}")
-    summary = re.sub(rf"(?:^|-){issue.group(1)}(?:-|$)", "-", branch).strip("-_")
-    return slug(f"beaco-{issue.group(1)}-{branch_fragment(summary)}")
+        return slug(f"beaco-{branch_fragment(branch)}-{fingerprint}")
+    summary = f"{branch[: issue.start()]}-{branch[issue.end() :]}".strip("-_")
+    return slug(f"beaco-{issue.group(1)}-{branch_fragment(summary)}-{fingerprint}")
 
 
 def default_name() -> str:

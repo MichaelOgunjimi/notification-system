@@ -214,7 +214,7 @@ export function AccountSettings({ user, returnPath }: AccountSettingsProps) {
                 </span>
                 <Skeleton className="account-settings__provider-skeleton-action" />
               </>
-            ) : (
+            ) : connections.isError && !connections.data ? null : (
               <>
                 <span className="account-settings__provider-icon">
                   <GithubLogo size={24} weight="fill" />

@@ -18,13 +18,23 @@ class ProjectNameTest(unittest.TestCase):
     def test_issue_branch_is_compact(self) -> None:
         self.assertEqual(
             PROJECT_NAME("feat/67-stop-all-and-loading-skeletons"),
-            "beaco-67-stop-all",
+            "beaco-67-stop-all-d0300e07",
         )
 
     def test_branch_without_issue_stays_distinctive(self) -> None:
         self.assertEqual(
             PROJECT_NAME("feat/stop-all-and-loading-skeletons"),
-            "beaco-stop-all",
+            "beaco-stop-all-413c3e8d",
+        )
+
+    def test_truncated_branches_do_not_share_a_project(self) -> None:
+        self.assertNotEqual(
+            PROJECT_NAME("feat/67-stop-all-api"),
+            PROJECT_NAME("feat/67-stop-all-web"),
+        )
+        self.assertNotEqual(
+            PROJECT_NAME("feat/67-stop-all-api"),
+            PROJECT_NAME("fix/67-stop-all-api"),
         )
 
     def test_existing_assignment_survives_plain_rerun(self) -> None:

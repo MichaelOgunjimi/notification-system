@@ -224,6 +224,13 @@
   color: #68b982;
 }
 
+.organization-settings__message button {
+  color: inherit;
+  margin-left: auto;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .organization-settings__invite,
 .organization-settings__project-create {
   align-items: center;

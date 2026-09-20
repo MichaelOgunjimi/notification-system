@@ -424,6 +424,15 @@ export function OrganizationSettings({
               </article>
             ))}
           </div>
+          {canManageMembers && invitations.isError ? (
+            <p className="organization-settings__message" data-tone="error" role="alert">
+              <WarningCircle size={15} />
+              {invitations.error.message}
+              <button type="button" onClick={() => void invitations.refetch()}>
+                Retry
+              </button>
+            </p>
+          ) : null}
           {canManageMembers && invitations.isPending ? (
             <div className="organization-settings__pending" aria-busy="true">
               <span className="sr-only" role="status">

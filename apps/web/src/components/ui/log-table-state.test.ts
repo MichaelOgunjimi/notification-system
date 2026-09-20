@@ -8,5 +8,6 @@ describe("getLogTableState", () => {
 
   it("keeps usable rows visible during a background refetch", () => {
     expect(getLogTableState(null, false, 3)).toBe("rows");
+    expect(getLogTableState("Refresh failed", false, 3)).toBe("rows");
   });
 });

@@ -275,6 +275,11 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
         onChange={(event) => patch({ search: event.target.value })}
       />
 
+      {query.isPending ? (
+        <span className="sr-only" role="status">
+          Loading events
+        </span>
+      ) : null}
       <div className="events-page__table" aria-busy={query.isFetching || undefined}>
         <div className="events-page__table-head">
           <div>
@@ -356,7 +361,6 @@ export function EventsPage({ organization, project, projects }: EventsPageProps)
             </tbody>
           </table>
         </div>
-        {query.isPending ? <span className="sr-only">Loading events</span> : null}
         {!query.isPending && events.length === 0 ? (
           <p className="events-page__empty" role={query.isError ? "alert" : undefined}>
             {query.isError

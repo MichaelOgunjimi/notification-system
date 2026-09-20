@@ -218,6 +218,11 @@ export function DeliveryPage({
         onChange={(event) => patch({ search: event.target.value })}
       />
 
+      {query.isPending ? (
+        <span className="sr-only" role="status">
+          Loading deliveries
+        </span>
+      ) : null}
       <section className="delivery-page__table" aria-busy={query.isFetching || undefined}>
         <header>
           <div>
@@ -298,7 +303,6 @@ export function DeliveryPage({
             </tbody>
           </table>
         </div>
-        {query.isPending ? <span className="sr-only">Loading deliveries</span> : null}
         {!query.isPending && notifications.length === 0 ? (
           <p className="delivery-page__empty" role={query.isError ? "alert" : undefined}>
             {query.isError

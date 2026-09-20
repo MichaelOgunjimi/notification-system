@@ -14,7 +14,7 @@ export function getLogTableState(
   pending: boolean,
   rowCount: number,
 ): LogTableState {
-  if (error) return "error";
+  if (error && rowCount === 0) return "error";
   if (pending && rowCount === 0) return "pending";
   return rowCount === 0 ? "empty" : "rows";
 }
