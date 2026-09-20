@@ -1,6 +1,6 @@
 {
   "name": "@beaco/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Official server-side TypeScript and JavaScript SDK for Beaco",
   "type": "module",
   "sideEffects": false,
