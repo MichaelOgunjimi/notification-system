@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { AppDatePicker } from "./app-date-picker";
 import { AppSelect } from "./app-select";
 import "./log-filters.css";
 
@@ -142,31 +143,25 @@ export function LogFilters({
 
         {value.range === "custom" ? (
           <div className="log-filters__range">
-            <input
-              type="date"
-              aria-label="From date"
+            <AppDatePicker
+              label="From date"
               max={value.to ? value.to.slice(0, 10) : today}
               value={value.from ? value.from.slice(0, 10) : ""}
-              onChange={(event) =>
+              onChange={(date) =>
                 onChange({
-                  from: event.target.value
-                    ? new Date(`${event.target.value}T00:00:00`).toISOString()
-                    : "",
+                  from: date ? `${date}T00:00:00.000Z` : "",
                 })
               }
             />
             <span aria-hidden>→</span>
-            <input
-              type="date"
-              aria-label="To date"
+            <AppDatePicker
+              label="To date"
               min={value.from ? value.from.slice(0, 10) : undefined}
               max={today}
               value={value.to ? value.to.slice(0, 10) : ""}
-              onChange={(event) =>
+              onChange={(date) =>
                 onChange({
-                  to: event.target.value
-                    ? new Date(`${event.target.value}T23:59:59`).toISOString()
-                    : "",
+                  to: date ? `${date}T23:59:59.999Z` : "",
                 })
               }
             />

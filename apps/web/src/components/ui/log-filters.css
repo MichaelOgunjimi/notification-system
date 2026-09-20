@@ -52,21 +52,6 @@
   font-size: 13px;
 }
 
-.log-filters__range input {
-  background: var(--dashboard-overlay);
-  border: 1px solid var(--dashboard-line-strong);
-  border-radius: 8px;
-  color: var(--dashboard-ink);
-  font: inherit;
-  font-size: 12px;
-  outline: 0;
-  padding: 5px 9px;
-}
-
-.log-filters__range input:focus-visible {
-  border-color: var(--dashboard-accent);
-}
-
 .log-filters__search {
   background: var(--dashboard-overlay);
   border: 1px solid var(--dashboard-line-strong);
