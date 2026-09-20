@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BookOpenText,
   BracketsCurly,
+  Code,
   Database,
   EnvelopeSimple,
   House,
@@ -20,6 +21,7 @@ import type { DocSlug } from "@/lib/docs";
 const DOC_ICONS: Record<DocSlug, ReactNode> = {
   introduction: <BookOpenText size={15} />,
   quickstart: <RocketLaunch size={15} />,
+  sdk: <Code size={15} />,
   events: <Lightning size={15} />,
   channels: <EnvelopeSimple size={15} />,
   templates: <BracketsCurly size={15} />,
@@ -36,6 +38,10 @@ const sections = [
       { slug: "introduction" as const, href: "/introduction", label: "Introduction" },
       { slug: "quickstart" as const, href: "/quickstart", label: "Quickstart" },
     ],
+  },
+  {
+    label: "SDKs",
+    items: [{ slug: "sdk" as const, href: "/sdk", label: "TypeScript / JavaScript" }],
   },
   {
     label: "Build",

@@ -4,6 +4,7 @@ import path from "path";
 export type DocSlug =
   | "introduction"
   | "quickstart"
+  | "sdk"
   | "events"
   | "channels"
   | "templates"
@@ -12,7 +13,7 @@ export type DocSlug =
   | "architecture"
   | "webhooks";
 
-export type DocGroup = "getting-started" | "guides" | "reference";
+export type DocGroup = "getting-started" | "sdks" | "guides" | "reference";
 
 export interface TocHeading {
   id: string;
@@ -43,6 +44,12 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
     title: "Quickstart",
     description: "Get an API key and send your first event in minutes.",
     group: "getting-started",
+  },
+  {
+    slug: "sdk",
+    title: "TypeScript / JavaScript",
+    description: "Use Beaco from TypeScript, JavaScript, Node.js, and Next.js servers.",
+    group: "sdks",
   },
   {
     slug: "events",
@@ -90,6 +97,7 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
 
 export const GROUP_LABELS: Record<DocGroup, string> = {
   "getting-started": "Getting Started",
+  sdks: "SDKs",
   guides: "Guides",
   reference: "Reference",
 };
@@ -101,7 +109,7 @@ export function getDocs() {
 }
 
 export function getDocsByGroup(): { label: string; items: DocDefinition[] }[] {
-  const groups: DocGroup[] = ["getting-started", "guides", "reference"];
+  const groups: DocGroup[] = ["getting-started", "sdks", "guides", "reference"];
   return groups.map((group) => ({
     label: GROUP_LABELS[group],
     items: DOC_DEFINITIONS.filter((d) => d.group === group),
