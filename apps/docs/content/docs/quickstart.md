@@ -20,7 +20,42 @@ All API requests use:
 https://beaco.michaelogunjimi.com/api/v1
 ```
 
-## 3) Send Your First Event
+## 3) Install the SDK
+
+The official SDK works with TypeScript and JavaScript on Node.js 18.17 or newer:
+
+```bash
+npm install @beaco/sdk
+```
+
+Store your project API key in `BEACO_API_KEY`. The SDK is server-only; never expose this value in browser code or a public environment variable.
+
+## 4) Send Your First Event
+
+```ts
+import { Beaco } from "@beaco/sdk";
+
+const beaco = new Beaco({ apiKey: process.env.BEACO_API_KEY! });
+
+const event = await beaco.events.publish({
+  eventType: "user.welcome",
+  recipients: [
+    {
+      channels: ["email"],
+      email: "user@example.com",
+    },
+  ],
+  payload: {
+    userName: "Alice",
+  },
+});
+```
+
+Plain JavaScript uses the same package and API without type annotations.
+
+### Using the REST API directly
+
+The underlying API remains available from every server language:
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
@@ -54,7 +89,14 @@ Example response:
 }
 ```
 
-## 4) Check Event Status
+## 5) Check Event Status
+
+```ts
+const current = await beaco.events.retrieve(event.id);
+console.log(current.status);
+```
+
+Using the REST API directly:
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/events/EVENT_ID \
@@ -77,7 +119,13 @@ Example response:
 }
 ```
 
-## 5) View Notifications
+## 6) View Notifications
+
+```ts
+const notifications = await beaco.notifications.list();
+```
+
+Using the REST API directly:
 
 ```bash
 curl -X GET https://beaco.michaelogunjimi.com/api/v1/notifications \
@@ -106,6 +154,7 @@ Example response:
 Continue with:
 
 - [Events](/events)
+- [TypeScript SDK](/sdk)
 - [Templates](/templates)
 - [Channels](/channels)
 - [Delivery Pipeline](/delivery)

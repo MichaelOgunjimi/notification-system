@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BookOpenText,
   BracketsCurly,
+  Code,
   Database,
   EnvelopeSimple,
   Lightning,
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
 const icons: Record<DocSlug, ReactNode> = {
   introduction: <BookOpenText size={18} />,
   quickstart: <RocketLaunch size={18} />,
+  sdk: <Code size={18} />,
   events: <Lightning size={18} />,
   channels: <EnvelopeSimple size={18} />,
   templates: <BracketsCurly size={18} />,
@@ -34,7 +36,7 @@ const icons: Record<DocSlug, ReactNode> = {
   webhooks: <PlugsConnected size={18} />,
 };
 
-const popular: DocSlug[] = ["quickstart", "events", "delivery", "api-reference"];
+const popular: DocSlug[] = ["quickstart", "sdk", "events", "api-reference"];
 
 export default function DocsIndexPage() {
   const groups = getDocsByGroup();
