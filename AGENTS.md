@@ -15,7 +15,7 @@
 
 ## New worktrees
 
-- Run `make new-worktree` immediately after creating or entering a new worktree. It derives an isolated Compose project name from the branch (including the issue number when the branch is issue-prefixed, such as `feat/67-stop-all`), assigns a free three-digit port suffix, and writes the ignored root `.env` and `apps/web/.env.local` files.
+- Run `make new-worktree` immediately after creating or entering a linked worktree. Do not run it as part of normal primary-checkout setup. The command assigns linked worktrees an isolated project name derived from the branch (including the issue number when the branch is issue-prefixed, such as `feat/67-stop-all`) and a free three-digit port suffix, then writes the ignored root `.env` and `apps/web/.env.local` files. The script retains a safety guard that preserves canonical settings if it is accidentally run in the primary checkout.
 - Re-running `make new-worktree` preserves the worktree's existing Compose name and port suffix.
 - Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
 - Start worktree stacks with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.

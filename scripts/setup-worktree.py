@@ -10,7 +10,6 @@ import subprocess
 import zlib
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 WEB_ENV_FILE = ROOT / "apps/web/.env.local"
@@ -26,6 +25,8 @@ PORT_KEYS = (
     "REDIS_HOST_PORT",
 )
 PORT_PREFIXES = tuple(range(30, 38))
+PRIMARY_PROJECT_NAME = "notification-system"
+PRIMARY_PORTS = (3000, 3001, 8000, 8025, 1025, 5555, 5433, 6379)
 
 
 def slug(value: str) -> str:
@@ -71,6 +72,23 @@ def default_name() -> str:
     ).stdout.strip()
     worktree_name = branch or ROOT.parent.name
     return project_name(worktree_name)
+
+
+def is_primary_checkout() -> bool:
+    """Return whether this checkout owns the repository's common Git directory."""
+    paths = [
+        Path(
+            subprocess.run(
+                ["git", "rev-parse", "--path-format=absolute", option],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        ).resolve()
+        for option in ("--git-dir", "--git-common-dir")
+    ]
+    return paths[0] == paths[1]
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -122,7 +140,7 @@ def resolve_name(requested: str | None, existing: dict[str, str]) -> str:
 
 def allocate_suffix(name: str) -> int:
     """Find a deterministic free three-digit port suffix."""
-    # ponytail: ports are checked, not reserved; add a file lock if worktrees are created concurrently.
+    # ponytail: ports are checked, not reserved; add a file lock for concurrent setup.
     start = zlib.crc32(name.encode()) % 1000
     for offset in range(1000):
         suffix = (start + offset) % 1000
@@ -168,29 +186,34 @@ def main() -> None:
     args = parser.parse_args()
 
     existing = read_env(ENV_FILE)
-    name = resolve_name(args.name, existing)
-    if args.suffix:
-        if not re.fullmatch(r"\d{3}", args.suffix):
-            parser.error("--suffix must be exactly three digits")
-        suffix = int(args.suffix)
-        ports = ports_for_suffix(suffix)
-        occupied = (
-            {existing.get(key) for key in PORT_KEYS}
-            if existing.get("COMPOSE_PROJECT_NAME") == name
-            else set()
-        )
-        if blocked := [
-            port for port in ports if not free(port) and str(port) not in occupied
-        ]:
-            parser.error(f"ports already in use: {', '.join(map(str, blocked))}")
-    elif (
-        existing.get("COMPOSE_PROJECT_NAME") == name
-        and (suffix := existing_suffix(existing)) is not None
-    ):
-        ports = ports_for_suffix(suffix)
+    if is_primary_checkout() and not args.name and not args.suffix:
+        name = PRIMARY_PROJECT_NAME
+        suffix = None
+        ports = PRIMARY_PORTS
     else:
-        suffix = allocate_suffix(name)
-        ports = ports_for_suffix(suffix)
+        name = resolve_name(args.name, existing)
+        if args.suffix:
+            if not re.fullmatch(r"\d{3}", args.suffix):
+                parser.error("--suffix must be exactly three digits")
+            suffix = int(args.suffix)
+            ports = ports_for_suffix(suffix)
+            occupied = (
+                {existing.get(key) for key in PORT_KEYS}
+                if existing.get("COMPOSE_PROJECT_NAME") == name
+                else set()
+            )
+            if blocked := [
+                port for port in ports if not free(port) and str(port) not in occupied
+            ]:
+                parser.error(f"ports already in use: {', '.join(map(str, blocked))}")
+        elif (
+            existing.get("COMPOSE_PROJECT_NAME") == name
+            and (suffix := existing_suffix(existing)) is not None
+        ):
+            ports = ports_for_suffix(suffix)
+        else:
+            suffix = allocate_suffix(name)
+            ports = ports_for_suffix(suffix)
     values = {"COMPOSE_PROJECT_NAME": name, **dict(zip(PORT_KEYS, map(str, ports)))}
     if not args.dry_run:
         update_env(ENV_FILE, values, ROOT / ".env.example")
@@ -218,7 +241,7 @@ def main() -> None:
         )
 
     print(f"Compose project: {name}")
-    print(f"Port suffix: {suffix:03d}")
+    print(f"Port suffix: {suffix:03d}" if suffix is not None else "Ports: canonical")
     for key, port in zip(PORT_KEYS, ports):
         print(f"{key}={port}")
     if not args.dry_run:

@@ -585,6 +585,10 @@
     padding-inline: 8px;
   }
 
+  .organization-settings__project {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
   .organization-settings__member {
     grid-template-columns: 34px minmax(0, 1fr) auto;
   }
