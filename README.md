@@ -98,8 +98,8 @@ Built with FastAPI, Celery, Redis, and PostgreSQL, it accepts events via a REST 
 git clone https://github.com/MichaelOgunjimi/notification-system.git
 cd notification-system
 
-# Create this checkout's Compose name and non-conflicting ports
-make new-worktree
+# Configure the primary checkout with canonical ports
+cp .env.example .env
 
 # Build the complete stack and apply migrations
 docker compose up -d --build
@@ -117,11 +117,12 @@ make dev-web   # http://localhost:3000
 make dev-docs  # http://localhost:3001
 ```
 
-`make new-worktree` writes ignored `.env` and `apps/web/.env.local` files. It derives
-the Compose project name from the current branch and chooses one shared three-digit
-port suffix. Issue-prefixed branches such as `feat/67-stop-all` produce a short name
-such as `beaco-67-stop-all-<hash>`; the hash prevents truncated branch names from
-colliding. Later runs preserve that worktree's existing assignment. Override either value with
+Run `make new-worktree` only in linked worktrees. It writes ignored `.env` and
+`apps/web/.env.local` files with a project name derived from the current branch and one
+shared three-digit port suffix.
+Issue-prefixed branches such as `feat/67-stop-all` produce a short name such as
+`beaco-67-stop-all-<hash>`; the hash prevents truncated branch names from colliding.
+Later runs preserve that worktree's existing assignment. Override either value with
 `make new-worktree name=my-feature suffix=123`. The command prints the URLs assigned
 to that checkout and links the ignored tunnel credentials from the main checkout when
 they are available.

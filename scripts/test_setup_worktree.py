@@ -4,12 +4,14 @@ import runpy
 import tempfile
 import unittest
 from pathlib import Path
-
+from types import SimpleNamespace
+from unittest.mock import patch
 
 SETUP_WORKTREE = runpy.run_path(Path(__file__).with_name("setup-worktree.py"))
 PROJECT_NAME = SETUP_WORKTREE["project_name"]
 RESOLVE_NAME = SETUP_WORKTREE["resolve_name"]
 LINK_TUNNEL_CREDENTIALS = SETUP_WORKTREE["link_tunnel_credentials"]
+IS_PRIMARY_CHECKOUT = SETUP_WORKTREE["is_primary_checkout"]
 
 
 class ProjectNameTest(unittest.TestCase):
@@ -48,6 +50,30 @@ class ProjectNameTest(unittest.TestCase):
             },
         }
         self.assertEqual(RESOLVE_NAME(None, existing), "beaco-67-stop")
+
+    def test_primary_checkout_is_detected_from_git_directories(self) -> None:
+        with patch.dict(IS_PRIMARY_CHECKOUT.__globals__, {"ROOT": Path("/repo")}):
+            with patch(
+                "subprocess.run",
+                side_effect=[
+                    SimpleNamespace(stdout="/repo/.git\n"),
+                    SimpleNamespace(stdout="/repo/.git\n"),
+                ],
+            ):
+                self.assertTrue(IS_PRIMARY_CHECKOUT())
+
+    def test_linked_worktree_is_not_the_primary_checkout(self) -> None:
+        with patch.dict(
+            IS_PRIMARY_CHECKOUT.__globals__, {"ROOT": Path("/repo/worktree")}
+        ):
+            with patch(
+                "subprocess.run",
+                side_effect=[
+                    SimpleNamespace(stdout="/repo/.git/worktrees/feature\n"),
+                    SimpleNamespace(stdout="/repo/.git\n"),
+                ],
+            ):
+                self.assertFalse(IS_PRIMARY_CHECKOUT())
 
     def test_tunnel_credentials_are_shared_with_new_worktree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

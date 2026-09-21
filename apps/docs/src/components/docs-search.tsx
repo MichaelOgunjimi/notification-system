@@ -7,6 +7,7 @@ import type { DocGroup, DocSearchItem } from "@/lib/docs";
 
 const groupLabels: Record<DocGroup, string> = {
   "getting-started": "Getting Started",
+  sdks: "SDKs",
   guides: "Guides",
   reference: "Reference",
 };
