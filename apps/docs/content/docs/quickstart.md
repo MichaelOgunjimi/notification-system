@@ -22,7 +22,7 @@ https://beaco.michaelogunjimi.com/api/v1
 
 ## 3) Install the SDK
 
-The official SDK works with TypeScript and JavaScript on Node.js 18 or newer:
+The official SDK works with TypeScript and JavaScript on Node.js 18.17 or newer:
 
 ```bash
 npm install @beaco/sdk

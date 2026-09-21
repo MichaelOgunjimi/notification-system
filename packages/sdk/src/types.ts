@@ -246,4 +246,6 @@ export interface BeacoOptions {
   baseUrl?: string;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  /** Opt in to a non-loopback HTTP baseUrl. The API key is sent in cleartext when enabled. */
+  allowInsecureHttp?: boolean;
 }

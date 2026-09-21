@@ -18,6 +18,6 @@ await beaco.events.publish({
 });
 ```
 
-Requires Node.js 18 or newer. This package is server-only: never expose a project API key in browser code.
+Requires Node.js 18.17 or newer. This package is server-only: never expose a project API key in browser code.
 
 Request inputs are validated at runtime with Zod. The schemas are exported for JavaScript consumers that want to call `safeParse` directly.

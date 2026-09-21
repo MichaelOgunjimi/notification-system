@@ -3,6 +3,19 @@ import type { BeacoOptions, Page } from "./types";
 
 const DEFAULT_BASE_URL = "https://beaco.michaelogunjimi.com/api/v1";
 const DEFAULT_TIMEOUT_MS = 10_000;
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+/** @internal Rejects a baseUrl that would send the API key over cleartext HTTP. */
+function assertSafeBaseUrl(baseUrl: string, allowInsecureHttp: boolean | undefined): void {
+  const url = new URL(baseUrl);
+  if (url.protocol === "https:") return;
+  if (url.protocol === "http:" && (LOOPBACK_HOSTS.has(url.hostname) || allowInsecureHttp)) return;
+  throw new TypeError(
+    `Beaco baseUrl must use HTTPS (got "${url.protocol}//${url.hostname}"). ` +
+      "Use an HTTPS URL, a loopback host for local development, or set " +
+      "allowInsecureHttp: true to opt in explicitly.",
+  );
+}
 
 type ApiErrorPayload = {
   error?: { code?: string; message?: string; details?: BeacoValidationIssue[] };
@@ -60,6 +73,7 @@ export class HttpClient {
     }
     this.apiKey = options.apiKey.trim();
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+    assertSafeBaseUrl(this.baseUrl, options.allowInsecureHttp);
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
@@ -68,6 +82,7 @@ export class HttpClient {
     path: string,
     init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
   ): Promise<T> {
+    const body = init.body === undefined ? undefined : JSON.stringify(init.body);
     const timeout = AbortSignal.timeout(this.timeoutMs);
     const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
     let response: Response;
@@ -79,10 +94,11 @@ export class HttpClient {
           "Content-Type": "application/json",
           "X-API-Key": this.apiKey,
         },
-        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        body,
         signal,
       });
     } catch (cause) {
+      if (init.signal?.aborted) throw init.signal.reason;
       throw new BeacoError("Unable to reach the Beaco API.", {
         code: "NETWORK_ERROR",
         status: 0,

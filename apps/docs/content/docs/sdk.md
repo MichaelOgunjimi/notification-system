@@ -1,6 +1,6 @@
 # TypeScript / JavaScript SDK
 
-`@beaco/sdk` is the official server-side SDK for publishing events and managing the resources used to deliver them. It supports TypeScript and plain JavaScript on Node.js 18 or newer.
+`@beaco/sdk` is the official server-side SDK for publishing events and managing the resources used to deliver them. It supports TypeScript and plain JavaScript on Node.js 18.17 or newer.
 
 > The SDK uses a secret project API key. Import it only from trusted server code—never from browser bundles, React client components, or publicly exposed environment variables.
 
@@ -54,6 +54,18 @@ const beaco = new Beaco({
   apiKey: process.env.BEACO_API_KEY!,
   baseUrl: "http://localhost:8000/api/v1",
   timeoutMs: 15_000,
+});
+```
+
+The SDK sends your API key on every request, so non-loopback `baseUrl`s must use HTTPS. Loopback
+hosts (`localhost`, `127.0.0.1`, `::1`) are allowed over plain HTTP for local development. Any
+other cleartext HTTP endpoint requires an explicit opt-in:
+
+```ts
+const beaco = new Beaco({
+  apiKey: process.env.BEACO_API_KEY!,
+  baseUrl: "http://internal-beaco.example.net/api/v1",
+  allowInsecureHttp: true,
 });
 ```
 
