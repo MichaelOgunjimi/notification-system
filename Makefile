@@ -89,11 +89,13 @@ seed: ## Seed the local database
 docker-up: ## Start the isolated Compose stack
 	docker compose up -d
 
-docker-up-tunnel: ## Start the shared Cloudflare tunnel
-	docker compose --profile tunnel up -d
+docker-up-tunnel: docker-stop-tunnel ## Move the shared Cloudflare tunnel to this checkout
+	docker compose --profile tunnel up -d cloudflared
 
-docker-stop-tunnel: ## Stop the shared Cloudflare tunnel
+docker-stop-tunnel: ## Stop the shared Cloudflare tunnel from any checkout
 	docker compose --profile tunnel stop cloudflared
+	@containers="$$(docker ps -q --filter label=com.beaco.shared-tunnel=true)"; \
+		if [ -n "$$containers" ]; then docker stop $$containers; fi
 
 stop-all: COMPOSE_PROFILE_ARGS := --profile "*"
 stop-all: docker-down ## Stop all services for this worktree; keep volumes and images
