@@ -1,7 +1,8 @@
 {
   "name": "@beaco/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Official server-side TypeScript and JavaScript SDK for Beaco",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -16,7 +17,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.17"
