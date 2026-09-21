@@ -126,10 +126,10 @@ colliding. Later runs preserve that worktree's existing assignment. Override eit
 to that checkout and links the ignored tunnel credentials from the main checkout when
 they are available.
 
-Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so stop it
-in its current checkout with `make docker-stop-tunnel`, then run
-`make docker-up-tunnel` in the checkout that should receive public traffic. Only one
-checkout may own the tunnel at a time.
+Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so run
+`make docker-up-tunnel` in the checkout that should receive public traffic. It stops
+the current Beaco connector before starting that checkout's connector. Run
+`make docker-stop-tunnel` from any checkout to stop the shared tunnel.
 
 ### Interactive API Docs
 

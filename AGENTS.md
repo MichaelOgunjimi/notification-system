@@ -19,7 +19,7 @@
 - Re-running `make new-worktree` preserves the worktree's existing Compose name and port suffix.
 - Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
 - Start worktree stacks with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.
-- `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Any checkout may opt in, but only one may run the tunnel at a time: run `make docker-stop-tunnel` in the active checkout before `make docker-up-tunnel` in another.
+- `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Run `make docker-up-tunnel` in the checkout that should receive public traffic; it stops the existing Beaco connector before starting the current one. `make docker-stop-tunnel` stops the shared connector from any checkout.
 
 ## Agent skills
 

@@ -183,6 +183,8 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     profiles: ["tunnel"]
+    labels:
+      com.beaco.shared-tunnel: "true"
     command: tunnel --config /etc/cloudflared/config.yml run
     restart: unless-stopped
     depends_on:
