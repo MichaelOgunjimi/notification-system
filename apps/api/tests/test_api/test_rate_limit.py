@@ -68,7 +68,8 @@ async def test_rate_limit_regular_key_general(monkeypatch, auth_client: AsyncCli
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_events_endpoint(auth_client: AsyncClient) -> None:
+async def test_rate_limit_events_endpoint(monkeypatch, auth_client: AsyncClient) -> None:
+    monkeypatch.setattr(settings, "RATE_LIMIT_EVENTS", 30)
     responses = [await auth_client.post("/api/v1/events", json=_event_payload()) for _ in range(31)]
     assert all(resp.status_code == 202 for resp in responses[:30])
     assert responses[30].status_code == 429

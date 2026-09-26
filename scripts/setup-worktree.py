@@ -215,6 +215,10 @@ def main() -> None:
             suffix = allocate_suffix(name)
             ports = ports_for_suffix(suffix)
     values = {"COMPOSE_PROJECT_NAME": name, **dict(zip(PORT_KEYS, map(str, ports)))}
+    values.update(
+        SMTP_HOST="localhost",
+        SMTP_PORT=values["MAILPIT_SMTP_PORT"],
+    )
     if not args.dry_run:
         update_env(ENV_FILE, values, ROOT / ".env.example")
         update_env(
