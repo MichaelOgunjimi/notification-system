@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 -include .env
 
-.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke docker-up docker-up-tunnel docker-stop-tunnel docker-down stop-all docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke load-test docker-up docker-up-tunnel docker-stop-tunnel docker-down stop-all docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 API_DIR := apps/api
 
@@ -51,7 +51,7 @@ dev-docs: ## Run the docs development server
 ##@ Quality
 
 test: ## Run API tests
-	cd $(API_DIR) && uv run pytest -v
+	cd $(API_DIR) && POSTGRES_PORT=$(or $(POSTGRES_HOST_PORT),5432) REDIS_URL=redis://localhost:$(or $(REDIS_HOST_PORT),6379)/0 uv run pytest -v
 
 lint: ## Lint API and frontend code
 	cd $(API_DIR) && uv run ruff check .
@@ -72,6 +72,9 @@ format: ## Format API code
 
 smoke: ## Run the end-to-end smoke test
 	./scripts/smoke-test.py
+
+load-test: ## Load test ingestion; use API_KEY="nk_..." or API_KEYS="nk_...,nk_..."
+	@cd $(API_DIR) && POSTGRES_PORT=$(or $(POSTGRES_HOST_PORT),5433) BEACO_LOAD_TEST_API_KEYS="$${API_KEYS:-$$API_KEY}" uv run python -m scripts.load_test --api http://localhost:$(or $(API_PORT),8000) $(ARGS)
 
 ##@ Database
 

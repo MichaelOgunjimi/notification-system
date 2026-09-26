@@ -125,7 +125,8 @@ Issue-prefixed branches such as `feat/67-stop-all` produce a short name such as
 Later runs preserve that worktree's existing assignment. Override either value with
 `make new-worktree name=my-feature suffix=123`. The command prints the URLs assigned
 to that checkout and links the ignored tunnel credentials from the main checkout when
-they are available.
+they are available. It also points host-run API processes at that worktree's Mailpit
+SMTP port; Docker services always reach Mailpit internally at `mailpit:1025`.
 
 Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so run
 `make docker-up-tunnel` in the checkout that should receive public traffic. It stops
@@ -178,6 +179,37 @@ The secret is returned only when a key is created or rotated. Keys belong to one
 are marked `test` or `live`, and can be independently revoked. Scopes control read
 and write access to events, templates, notifications, scheduled events, suppressions,
 alerts, analytics, dead letters, usage, audit history, and settings.
+
+### Local load testing
+
+For a 3000 requests/minute run, set `RATE_LIMIT_EVENTS=3000` in the worktree `.env`,
+restart the API, then create a test-environment project API key named `Local load test`
+with the `events:write` scope. A useful description is: `Dedicated test credential for
+bounded local ingestion and delivery load tests; never use in production.` Then pass
+the returned secret without saving it in the repository:
+
+```bash
+API_KEY=nk_... make load-test
+
+# 10,000 requests at 100 total requests/second
+API_KEY=nk_... make load-test \
+  ARGS="--requests 10000 --rps 100 --concurrency 100 --delivery-timeout 300"
+
+# 100,000 requests shared round-robin across multiple keys at 500 total requests/second
+API_KEYS='nk_key1,nk_key2,nk_key3' make load-test \
+  ARGS="--requests 100000 --rps 500 --concurrency 250 --delivery-timeout 600"
+
+# Alternatively, sleep 0.1 seconds between request starts (10 requests/second)
+API_KEY=nk_... make load-test ARGS="--requests 10000 --sleep 0.1"
+```
+
+The command reports request status counts, ingestion throughput, p50/p95/max response
+latency, per-key status counts, progress every five seconds, and the time until every
+accepted event reaches a terminal delivery state. It sends 3000 single-event requests with
+concurrency 50 and no throttle by default. `--rps` is the total rate across all keys;
+`--sleep` is the alternative delay between request starts. Use `--batch-size` to multiply
+event volume without consuming more request quota, and `--progress-interval 0` to silence
+progress output. Run `make load-test ARGS="--help"` for every option.
 
 ### SaaS control plane
 
