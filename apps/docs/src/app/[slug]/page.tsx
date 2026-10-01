@@ -7,12 +7,35 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { DocsSidebar } from "@/components/docs-sidebar";
 import { TableOfContents } from "@/components/table-of-contents";
 
+const SDK_GUIDES = [
+  {
+    slug: "sdk",
+    label: "TypeScript",
+    version: "Node.js 18.17+",
+    install: "npm install @beaco/sdk",
+  },
+  {
+    slug: "sdk-python",
+    label: "Python",
+    version: "Python 3.9+",
+    install:
+      'uv add "beaco @ git+https://github.com/MichaelOgunjimi/notification-system.git@main#subdirectory=sdks/python"',
+  },
+  {
+    slug: "sdk-go",
+    label: "Go",
+    version: "Go 1.22+",
+    install: "go get github.com/MichaelOgunjimi/notification-system/sdks/go",
+  },
+] as const;
+
 export function generateStaticParams() {
   return DOC_SLUGS.map((slug) => ({ slug }));
 }
 
 export const dynamicParams = false;
 
+/** Builds metadata for a statically published documentation article. */
 export async function generateMetadata({
   params,
 }: {
@@ -25,11 +48,12 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${doc.title} — Beaco Docs`,
+    title: doc.title,
     description: doc.description,
   };
 }
 
+/** Renders a published documentation article and its local navigation. */
 export default async function DocSlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!DOC_SLUGS.includes(slug as (typeof DOC_SLUGS)[number])) {
@@ -38,9 +62,10 @@ export default async function DocSlugPage({ params }: { params: Promise<{ slug: 
 
   const { content, headings } = getDocContent(slug);
   const { previous, next } = getDocNeighbors(slug);
+  const activeSdk = SDK_GUIDES.find((guide) => guide.slug === slug);
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 sm:py-14 xl:px-10 xl:py-16">
+    <div className="mx-auto w-full max-w-[1440px] px-5 py-10 sm:px-8 sm:py-14 xl:px-10 xl:py-16">
       <div className="docs-content-grid">
         <aside className="docs-article-nav">
           <div className="sticky top-24 -ml-3">
@@ -49,6 +74,27 @@ export default async function DocSlugPage({ params }: { params: Promise<{ slug: 
         </aside>
 
         <article className="min-w-0 py-2 sm:py-4">
+          {activeSdk ? (
+            <section className="sdk-guide-switcher" aria-label="SDK language guide">
+              <nav className="sdk-guide-tabs" aria-label="Choose an SDK language">
+                {SDK_GUIDES.map((guide) => (
+                  <Link
+                    key={guide.slug}
+                    href={`/${guide.slug}`}
+                    aria-current={guide.slug === slug ? "page" : undefined}
+                    className="sdk-guide-tab"
+                  >
+                    <span>{guide.label}</span>
+                    <small>{guide.version}</small>
+                  </Link>
+                ))}
+              </nav>
+              <div className="sdk-guide-command">
+                <span aria-hidden="true">$</span>
+                <code>{activeSdk.install}</code>
+              </div>
+            </section>
+          ) : null}
           <MarkdownRenderer content={content} />
 
           <nav className="mt-16 grid border-t border-white/[0.075] sm:grid-cols-2">

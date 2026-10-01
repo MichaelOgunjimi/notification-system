@@ -14,12 +14,14 @@ import ArrowButton from "@/components/landing/arrow-button";
 import HeroBackground from "@/components/landing/hero-background";
 import PublicFooter from "@/components/landing/public-footer";
 import SiteNavActions from "@/components/landing/site-nav-actions";
+import SdkPlayground from "@/components/landing/sdk-playground";
 import BrandLogo from "@/components/brand/brand-logo";
 import { docsUrl } from "@/lib/urls";
 import "@/components/landing/landing.css";
 
 const navLinks = [
   { label: "How it works", href: "#how-it-works" },
+  { label: "SDKs", href: "#sdks" },
   { label: "Reliability", href: "#reliability" },
   { label: "Docs", href: docsUrl() },
 ];
@@ -84,6 +86,7 @@ const requestExample = `curl -X POST https://api.beaco.dev/v1/events \\
     "data": { "invoice_id": "inv_84Q2" }
   }'`;
 
+/** Public Beaco product landing page. */
 export default function Home() {
   return (
     <main
@@ -248,6 +251,28 @@ export default function Home() {
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section id="sdks" className="site-grid-section site-grid-field">
+          <div className="px-6 py-16 sm:px-10 sm:py-20 lg:px-14">
+            <AnimateOnScroll>
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--site-accent)]">
+                Official server SDKs
+              </p>
+              <div className="mt-4 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+                <h2 className="max-w-[720px] text-[clamp(2.2rem,4vw,3.9rem)] font-medium leading-[0.98] tracking-[-0.055em] text-balance">
+                  Send the same event from TypeScript, Python, or Go.
+                </h2>
+                <p className="max-w-[360px] text-[13px] leading-6 text-[var(--site-muted)]">
+                  Server-side clients keep authentication, request shape, and failures consistent.
+                </p>
+              </div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll variant="fade-up" delay={100} className="mt-10">
+              <SdkPlayground />
+            </AnimateOnScroll>
           </div>
         </section>
 

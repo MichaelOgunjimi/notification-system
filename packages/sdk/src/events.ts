@@ -58,6 +58,7 @@ export function mapEventInput(value: PublishEventInput) {
   };
 }
 
+/** @internal Converts the REST event representation to the public camelCase model. */
 function mapEvent(value: ApiEvent): Event {
   return {
     id: value.id,
@@ -74,14 +75,19 @@ function mapEvent(value: ApiEvent): Event {
 
 /** Publishes and queries Beaco events. */
 export class EventsResource {
+  /** @internal Creates event operations over a shared authenticated transport. */
   constructor(private readonly http: HttpClient) {}
 
   /**
    * Publishes one event for immediate notification fan-out.
-   * @param input Event, recipients, template, and delivery controls.
-   * @param options Optional cancellation signal.
-   * @returns The accepted event summary.
-   * @throws A `BeacoError` when the request fails.
+   * This operation creates an event and may enqueue one notification per recipient channel.
+   * Provide `idempotencyKey` when retries must not duplicate work.
+   *
+   * @param input - Event name, recipients, template data, and delivery controls.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
+   * @returns The event summary accepted by Beaco.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When the API rejects the request or cannot be reached.
    */
   async publish(input: PublishEventInput, options: RequestOptions = {}): Promise<Event> {
     input = PublishEventInputSchema.parse(input);
@@ -94,11 +100,16 @@ export class EventsResource {
   }
 
   /**
-   * Publishes multiple events atomically.
-   * @param events Events to publish in one batch.
-   * @param options Optional cancellation signal.
-   * @returns Accepted event summaries in input order.
-   * @throws A `BeacoError` when validation or the request fails.
+   * Publishes multiple events in one atomic API request.
+   *
+   * The API accepts or rejects the batch as a unit, so a failed request does not partially
+   * create events.
+   *
+   * @param events - Non-empty event inputs using the same contract as {@link publish}.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
+   * @returns Accepted event summaries in the same order as `events`.
+   * @throws {ZodError} When any event fails local schema validation.
+   * @throws {BeacoError} When the API rejects the batch or cannot be reached.
    */
   async publishBatch(events: PublishEventInput[], options: RequestOptions = {}): Promise<Event[]> {
     const values = await this.http.request<ApiEvent[]>("/events/batch", {
@@ -111,9 +122,11 @@ export class EventsResource {
 
   /**
    * Lists events visible to the configured project API key.
-   * @param options Filters, pagination, and optional cancellation signal.
-   * @returns One page of event summaries.
-   * @throws A `BeacoError` when the request fails.
+   * This read-only operation supports status, priority, event type, date, and pagination filters.
+   *
+   * @param options - Filters, pagination, and an optional cancellation signal.
+   * @returns One page of event summaries and pagination metadata.
+   * @throws {BeacoError} When the API rejects the request or cannot be reached.
    */
   async list(options: EventListOptions = {}): Promise<Page<Event>> {
     const page = await this.http.request<ApiPage<ApiEvent>>(`/events${query(options)}`, {
@@ -124,10 +137,10 @@ export class EventsResource {
 
   /**
    * Retrieves one event and its generated notifications.
-   * @param id Event identifier.
-   * @param options Optional cancellation signal.
-   * @returns Detailed event state.
-   * @throws A `BeacoError` when the event is unavailable or the request fails.
+   * @param id - Event identifier returned by {@link publish} or {@link publishBatch}.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
+   * @returns Detailed event state, payload, metadata, and generated notifications.
+   * @throws {BeacoError} When the event is unavailable or the request cannot be completed.
    */
   async retrieve(id: string, options: RequestOptions = {}): Promise<EventDetail> {
     const value = await this.http.request<ApiEventDetail>(`/events/${id}`, options);

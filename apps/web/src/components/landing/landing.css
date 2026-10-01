@@ -297,6 +297,319 @@ a:hover .site-primary-action-icon {
     inset 0 0 0 999px rgba(255, 255, 255, 0.018);
 }
 
+.sdk-workspace {
+  background: var(--site-elevated);
+  border: 1px solid var(--site-line-strong);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.24);
+  display: grid;
+  overflow: hidden;
+}
+
+.sdk-editor {
+  min-width: 0;
+}
+
+.sdk-tabs {
+  border-bottom: 1px solid var(--site-line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sdk-tab {
+  align-items: flex-start;
+  background: transparent;
+  border-right: 1px solid var(--site-line);
+  color: var(--site-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 68px;
+  padding: 15px 18px;
+  position: relative;
+  text-align: left;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+.sdk-tab:last-child {
+  border-right: 0;
+}
+
+.sdk-tab::after {
+  background: var(--site-accent);
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 18px;
+  opacity: 0;
+  position: absolute;
+  right: 18px;
+  transform: scaleX(0.3);
+  transition:
+    opacity 220ms ease,
+    transform 350ms var(--site-ease);
+}
+
+.sdk-tab:hover,
+.sdk-tab[aria-selected="true"] {
+  background: var(--site-overlay);
+  color: var(--site-ink);
+}
+
+.sdk-tab[aria-selected="true"]::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.sdk-tab:focus-visible,
+.sdk-copy-button:focus-visible,
+.sdk-docs-link:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: -2px;
+}
+
+.sdk-tab-version {
+  color: var(--site-muted);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+}
+
+.sdk-code-panel {
+  min-height: 420px;
+}
+
+.sdk-install-row {
+  align-items: center;
+  border-bottom: 1px solid var(--site-line);
+  display: grid;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 54px;
+  padding: 0 14px 0 20px;
+}
+
+.sdk-install-row code {
+  color: var(--site-code);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sdk-prompt {
+  color: var(--site-accent);
+  font-size: 11px;
+  margin-right: 10px;
+}
+
+.sdk-copy-button {
+  align-items: center;
+  background: var(--site-overlay);
+  border: 1px solid var(--site-line);
+  border-radius: 7px;
+  color: var(--site-muted);
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 9px;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+.sdk-copy-button:hover {
+  background: var(--site-overlay-hover);
+  color: var(--site-ink);
+}
+
+.sdk-code {
+  color: var(--site-code);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.75;
+  margin: 0;
+  overflow-x: auto;
+  padding: 28px 22px 34px !important;
+}
+
+.sdk-delivery-panel {
+  background:
+    radial-gradient(circle at 100% 0, rgba(233, 170, 49, 0.1), transparent 34%), var(--site-soft);
+  border-top: 1px solid var(--site-line-strong);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 26px;
+}
+
+.sdk-delivery-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sdk-eyebrow {
+  color: var(--site-muted);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sdk-event-id {
+  color: var(--site-ink);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  margin-top: 7px;
+}
+
+.sdk-live-status {
+  align-items: center;
+  color: var(--site-ink);
+  display: inline-flex;
+  font-size: 10px;
+  gap: 7px;
+}
+
+.sdk-live-status span {
+  background: #69b578;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(105, 181, 120, 0.12);
+  height: 6px;
+  width: 6px;
+}
+
+.sdk-trace {
+  margin: 42px 0 34px;
+}
+
+.sdk-trace-step {
+  display: grid;
+  gap: 13px;
+  grid-template-columns: 24px 1fr;
+  min-height: 64px;
+  position: relative;
+}
+
+.sdk-trace-step:not(:last-child)::after {
+  background: linear-gradient(var(--site-accent), var(--site-line-strong));
+  content: "";
+  height: 40px;
+  left: 11px;
+  position: absolute;
+  top: 26px;
+  width: 1px;
+}
+
+.sdk-trace-marker {
+  background: color-mix(in srgb, var(--site-accent) 14%, var(--site-panel));
+  border: 1px solid color-mix(in srgb, var(--site-accent) 42%, transparent);
+  border-radius: 999px;
+  color: var(--site-accent);
+  display: grid;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8px;
+  height: 24px;
+  place-items: center;
+  width: 24px;
+}
+
+.sdk-trace-step p {
+  color: var(--site-ink);
+  font-size: 12px;
+}
+
+.sdk-trace-step div span {
+  color: var(--site-muted);
+  display: block;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.sdk-payload {
+  border: 1px solid var(--site-line);
+  display: grid;
+  font-size: 9px;
+  gap: 10px 16px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 15px;
+}
+
+.sdk-payload span {
+  color: var(--site-muted);
+}
+
+.sdk-payload code {
+  color: var(--site-code);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sdk-docs-link {
+  align-items: center;
+  border-top: 1px solid var(--site-line);
+  color: var(--site-ink);
+  display: flex;
+  font-size: 11px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 20px;
+  transition: color 220ms ease;
+}
+
+.sdk-docs-link:hover {
+  color: var(--site-accent);
+}
+
+@media (min-width: 900px) {
+  .sdk-workspace {
+    grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.8fr);
+  }
+
+  .sdk-delivery-panel {
+    border-left: 1px solid var(--site-line-strong);
+    border-top: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .sdk-tab {
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .sdk-tab-version {
+    display: none;
+  }
+
+  .sdk-code-panel {
+    min-height: 390px;
+  }
+
+  .sdk-copy-button span {
+    display: none;
+  }
+
+  .sdk-copy-button {
+    justify-content: center;
+    padding: 0;
+    width: 32px;
+  }
+
+  .sdk-code {
+    font-size: 10px;
+    padding: 22px 16px 28px !important;
+  }
+}
+
 @media (max-width: 767px) {
   .site-page-grid {
     background-image: linear-gradient(

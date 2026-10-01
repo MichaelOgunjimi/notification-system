@@ -25,6 +25,7 @@ type ApiTemplate = {
   updated_at: string;
 };
 
+/** @internal Converts the REST template representation to the public camelCase model. */
 function mapTemplate(value: ApiTemplate): Template {
   return {
     id: value.id,
@@ -43,14 +44,18 @@ function mapTemplate(value: ApiTemplate): Template {
 
 /** Creates, previews, updates, and removes delivery templates. */
 export class TemplatesResource {
+  /** @internal Creates template operations over a shared authenticated transport. */
   constructor(private readonly http: HttpClient) {}
 
   /**
    * Creates a template owned by the configured project.
-   * @param input Template content and variables.
-   * @param options Optional cancellation signal.
-   * @returns The created template.
-   * @throws A `BeacoError` when validation or the request fails.
+   * This operation stores a project-scoped template for future event delivery.
+   *
+   * @param input - Template name, channel, content, and declared render variables.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
+   * @returns The newly created template.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When validation, authorization, or the API request fails.
    */
   async create(input: CreateTemplateInput, options: RequestOptions = {}): Promise<Template> {
     input = CreateTemplateInputSchema.parse(input);
@@ -65,9 +70,9 @@ export class TemplatesResource {
 
   /**
    * Lists templates available to the configured project.
-   * @param options Filters, pagination, and optional cancellation signal.
-   * @returns One page of templates.
-   * @throws A `BeacoError` when the request fails.
+   * @param options - Channel filter, pagination, and an optional cancellation signal.
+   * @returns One page of templates and pagination metadata.
+   * @throws {BeacoError} When the API rejects the request or cannot be reached.
    */
   async list(options: TemplateListOptions = {}): Promise<Page<Template>> {
     const page = await this.http.request<ApiPage<ApiTemplate>>(`/templates${query(options)}`, {
@@ -78,10 +83,10 @@ export class TemplatesResource {
 
   /**
    * Retrieves one template by identifier.
-   * @param id Template identifier.
-   * @param options Optional cancellation signal.
+   * @param id - Unique template identifier.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns The requested template.
-   * @throws A `BeacoError` when the template is unavailable or the request fails.
+   * @throws {BeacoError} When the template is unavailable or the request cannot be completed.
    */
   async retrieve(id: string, options: RequestOptions = {}): Promise<Template> {
     return mapTemplate(await this.http.request<ApiTemplate>(`/templates/${id}`, options));
@@ -89,11 +94,14 @@ export class TemplatesResource {
 
   /**
    * Replaces the supplied fields on an owned template.
-   * @param id Template identifier.
-   * @param input Fields to update.
-   * @param options Optional cancellation signal.
+   * This operation mutates the stored template; fields omitted from `input` remain unchanged.
+   *
+   * @param id - Unique template identifier.
+   * @param input - Editable fields to replace. Set `subject` to `null` to clear it.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns The updated template.
-   * @throws A `BeacoError` when validation, ownership, or the request fails.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When validation, ownership, or the API request fails.
    */
   async update(
     id: string,
@@ -112,11 +120,13 @@ export class TemplatesResource {
 
   /**
    * Renders a template without sending a notification.
-   * @param id Template identifier.
-   * @param variables Values used during rendering.
-   * @param options Optional cancellation signal.
+   * This operation does not create an event or notification.
+   *
+   * @param id - Unique template identifier.
+   * @param variables - Values substituted into the template body and subject.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns Rendered subject and body.
-   * @throws A `BeacoError` when rendering or the request fails.
+   * @throws {BeacoError} When rendering fails or the request cannot be completed.
    */
   async preview(
     id: string,
@@ -132,10 +142,12 @@ export class TemplatesResource {
 
   /**
    * Soft-deletes an owned template.
-   * @param id Template identifier.
-   * @param options Optional cancellation signal.
+   * The template becomes unavailable for future sends; historical delivery records remain.
+   *
+   * @param id - Unique template identifier.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns Nothing after successful deletion.
-   * @throws A `BeacoError` when ownership or the request fails.
+   * @throws {BeacoError} When ownership validation fails or the request cannot be completed.
    */
   async delete(id: string, options: RequestOptions = {}): Promise<void> {
     await this.http.request<void>(`/templates/${id}`, {
