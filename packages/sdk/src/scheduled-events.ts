@@ -23,6 +23,7 @@ type ApiScheduledEvent = {
   updated_at: string;
 };
 
+/** @internal Converts a REST scheduled event to the public camelCase model. */
 function mapScheduledEvent(value: ApiScheduledEvent): ScheduledEvent {
   return {
     id: value.id,
@@ -39,14 +40,18 @@ function mapScheduledEvent(value: ApiScheduledEvent): ScheduledEvent {
 
 /** Creates, lists, and cancels deferred events. */
 export class ScheduledEventsResource {
+  /** @internal Creates scheduled-event operations over a shared authenticated transport. */
   constructor(private readonly http: HttpClient) {}
 
   /**
    * Schedules an event for future delivery.
-   * @param input Event content and future delivery time.
-   * @param options Optional cancellation signal.
+   * This operation stores deferred work; delivery is not attempted before `scheduledFor`.
+   *
+   * @param input - Event content, recipients, template data, and future delivery time.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns The created scheduled event.
-   * @throws A `BeacoError` when validation or the request fails.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When validation, authorization, or the API request fails.
    */
   async create(
     input: CreateScheduledEventInput,
@@ -74,9 +79,9 @@ export class ScheduledEventsResource {
 
   /**
    * Lists scheduled events visible to the configured project API key.
-   * @param options Filters, pagination, and optional cancellation signal.
-   * @returns One page of scheduled events.
-   * @throws A `BeacoError` when the request fails.
+   * @param options - Status filter, pagination, and an optional cancellation signal.
+   * @returns One page of scheduled events and pagination metadata.
+   * @throws {BeacoError} When the API rejects the request or cannot be reached.
    */
   async list(options: ScheduledEventListOptions = {}): Promise<Page<ScheduledEvent>> {
     const page = await this.http.request<ApiPage<ApiScheduledEvent>>(
@@ -88,10 +93,12 @@ export class ScheduledEventsResource {
 
   /**
    * Cancels a pending scheduled event.
-   * @param id Scheduled-event identifier.
-   * @param options Optional cancellation signal.
+   * Cancellation changes server state and is valid only before dispatch.
+   *
+   * @param id - Unique scheduled-event identifier.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns Nothing after successful cancellation.
-   * @throws A `BeacoError` when the event cannot be cancelled or the request fails.
+   * @throws {BeacoError} When the event cannot be cancelled or the request cannot be completed.
    */
   async cancel(id: string, options: RequestOptions = {}): Promise<void> {
     await this.http.request<void>(`/scheduled-events/${id}`, {

@@ -103,10 +103,111 @@
   display: none;
 }
 
+.sdk-guide-switcher {
+  background: var(--docs-panel);
+  border: 1px solid var(--docs-line-strong);
+  margin-bottom: 2.25rem;
+  overflow: hidden;
+}
+
+.sdk-guide-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sdk-guide-tab {
+  border-right: 1px solid var(--docs-line);
+  color: var(--docs-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 14px 16px;
+  position: relative;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.sdk-guide-tab:last-child {
+  border-right: 0;
+}
+
+.sdk-guide-tab::after {
+  background: var(--docs-accent);
+  bottom: 0;
+  content: "";
+  height: 2px;
+  left: 16px;
+  opacity: 0;
+  position: absolute;
+  right: 16px;
+}
+
+.sdk-guide-tab:hover,
+.sdk-guide-tab[aria-current="page"] {
+  background: var(--docs-control);
+  color: var(--docs-ink);
+}
+
+.sdk-guide-tab[aria-current="page"]::after {
+  opacity: 1;
+}
+
+.sdk-guide-tab:focus-visible {
+  outline: 2px solid var(--docs-accent);
+  outline-offset: -2px;
+}
+
+.sdk-guide-tab span {
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.sdk-guide-tab small {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+}
+
+.sdk-guide-command {
+  align-items: center;
+  border-top: 1px solid var(--docs-line);
+  display: grid;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 13px 16px;
+}
+
+.sdk-guide-command span {
+  color: var(--docs-accent);
+  font-size: 11px;
+}
+
+.sdk-guide-command code {
+  color: var(--docs-ink-soft);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .sdk-guide-tab {
+    align-items: center;
+    padding: 13px 8px;
+    text-align: center;
+  }
+
+  .sdk-guide-tab small {
+    display: none;
+  }
+}
+
 @media (min-width: 1024px) {
   .docs-content-grid {
-    grid-template-columns: 210px minmax(0, 720px);
-    gap: 3.5rem;
+    grid-template-columns: 190px minmax(0, 860px);
+    gap: 3rem;
   }
 
   .docs-article-nav {
@@ -116,8 +217,7 @@
 
 @media (min-width: 1280px) {
   .docs-content-grid {
-    grid-template-columns: 210px minmax(0, 720px) 210px;
-    gap: 3.5rem;
+    grid-template-columns: 190px minmax(0, 860px) minmax(160px, 1fr);
   }
 
   .docs-toc-aside {

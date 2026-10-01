@@ -20,15 +20,27 @@ All API requests use:
 https://beaco.michaelogunjimi.com/api/v1
 ```
 
-## 3) Install the SDK
+## 3) Choose an SDK
 
-The official SDK works with TypeScript and JavaScript on Node.js 18.17 or newer:
+TypeScript and JavaScript:
 
 ```bash
 npm install @beaco/sdk
 ```
 
-Store your project API key in `BEACO_API_KEY`. The SDK is server-only; never expose this value in browser code or a public environment variable.
+Python:
+
+```bash
+uv add "beaco @ git+https://github.com/MichaelOgunjimi/notification-system.git@main#subdirectory=sdks/python"
+```
+
+Go:
+
+```bash
+go get github.com/MichaelOgunjimi/notification-system/sdks/go
+```
+
+Store your project API key in `BEACO_API_KEY`. All Beaco SDKs are server-only; never expose this value in browser code or a public environment variable.
 
 ## 4) Send Your First Event
 
@@ -154,7 +166,9 @@ Example response:
 Continue with:
 
 - [Events](/events)
-- [TypeScript SDK](/sdk)
+- [TypeScript / JavaScript SDK](/sdk)
+- [Python SDK](/sdk-python)
+- [Go SDK](/sdk-go)
 - [Templates](/templates)
 - [Channels](/channels)
 - [Delivery Pipeline](/delivery)

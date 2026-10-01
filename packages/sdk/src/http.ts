@@ -52,6 +52,7 @@ export function query(options: object = {}): string {
   return value ? `?${value}` : "";
 }
 
+/** @internal Converts a camelCase SDK option name to its REST query parameter name. */
 function toSnakeCase(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
@@ -63,6 +64,12 @@ export class HttpClient {
   private readonly fetcher: typeof globalThis.fetch;
   private readonly timeoutMs: number;
 
+  /**
+   * @internal Configures the shared authenticated transport without performing network I/O.
+   * @param options - API key, endpoint, timeout, and optional custom Fetch implementation.
+   * @throws {TypeError} When authentication, timeout, or endpoint configuration is invalid.
+   * @throws {Error} When constructed in a browser environment.
+   */
   constructor(options: BeacoOptions) {
     if (!options.apiKey?.trim()) throw new TypeError("Beaco apiKey is required.");
     if (options.timeoutMs !== undefined && options.timeoutMs <= 0) {
@@ -78,6 +85,17 @@ export class HttpClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
+  /**
+   * Sends one authenticated JSON request and decodes its response.
+   *
+   * @typeParam T - Expected decoded response shape.
+   * @param path - API path beginning with `/`, including any encoded query string.
+   * @param init - Optional method, JSON-serializable body, and caller cancellation signal.
+   * @returns The decoded response body, or `undefined` for an HTTP 204 response.
+   * @throws {BeacoError} When the API returns a non-success status or no response is received.
+   * @throws The caller's abort reason when `init.signal` is aborted.
+   * @internal
+   */
   async request<T>(
     path: string,
     init: { method?: string; body?: unknown; signal?: AbortSignal } = {},

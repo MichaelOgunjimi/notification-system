@@ -65,6 +65,21 @@ jobs:
       - run: npm run test --workspaces --if-present
       - run: npm run build
 
+  sdks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: sdks/go/go.mod
+          cache-dependency-path: sdks/go/go.mod
+      - run: uv run --project sdks/python python -m unittest discover -s sdks/python/tests -v
+      - run: go test ./...
+        working-directory: sdks/go
+
   changeset-check:
     if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest

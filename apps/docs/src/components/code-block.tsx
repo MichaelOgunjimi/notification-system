@@ -11,6 +11,7 @@ const LANG_LABELS: Record<string, string> = {
   json: "JSON",
   python: "Python",
   py: "Python",
+  go: "Go",
   typescript: "TypeScript",
   ts: "TypeScript",
   javascript: "JavaScript",

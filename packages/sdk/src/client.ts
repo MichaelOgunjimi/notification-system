@@ -20,11 +20,16 @@ export class Beaco {
   readonly suppressions: SuppressionsResource;
 
   /**
-   * Creates a Beaco client using a secret project API key.
+   * Creates a reusable, server-side Beaco client.
    *
-   * @param options API key, endpoint, transport, and timeout configuration.
+   * Construction performs no network I/O. Every resource shares the configured transport,
+   * timeout, and secret project API key.
+   *
+   * @param options - Authentication, endpoint, transport, and timeout configuration. Keep
+   * `options.apiKey` in a server-side secret store; it is sent in the `X-API-Key` header.
    * @throws {TypeError} When the API key is empty or the timeout is not positive.
-   * @throws {Error} When constructed in a browser environment, where the key would be exposed.
+   * @throws {TypeError} When the base URL is invalid or uses unsafe cleartext HTTP.
+   * @throws {Error} When constructed in a browser, where the project key would be exposed.
    */
   constructor(options: BeacoOptions) {
     const http = new HttpClient(options);

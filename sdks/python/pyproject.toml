@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beaco"
+version = "0.1.0"
+description = "Official Python SDK for Beaco"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Michael Ogunjimi" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://beaco.michaelogunjimi.com"
+Documentation = "https://docs.beaco.michaelogunjimi.com"
+Repository = "https://github.com/MichaelOgunjimi/notification-system"
+
+[tool.setuptools.packages.find]
+where = ["src"]

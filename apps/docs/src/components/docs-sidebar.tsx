@@ -22,6 +22,8 @@ const DOC_ICONS: Record<DocSlug, ReactNode> = {
   introduction: <BookOpenText size={15} />,
   quickstart: <RocketLaunch size={15} />,
   sdk: <Code size={15} />,
+  "sdk-python": <Code size={15} />,
+  "sdk-go": <Code size={15} />,
   events: <Lightning size={15} />,
   channels: <EnvelopeSimple size={15} />,
   templates: <BracketsCurly size={15} />,
@@ -41,7 +43,11 @@ const sections = [
   },
   {
     label: "SDKs",
-    items: [{ slug: "sdk" as const, href: "/sdk", label: "TypeScript / JavaScript" }],
+    items: [
+      { slug: "sdk" as const, href: "/sdk", label: "TypeScript / JavaScript" },
+      { slug: "sdk-python" as const, href: "/sdk-python", label: "Python" },
+      { slug: "sdk-go" as const, href: "/sdk-go", label: "Go" },
+    ],
   },
   {
     label: "Build",

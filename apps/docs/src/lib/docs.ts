@@ -1,10 +1,13 @@
 import fs from "fs";
 import path from "path";
 
+/** Stable route slugs for published documentation pages. */
 export type DocSlug =
   | "introduction"
   | "quickstart"
   | "sdk"
+  | "sdk-python"
+  | "sdk-go"
   | "events"
   | "channels"
   | "templates"
@@ -49,6 +52,18 @@ export const DOC_DEFINITIONS: DocDefinition[] = [
     slug: "sdk",
     title: "TypeScript / JavaScript",
     description: "Use Beaco from TypeScript, JavaScript, Node.js, and Next.js servers.",
+    group: "sdks",
+  },
+  {
+    slug: "sdk-python",
+    title: "Python",
+    description: "Publish and inspect Beaco events from Python services.",
+    group: "sdks",
+  },
+  {
+    slug: "sdk-go",
+    title: "Go",
+    description: "Publish and inspect Beaco events from Go services.",
     group: "sdks",
   },
   {

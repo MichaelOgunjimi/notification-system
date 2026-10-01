@@ -63,6 +63,7 @@ export function mapNotification(value: ApiNotification): Notification {
   };
 }
 
+/** @internal Converts a REST delivery log to the public camelCase model. */
 function mapLog(value: ApiNotificationLog): NotificationLog {
   return {
     id: value.id,
@@ -75,13 +76,16 @@ function mapLog(value: ApiNotificationLog): NotificationLog {
 
 /** Read-only access to notification delivery records. */
 export class NotificationsResource {
+  /** @internal Creates notification queries over a shared authenticated transport. */
   constructor(private readonly http: HttpClient) {}
 
   /**
    * Lists notifications visible to the configured project API key.
-   * @param options Filters, pagination, and optional cancellation signal.
-   * @returns One page of notification summaries.
-   * @throws A `BeacoError` when the request fails.
+   * This read-only operation supports status, channel, recipient, date, and pagination filters.
+   *
+   * @param options - Filters, pagination, and an optional cancellation signal.
+   * @returns One page of notification summaries and pagination metadata.
+   * @throws {BeacoError} When the API rejects the request or cannot be reached.
    */
   async list(options: NotificationListOptions = {}): Promise<Page<Notification>> {
     const page = await this.http.request<ApiPage<ApiNotification>>(
@@ -93,10 +97,10 @@ export class NotificationsResource {
 
   /**
    * Retrieves one notification and its delivery history.
-   * @param id Notification identifier.
-   * @param options Optional cancellation signal.
+   * @param id - Unique notification identifier.
+   * @param options - Optional cancellation signal. Aborting it cancels the HTTP request.
    * @returns Detailed notification state and delivery logs.
-   * @throws A `BeacoError` when the notification is unavailable or the request fails.
+   * @throws {BeacoError} When the notification is unavailable or the request cannot be completed.
    */
   async retrieve(id: string, options: RequestOptions = {}): Promise<NotificationDetail> {
     const value = await this.http.request<ApiNotificationDetail>(`/notifications/${id}`, options);
