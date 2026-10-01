@@ -2,6 +2,16 @@ import { z } from "zod";
 
 const channel = z.enum(["email", "sms", "webhook"]);
 const priority = z.enum(["high", "medium", "low"]);
+const missingVariablePolicy = z.enum(["error", "blank"]);
+
+/** Runtime schema for already-rendered inline email content. */
+export const InlineEmailSchema = z
+  .object({
+    subject: z.string().max(500).optional(),
+    html: z.string().min(1),
+    text: z.string().optional(),
+  })
+  .strict();
 
 /** Runtime schema for an event recipient. */
 export const RecipientSchema = z
@@ -25,11 +35,17 @@ export const PublishEventInputSchema = z
     priority: priority.optional(),
     templateId: z.string().optional(),
     templateName: z.string().min(1).max(255).optional(),
+    inline: InlineEmailSchema.optional(),
     payload: z.record(z.string(), z.unknown()).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
     idempotencyKey: z.string().min(1).max(255).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    ({ templateId, templateName, inline }) =>
+      [templateId, templateName, inline].filter((value) => value !== undefined).length === 1,
+    { message: "Exactly one of templateId, templateName, or inline is required" },
+  );
 
 /** Runtime schema for a template creation request. */
 export const CreateTemplateInputSchema = z
@@ -38,7 +54,9 @@ export const CreateTemplateInputSchema = z
     channel,
     subject: z.string().max(500).optional(),
     body: z.string().min(1),
+    textBody: z.string().optional(),
     variables: z.array(z.string()).optional(),
+    onMissingVariable: missingVariablePolicy.optional(),
   })
   .strict();
 
@@ -49,7 +67,25 @@ export const UpdateTemplateInputSchema = z
     channel: channel.optional(),
     subject: z.string().max(500).nullable().optional(),
     body: z.string().min(1).optional(),
+    textBody: z.string().nullable().optional(),
     variables: z.array(z.string()).optional(),
+    onMissingVariable: missingVariablePolicy.optional(),
+  })
+  .strict();
+
+/** Runtime schema for template content synchronized by name. */
+export const UpsertTemplateInputSchema = CreateTemplateInputSchema.omit({
+  name: true,
+  channel: true,
+});
+
+/** Runtime schema for importing sample HTML as a template. */
+export const ImportTemplateInputSchema = z
+  .object({
+    name: z.string().min(1).max(255),
+    subject: z.string().max(500).optional(),
+    html: z.string().min(1),
+    variables: z.record(z.string(), z.string()).optional(),
   })
   .strict();
 

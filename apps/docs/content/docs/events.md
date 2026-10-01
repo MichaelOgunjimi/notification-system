@@ -11,9 +11,13 @@ An event is a structured request that includes:
 - what happened (`event_type`)
 - who should be notified (`recipients`)
 - context data (`payload`)
-- optional delivery controls (`priority`, `template_id`, `idempotency_key`)
+- one content source (`template_id`, `template_name`, or `inline`)
+- optional delivery controls (`priority`, `idempotency_key`)
 
 Beaco stores the event and creates notification records asynchronously.
+
+Exactly one of `template_id`, `template_name`, or `inline` is required. Inline content bypasses
+Jinja rendering completely; strings such as `{{ untouched }}` are sent literally.
 
 ## Create an Event
 
@@ -37,14 +41,16 @@ X-API-Key: <project API key>
 
 ### Request Fields
 
-| Field             | Type   | Required | Description                                        |
-| ----------------- | ------ | -------- | -------------------------------------------------- |
-| `event_type`      | string | yes      | Logical event name, e.g. `user.welcome`            |
-| `recipients`      | array  | yes      | One or more recipient definitions                  |
-| `payload`         | object | yes      | Data for template rendering and downstream context |
-| `priority`        | enum   | no       | `high`, `medium`, `low` (default: `medium`)        |
-| `template_id`     | string | no       | Template reference for channel content rendering   |
-| `idempotency_key` | string | no       | Duplicate-prevention key for safe retries          |
+| Field             | Type   | Required     | Description                                        |
+| ----------------- | ------ | ------------ | -------------------------------------------------- |
+| `event_type`      | string | yes          | Logical event name, e.g. `user.welcome`            |
+| `recipients`      | array  | yes          | One or more recipient definitions                  |
+| `payload`         | object | yes          | Data for template rendering and downstream context |
+| `priority`        | enum   | no           | `high`, `medium`, `low` (default: `medium`)        |
+| `template_id`     | string | one of three | Template UUID for content rendering                |
+| `template_name`   | string | one of three | Project template name for content rendering        |
+| `inline`          | object | one of three | Already-rendered `{subject, html, text}` email     |
+| `idempotency_key` | string | no           | Duplicate-prevention key for safe retries          |
 
 ### Example: Single Event
 
@@ -81,6 +87,39 @@ Typical response for first submission:
 }
 ```
 
+### End-to-End Branded Order Confirmation
+
+After syncing the `order-confirmed` template from the [Templates guide](/templates), send by name:
+
+```bash
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Key: YOUR_PROJECT_KEY' \
+  -d '{
+    "event_type": "order.confirmed",
+    "template_name": "order-confirmed",
+    "idempotency_key": "order-BEA-1042-confirmed",
+    "recipients": [{"channels":["email"],"email":"chidi@example.com"}],
+    "payload": {"customer_name":"Chidi","order_number":"BEA-1042"}
+  }'
+```
+
+If your app already rendered the email, send it without first creating a template:
+
+```json
+{
+  "event_type": "order.confirmed",
+  "recipients": [{ "channels": ["email"], "email": "chidi@example.com" }],
+  "inline": {
+    "subject": "Order BEA-1042 confirmed",
+    "html": "<main><h1>Thanks, Chidi</h1><p>Your order is confirmed.</p></main>",
+    "text": "Thanks, Chidi. Your order is confirmed."
+  },
+  "payload": {},
+  "idempotency_key": "order-BEA-1042-confirmed"
+}
+```
+
 ## Recipients
 
 Each recipient object defines:
@@ -104,6 +143,7 @@ Each recipient object defines:
 ```json
 {
   "event_type": "order.shipped",
+  "template_name": "order-shipped",
   "recipients": [
     {
       "channels": ["email"],
@@ -174,6 +214,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   -H "X-API-Key: YOUR_PROJECT_KEY" \
   -d '{
     "event_type": "user.welcome",
+    "template_name": "welcome-email",
     "idempotency_key": "welcome-user-abc-001",
     "recipients": [{"channels":["email"],"email":"user@example.com"}],
     "payload": {"user_name":"Alice"}
@@ -204,11 +245,13 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
     "events": [
       {
         "event_type": "user.welcome",
+        "template_name": "welcome-email",
         "recipients": [{"channels":["email"],"email":"a@example.com"}],
         "payload": {"user_name":"A"}
       },
       {
         "event_type": "user.welcome",
+        "template_name": "welcome-email",
         "recipients": [{"channels":["email"],"email":"b@example.com"}],
         "payload": {"user_name":"B"}
       }

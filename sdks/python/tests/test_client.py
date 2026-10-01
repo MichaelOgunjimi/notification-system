@@ -27,6 +27,7 @@ class BeacoTest(unittest.TestCase):
             event = client.events.publish(
                 "user.welcome",
                 [{"channels": ["email"], "email": "user@example.com"}],
+                inline={"subject": "Welcome", "html": "<p>Welcome</p>"},
                 idempotency_key="welcome-user-1",
             )
 
@@ -38,6 +39,7 @@ class BeacoTest(unittest.TestCase):
             {
                 "event_type": "user.welcome",
                 "recipients": [{"channels": ["email"], "email": "user@example.com"}],
+                "inline": {"subject": "Welcome", "html": "<p>Welcome</p>"},
                 "idempotency_key": "welcome-user-1",
             },
         )
@@ -49,6 +51,8 @@ class BeacoTest(unittest.TestCase):
     def test_all_resource_groups_use_expected_routes(self):
         responses = [
             Response({"id": "tpl_1"}),
+            Response({"id": "tpl_1"}),
+            Response({"template": {"id": "tpl_2"}, "preview": {"html": "Hi Ada"}}),
             Response({"subject": "Hi Ada", "body": "Welcome"}),
             Response({"id": "ntf_1"}),
             Response({"id": "sch_1"}),
@@ -58,6 +62,8 @@ class BeacoTest(unittest.TestCase):
         with patch("beaco._http.urlopen", side_effect=responses) as mocked:
             client = Beaco("secret", base_url="http://localhost:8000/api/v1")
             client.templates.create("welcome", "email", "Hi {{ name }}")
+            client.templates.upsert_by_name("welcome email", "Hi {{ name }}")
+            client.templates.import_html("imported", "<p>Hi Ada</p>", {"name": "Ada"})
             client.templates.preview("tpl_1", {"name": "Ada"})
             client.notifications.retrieve("ntf_1")
             client.scheduled_events.create(
@@ -73,6 +79,11 @@ class BeacoTest(unittest.TestCase):
             [(request.method, request.full_url) for request in requests],
             [
                 ("POST", "http://localhost:8000/api/v1/templates"),
+                (
+                    "PUT",
+                    "http://localhost:8000/api/v1/templates/by-name/welcome%20email?channel=email",
+                ),
+                ("POST", "http://localhost:8000/api/v1/templates/import"),
                 ("POST", "http://localhost:8000/api/v1/templates/tpl_1/preview"),
                 ("GET", "http://localhost:8000/api/v1/notifications/ntf_1"),
                 ("POST", "http://localhost:8000/api/v1/scheduled-events"),

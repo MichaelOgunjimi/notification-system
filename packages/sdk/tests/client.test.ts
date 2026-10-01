@@ -46,6 +46,7 @@ describe("Beaco", () => {
       client.events.publish({
         eventType: "user.welcome",
         recipients: [{ userId: "user-1", channels: ["email"], email: "a@example.com" }],
+        inline: { subject: "Welcome", html: "<p>Welcome</p>" },
         payload: { firstName: "Ada" },
         idempotencyKey: "welcome-1",
       }),
@@ -65,6 +66,7 @@ describe("Beaco", () => {
               email: "a@example.com",
             },
           ],
+          inline: { subject: "Welcome", html: "<p>Welcome</p>" },
           payload: { firstName: "Ada" },
           idempotency_key: "welcome-1",
         }),
@@ -125,6 +127,7 @@ describe("Beaco", () => {
       .publish({
         eventType: "user.welcome",
         recipients: [{ channels: ["email"], email: "user@example.com" }],
+        inline: { subject: "Welcome", html: "<p>Welcome</p>" },
       })
       .catch((e) => e);
     expect(error).toBeInstanceOf(BeacoError);

@@ -4,12 +4,13 @@ import logging
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from app.core.datetime import to_naive_utc
+from app.modules.credentials.model import ApiKey
 from app.modules.delivery.processing.queues import dispatcher_queue
 from app.modules.events import idempotency as idempotency_service
 from app.modules.events.enums import EventPriority, EventStatus
@@ -71,11 +72,20 @@ async def create_event(
     (or rolling back) the transaction — used by the batch endpoint so that
     all events in a batch are atomic.
     """
-    # --- Resolve template_name → template_id (template_id takes priority if both given) ---
+    # --- Resolve template_name → template_id within this key's project. ---
     resolved_template_id = event_data.template_id
     if resolved_template_id is None and event_data.template_name:
+        project_id = (
+            await db.execute(select(col(ApiKey.project_id)).where(col(ApiKey.id) == api_key_id))
+        ).scalar_one_or_none()
         result = await db.execute(
-            select(Template).where(col(Template.name) == event_data.template_name)
+            select(Template)
+            .where(
+                col(Template.name) == event_data.template_name,
+                col(Template.is_active),
+                or_(col(Template.project_id) == project_id, col(Template.project_id).is_(None)),
+            )
+            .order_by(col(Template.project_id).is_(None))
         )
         tpl = result.scalars().first()
         resolved_template_id = tpl.id if tpl is not None else None
@@ -93,6 +103,7 @@ async def create_event(
         priority=event_data.priority,
         status=EventStatus.ACCEPTED,
         template_id=resolved_template_id,
+        inline_content=event_data.inline.model_dump() if event_data.inline else None,
         payload=event_data.payload,
         metadata_=event_data.metadata,
         api_key_id=api_key_id,

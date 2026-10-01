@@ -1,7 +1,14 @@
 import { type ApiPage, HttpClient, mapPage, query } from "./http";
-import { CreateTemplateInputSchema, UpdateTemplateInputSchema } from "./schemas";
+import {
+  CreateTemplateInputSchema,
+  ImportTemplateInputSchema,
+  UpdateTemplateInputSchema,
+  UpsertTemplateInputSchema,
+} from "./schemas";
 import type {
   CreateTemplateInput,
+  ImportTemplateInput,
+  ImportTemplateResult,
   NotificationChannel,
   Page,
   RequestOptions,
@@ -9,6 +16,7 @@ import type {
   TemplateListOptions,
   TemplatePreview,
   UpdateTemplateInput,
+  UpsertTemplateInput,
 } from "./types";
 
 type ApiTemplate = {
@@ -19,10 +27,22 @@ type ApiTemplate = {
   channel: NotificationChannel;
   subject: string | null;
   body: string;
+  text_body: string | null;
   variables: string[];
+  detected_variables: string[];
+  on_missing_variable: "error" | "blank";
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+type ApiTemplatePreview = {
+  subject: string | null;
+  html: string;
+  text: string;
+  body: string;
+  variables_used: string[];
+  missing_variables: string[];
 };
 
 /** @internal Converts the REST template representation to the public camelCase model. */
@@ -35,10 +55,34 @@ function mapTemplate(value: ApiTemplate): Template {
     channel: value.channel,
     subject: value.subject,
     body: value.body,
+    textBody: value.text_body,
     variables: value.variables,
+    detectedVariables: value.detected_variables,
+    onMissingVariable: value.on_missing_variable,
     isActive: value.is_active,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function mapTemplateInput(value: CreateTemplateInput | UpdateTemplateInput | UpsertTemplateInput) {
+  return {
+    ...value,
+    textBody: undefined,
+    onMissingVariable: undefined,
+    text_body: value.textBody,
+    on_missing_variable: value.onMissingVariable,
+  };
+}
+
+function mapPreview(value: ApiTemplatePreview): TemplatePreview {
+  return {
+    subject: value.subject,
+    html: value.html,
+    text: value.text,
+    body: value.body,
+    variablesUsed: value.variables_used,
+    missingVariables: value.missing_variables,
   };
 }
 
@@ -62,7 +106,7 @@ export class TemplatesResource {
     return mapTemplate(
       await this.http.request<ApiTemplate>("/templates", {
         method: "POST",
-        body: input,
+        body: mapTemplateInput(input),
         signal: options.signal,
       }),
     );
@@ -112,7 +156,7 @@ export class TemplatesResource {
     return mapTemplate(
       await this.http.request<ApiTemplate>(`/templates/${id}`, {
         method: "PUT",
-        body: input,
+        body: mapTemplateInput(input),
         signal: options.signal,
       }),
     );
@@ -133,11 +177,68 @@ export class TemplatesResource {
     variables: Record<string, unknown>,
     options: RequestOptions = {},
   ): Promise<TemplatePreview> {
-    return this.http.request<TemplatePreview>(`/templates/${id}/preview`, {
+    return mapPreview(
+      await this.http.request<ApiTemplatePreview>(`/templates/${id}/preview`, {
+        method: "POST",
+        body: { variables },
+        signal: options.signal,
+      }),
+    );
+  }
+
+  /**
+   * Creates or updates one template identified by project-scoped name and channel.
+   * @param name - Project-unique template name.
+   * @param input - Complete template content to synchronize.
+   * @param channel - Delivery channel, defaulting to email.
+   * @param options - Optional cancellation signal.
+   * @returns The created or updated template.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When the API rejects the request.
+   */
+  async upsertByName(
+    name: string,
+    input: UpsertTemplateInput,
+    channel: NotificationChannel = "email",
+    options: RequestOptions = {},
+  ): Promise<Template> {
+    name = CreateTemplateInputSchema.shape.name.parse(name);
+    channel = CreateTemplateInputSchema.shape.channel.parse(channel);
+    input = UpsertTemplateInputSchema.parse(input);
+    return mapTemplate(
+      await this.http.request<ApiTemplate>(
+        `/templates/by-name/${encodeURIComponent(name)}?channel=${encodeURIComponent(channel)}`,
+        {
+          method: "PUT",
+          body: mapTemplateInput(input),
+          signal: options.signal,
+        },
+      ),
+    );
+  }
+
+  /**
+   * Imports plain HTML by replacing unambiguous sample values in text nodes.
+   * @param input - Template identity, HTML, and sample values.
+   * @param options - Optional cancellation signal.
+   * @returns The created template and rendered sample preview.
+   * @throws {ZodError} When `input` fails local schema validation.
+   * @throws {BeacoError} When replacement is ambiguous or the API rejects the request.
+   */
+  async importHtml(
+    input: ImportTemplateInput,
+    options: RequestOptions = {},
+  ): Promise<ImportTemplateResult> {
+    input = ImportTemplateInputSchema.parse(input);
+    const value = await this.http.request<{
+      template: ApiTemplate;
+      preview: ApiTemplatePreview;
+    }>("/templates/import", {
       method: "POST",
-      body: { variables },
+      body: input,
       signal: options.signal,
     });
+    return { template: mapTemplate(value.template), preview: mapPreview(value.preview) };
   }
 
   /**

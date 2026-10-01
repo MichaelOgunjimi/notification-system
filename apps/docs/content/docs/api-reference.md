@@ -35,15 +35,20 @@ Create an event and enqueue notification fan-out.
 
 #### Request body
 
-| Field             | Type   | Required | Description                      |
-| ----------------- | ------ | -------- | -------------------------------- |
-| `event_type`      | string | Yes      | Event name, e.g. `order.shipped` |
-| `recipients`      | array  | Yes      | Recipient list                   |
-| `payload`         | object | Yes      | Event payload                    |
-| `priority`        | enum   | No       | `high`, `medium`, `low`          |
-| `template_id`     | UUID   | No       | Template to render               |
-| `idempotency_key` | string | No       | Deduplication key                |
-| `metadata`        | object | No       | Optional metadata                |
+| Field             | Type   | Required     | Description                      |
+| ----------------- | ------ | ------------ | -------------------------------- |
+| `event_type`      | string | Yes          | Event name, e.g. `order.shipped` |
+| `recipients`      | array  | Yes          | Recipient list                   |
+| `payload`         | object | Yes          | Event payload                    |
+| `priority`        | enum   | No           | `high`, `medium`, `low`          |
+| `template_id`     | UUID   | One of three | Template to render               |
+| `template_name`   | string | One of three | Template name to render          |
+| `inline`          | object | One of three | Rendered `{subject,html,text}`   |
+| `idempotency_key` | string | No           | Deduplication key                |
+| `metadata`        | object | No           | Optional metadata                |
+
+Exactly one of `template_id`, `template_name`, or `inline` is required. Inline content is size
+validated and delivered without Jinja processing.
 
 `recipients[]` object:
 
@@ -109,8 +114,8 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events/batch \
   -H "X-API-Key: PROJECT_KEY" \
   -d '{
     "events": [
-      {"event_type":"invoice.created","recipients":[{"channels":["email"],"email":"a@example.com"}],"payload":{"invoice_id":"inv_100"}},
-      {"event_type":"invoice.created","recipients":[{"channels":["email"],"email":"b@example.com"}],"payload":{"invoice_id":"inv_101"}}
+      {"event_type":"invoice.created","template_name":"invoice-created","recipients":[{"channels":["email"],"email":"a@example.com"}],"payload":{"invoice_id":"inv_100"}},
+      {"event_type":"invoice.created","template_name":"invoice-created","recipients":[{"channels":["email"],"email":"b@example.com"}],"payload":{"invoice_id":"inv_101"}}
     ]
   }'
 ```
@@ -320,13 +325,15 @@ Create template.
 
 #### Request body
 
-| Field       | Type   | Required | Description                 |
-| ----------- | ------ | -------- | --------------------------- |
-| `name`      | string | Yes      | Template name               |
-| `channel`   | string | Yes      | `email`, `sms`, `webhook`   |
-| `subject`   | string | No       | Subject for email templates |
-| `body`      | string | Yes      | Template body               |
-| `variables` | array  | No       | Variable definitions/list   |
+| Field                 | Type   | Required | Description                        |
+| --------------------- | ------ | -------- | ---------------------------------- |
+| `name`                | string | Yes      | Template name                      |
+| `channel`             | string | Yes      | `email`, `sms`, `webhook`          |
+| `subject`             | string | No       | Plain-text email subject           |
+| `body`                | string | Yes      | Template body / email HTML         |
+| `text_body`           | string | No       | Plain-text email alternative       |
+| `variables`           | array  | No       | Must match auto-detected variables |
+| `on_missing_variable` | enum   | No       | `error` (default) or `blank`       |
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
@@ -340,7 +347,27 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
   "id": "799524b8-fdc7-4f56-8a07-3b00bbc377af",
   "name": "order_shipped_email",
   "channel": "email",
+  "detected_variables": ["customer_name", "order_id", "tracking_number"],
   "created_at": "2026-04-17T12:35:00Z"
+}
+```
+
+### `PUT /templates/by-name/{name}`
+
+Create or update an active project template by name. Pass `channel` as a query parameter; it
+defaults to `email`. This endpoint is safe to call on every deployment.
+
+### `POST /templates/import`
+
+Create an email template from plain HTML and sample values. Samples must appear exactly once in an
+HTML text node; attribute or duplicate matches return `422` instead of being guessed.
+
+```json
+{
+  "name": "order-confirmed",
+  "subject": "Your order is confirmed",
+  "html": "<h1>Thanks, Chidi</h1>",
+  "variables": { "customer_name": "Chidi" }
 }
 ```
 
@@ -432,7 +459,11 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f
 ```json
 {
   "subject": "Your order ord_991 has shipped",
-  "body": "Hi Alex, your package is now in transit."
+  "html": "<p>Hi Alex, your package is now in transit.</p>",
+  "text": "Hi Alex, your package is now in transit.",
+  "variables_used": ["customer_name", "order_id", "tracking_number"],
+  "missing_variables": [],
+  "body": "<p>Hi Alex, your package is now in transit.</p>"
 }
 ```
 

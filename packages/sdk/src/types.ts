@@ -31,6 +31,13 @@ export interface Recipient {
   webhookUrl?: string;
 }
 
+/** Already-rendered email content sent without Jinja processing. */
+export interface InlineEmail {
+  subject?: string;
+  html: string;
+  text?: string;
+}
+
 /** Input for publishing an event immediately. */
 export interface PublishEventInput {
   eventType: string;
@@ -38,6 +45,7 @@ export interface PublishEventInput {
   priority?: EventPriority;
   templateId?: string;
   templateName?: string;
+  inline?: InlineEmail;
   payload?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   idempotencyKey?: string;
@@ -81,7 +89,9 @@ export interface CreateTemplateInput {
   channel: NotificationChannel;
   subject?: string;
   body: string;
+  textBody?: string;
   variables?: string[];
+  onMissingVariable?: "error" | "blank";
 }
 
 /** Editable template fields. */
@@ -90,7 +100,26 @@ export interface UpdateTemplateInput {
   channel?: NotificationChannel;
   subject?: string | null;
   body?: string;
+  textBody?: string | null;
   variables?: string[];
+  onMissingVariable?: "error" | "blank";
+}
+
+/** Template content synchronized by name and channel. */
+export interface UpsertTemplateInput {
+  subject?: string;
+  body: string;
+  textBody?: string;
+  variables?: string[];
+  onMissingVariable?: "error" | "blank";
+}
+
+/** Existing HTML plus sample values used to mark variable text. */
+export interface ImportTemplateInput {
+  name: string;
+  subject?: string;
+  html: string;
+  variables?: Record<string, string>;
 }
 
 /** A reusable channel-specific delivery template. */
@@ -102,7 +131,10 @@ export interface Template {
   channel: NotificationChannel;
   subject: string | null;
   body: string;
+  textBody: string | null;
   variables: string[];
+  detectedVariables: string[];
+  onMissingVariable: "error" | "blank";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -117,7 +149,17 @@ export interface TemplateListOptions extends PageOptions {
 /** Rendered template content returned by a preview. */
 export interface TemplatePreview {
   subject: string | null;
+  html: string;
+  text: string;
   body: string;
+  variablesUsed: string[];
+  missingVariables: string[];
+}
+
+/** Template and sample-data preview returned by HTML import. */
+export interface ImportTemplateResult {
+  template: Template;
+  preview: TemplatePreview;
 }
 
 /** Summary of one generated notification. */

@@ -50,7 +50,7 @@ type ScheduledEventsService struct{ client *Client }
 // Create returns a local validation error, a context cancellation error, or *Error when
 // the API rejects or cannot service the request.
 func (s *ScheduledEventsService) Create(ctx context.Context, input CreateScheduledEventInput) (*ScheduledEvent, error) {
-	if err := validateEvent(PublishEventInput{EventType: input.EventType, Recipients: input.Recipients}); err != nil {
+	if err := validateEventBase(PublishEventInput{EventType: input.EventType, Recipients: input.Recipients}); err != nil {
 		return nil, err
 	}
 	if input.ScheduledFor.IsZero() {

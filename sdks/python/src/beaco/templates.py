@@ -1,6 +1,8 @@
 """Template operations."""
 
 from typing import Any, Optional
+from urllib.parse import quote
+
 from ._http import Transport, required
 
 
@@ -18,7 +20,9 @@ class Templates:
         body: str,
         *,
         subject: Optional[str] = None,
+        text_body: Optional[str] = None,
         variables: Optional[list[str]] = None,
+        on_missing_variable: str = "error",
     ) -> dict[str, Any]:
         """Create a reusable channel-specific delivery template.
 
@@ -27,7 +31,9 @@ class Templates:
             channel: Delivery channel: ``email``, ``sms``, or ``webhook``.
             body: Template body, including any variables supported by the API renderer.
             subject: Optional email subject template.
-            variables: Names expected in the render payload.
+            text_body: Optional plain-text email alternative.
+            variables: Names expected in the render payload. Omit to auto-detect.
+            on_missing_variable: ``error`` or ``blank``.
 
         Returns:
             The newly created template.
@@ -41,9 +47,90 @@ class Templates:
             "channel": required(channel, "channel"),
             "body": required(body, "body"),
             "subject": subject,
-            "variables": variables or [],
+            "text_body": text_body,
+            "on_missing_variable": on_missing_variable,
         }
+        if variables is not None:
+            data["variables"] = variables
         return self._transport.request("/templates", method="POST", body=data)
+
+    def upsert_by_name(
+        self,
+        name: str,
+        body: str,
+        *,
+        channel: str = "email",
+        subject: Optional[str] = None,
+        text_body: Optional[str] = None,
+        variables: Optional[list[str]] = None,
+        on_missing_variable: str = "error",
+    ) -> dict[str, Any]:
+        """Create or update one project template by name and channel.
+
+        Args:
+            name: Project-unique template name.
+            body: Complete template body.
+            channel: Delivery channel, defaulting to ``email``.
+            subject: Optional email subject template.
+            text_body: Optional plain-text email alternative.
+            variables: Declared variables, or ``None`` for auto-detection.
+            on_missing_variable: ``error`` or ``blank``.
+
+        Returns:
+            The created or updated template.
+
+        Raises:
+            ValueError: If required input is empty.
+            BeacoError: If validation, authorization, or the API request fails.
+        """
+        data: dict[str, Any] = {
+            "body": required(body, "body"),
+            "subject": subject,
+            "text_body": text_body,
+            "on_missing_variable": on_missing_variable,
+        }
+        if variables is not None:
+            data["variables"] = variables
+        return self._transport.request(
+            f"/templates/by-name/{quote(required(name, 'name'), safe='')}",
+            method="PUT",
+            query={"channel": required(channel, "channel")},
+            body=data,
+        )
+
+    def import_html(
+        self,
+        name: str,
+        html: str,
+        variables: dict[str, str],
+        *,
+        subject: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a template from HTML and unambiguous sample text values.
+
+        Args:
+            name: Project-unique template name.
+            html: Existing HTML email.
+            variables: Variable names mapped to sample text values.
+            subject: Optional email subject.
+
+        Returns:
+            The created template and rendered sample preview.
+
+        Raises:
+            ValueError: If required input is empty.
+            BeacoError: If replacement is ambiguous or the API request fails.
+        """
+        return self._transport.request(
+            "/templates/import",
+            method="POST",
+            body={
+                "name": required(name, "name"),
+                "subject": subject,
+                "html": required(html, "html"),
+                "variables": variables,
+            },
+        )
 
     def list(self, **filters: Any) -> dict[str, Any]:
         """List templates available to the configured project.
@@ -82,8 +169,9 @@ class Templates:
 
         Args:
             template_id: Unique template identifier.
-            **fields: One or more of ``name``, ``channel``, ``subject``, ``body``, and
-                ``variables``. Set ``subject`` to ``None`` to clear it.
+            **fields: Editable template fields, including ``text_body`` and
+                ``on_missing_variable``. Set ``subject`` or ``text_body`` to ``None``
+                to clear it.
 
         Returns:
             The updated template.
@@ -93,7 +181,15 @@ class Templates:
                 unsupported field is present.
             BeacoError: If validation, ownership, or the API request fails.
         """
-        allowed = {"name", "channel", "subject", "body", "variables"}
+        allowed = {
+            "name",
+            "channel",
+            "subject",
+            "body",
+            "text_body",
+            "variables",
+            "on_missing_variable",
+        }
         if not fields or not fields.keys() <= allowed:
             raise ValueError("fields must contain only editable template fields.")
         return self._transport.request(
@@ -110,7 +206,7 @@ class Templates:
             variables: Values substituted into the template body and subject.
 
         Returns:
-            A dictionary containing the rendered ``subject`` and ``body``.
+            Rendered ``subject``, ``html``, and ``text`` plus used and missing variables.
 
         Raises:
             ValueError: If ``template_id`` is empty.

@@ -52,6 +52,7 @@ export function mapEventInput(value: PublishEventInput) {
     priority: value.priority,
     template_id: value.templateId,
     template_name: value.templateName,
+    inline: value.inline,
     payload: value.payload,
     metadata: value.metadata,
     idempotency_key: value.idempotencyKey,

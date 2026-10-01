@@ -20,6 +20,7 @@ from sqlalchemy.pool import NullPool
 import app.model_registry  # noqa: F401
 from app.core.config import settings
 from app.core.datetime import utc_now
+from app.modules.credentials.model import ApiKey
 from app.modules.delivery.adapters.base import DeliveryResult
 from app.modules.delivery.processing.channel import _maybe_complete_event, process_notification
 from app.modules.events.enums import EventStatus
@@ -27,6 +28,7 @@ from app.modules.events.model import Event
 from app.modules.notifications.enums import NotificationStatus
 from app.modules.notifications.log_model import NotificationLog
 from app.modules.notifications.model import Notification
+from app.modules.templates.model import Template
 from tests.helpers import create_sync_project_api_key
 
 SYNC_TEST_DB_URL = str(
@@ -198,6 +200,88 @@ class TestProcessNotification:
         verify_session.close()
 
         mock_get_adapter.assert_not_called()
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_missing_template_variable_fails_without_retry(
+        self, mock_get_adapter, mock_get_session
+    ):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session)
+        api_key = session.get(ApiKey, event.api_key_id)
+        template = Template(
+            project_id=api_key.project_id,
+            name="strict-email",
+            channel="email",
+            subject="Hi {{ customer_name }}",
+            body="<p>Order {{ order_number }}</p>",
+            variables=["customer_name", "order_number"],
+            on_missing_variable="error",
+        )
+        session.add(template)
+        session.flush()
+        event.template_id = template.id
+        session.commit()
+        session.close()
+
+        mock_get_session.return_value = _get_test_session()
+        result = process_notification(str(notification.id), "email", celery_task=MagicMock())
+
+        assert result["status"] == "failed"
+        assert "customer_name" in result["reason"]
+        assert "order_number" in result["reason"]
+        mock_get_adapter.assert_not_called()
+        verify_session = _get_test_session()
+        saved = verify_session.get(Notification, notification.id)
+        assert saved.retry_count == 0
+        verify_session.close()
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_inline_email_bypasses_jinja_and_passes_plain_text(
+        self, mock_get_adapter, mock_get_session
+    ):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session)
+        event.inline_content = {
+            "subject": "O'Brien & <ready>",
+            "html": "<h1>{{ untouched }}</h1><p>Ready &amp; waiting</p>",
+            "text": None,
+        }
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        result = process_notification(str(notification.id), "email")
+
+        assert result["status"] == "delivered"
+        call = mock_adapter.send.call_args.kwargs
+        assert call["subject"] == "O'Brien & <ready>"
+        assert call["body"] == "<h1>{{ untouched }}</h1><p>Ready &amp; waiting</p>"
+        assert call["plain_text"] == "{{ untouched }}\nReady & waiting"
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_inline_email_is_not_used_for_other_channels(self, mock_get_adapter, mock_get_session):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session, channel="sms")
+        event.inline_content = {"subject": "Email", "html": "<p>Email only</p>", "text": None}
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        assert process_notification(str(notification.id), "sms")["status"] == "delivered"
+        call = mock_adapter.send.call_args.kwargs
+        assert call["subject"] is None
+        assert call["body"] == '{"msg": "hello"}'
 
     @patch("app.modules.delivery.processing.channel.get_sync_session")
     @patch("app.modules.delivery.processing.channel.get_adapter")

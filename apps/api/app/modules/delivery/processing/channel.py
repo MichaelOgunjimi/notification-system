@@ -46,7 +46,7 @@ from app.modules.notifications.enums import NotificationStatus
 from app.modules.notifications.log_model import NotificationLog
 from app.modules.notifications.model import Notification
 from app.modules.suppressions.service import is_suppressed
-from app.modules.templates.service import render_template, resolve_template
+from app.modules.templates.service import html_to_text, render_template_parts, resolve_template
 from app.workers.database import get_sync_session
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,16 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
     not an unhandled crash.
     """
     if notification.rendered_body is not None:
+        if notification.channel == "email" and notification.rendered_text is None:
+            notification.rendered_text = html_to_text(notification.rendered_body)
+        return
+
+    if event.inline_content is not None and notification.channel == "email":
+        notification.rendered_subject = event.inline_content.get("subject")
+        notification.rendered_body = event.inline_content["html"] or ""
+        notification.rendered_text = event.inline_content.get("text") or html_to_text(
+            notification.rendered_body
+        )
         return
 
     payload = event.payload or {}
@@ -80,9 +90,12 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
     if template_ref is not None:
         template = resolve_template(session, str(template_ref), event.api_key_id)
         if template:
-            rendered_subject, rendered_body = render_template(template, payload)
+            rendered_subject, rendered_body, rendered_text = render_template_parts(
+                template, payload
+            )
             notification.rendered_subject = rendered_subject
             notification.rendered_body = rendered_body
+            notification.rendered_text = rendered_text
 
     # Fallback: use JSON payload as body
     if notification.rendered_body is None:
@@ -289,6 +302,7 @@ def process_notification(
             recipient=notification.recipient_address,
             subject=notification.rendered_subject,
             body=notification.rendered_body or "",
+            plain_text=notification.rendered_text,
             webhook_secret=notification.webhook_secret,
             event_type=event.event_type,
             notification_id=str(notification.id),

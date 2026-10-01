@@ -71,6 +71,7 @@ class TestEventCreateValidation:
     def test_valid_event(self):
         e = EventCreate(
             event_type="user.signup",
+            inline={"html": "<p>Hi</p>"},
             payload={"foo": "bar"},
             recipients=[RecipientCreate(channels=["email"], email="a@b.com")],
         )
@@ -80,6 +81,7 @@ class TestEventCreateValidation:
         with pytest.raises(ValidationError, match="at least 1 character"):
             EventCreate(
                 event_type="",
+                inline={"html": "<p>Hi</p>"},
                 payload={},
                 recipients=[RecipientCreate(channels=["email"], email="a@b.com")],
             )
@@ -88,6 +90,7 @@ class TestEventCreateValidation:
         with pytest.raises(ValidationError, match="at most 255"):
             EventCreate(
                 event_type="x" * 256,
+                inline={"html": "<p>Hi</p>"},
                 payload={},
                 recipients=[RecipientCreate(channels=["email"], email="a@b.com")],
             )

@@ -14,9 +14,12 @@ const beaco = new Beaco({ apiKey: process.env.BEACO_API_KEY! });
 await beaco.events.publish({
   eventType: "user.welcome",
   recipients: [{ channels: ["email"], email: "user@example.com" }],
-  payload: { name: "Alice" },
+  inline: { subject: "Welcome", html: "<h1>Welcome, Alice</h1>" },
 });
 ```
+
+Use `templates.upsertByName()` to sync templates on deploy and `templates.importHtml()` to turn
+sample values in existing HTML into template variables.
 
 Requires Node.js 18.17 or newer. This package is server-only: never expose a project API key in browser code.
 

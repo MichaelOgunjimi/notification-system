@@ -35,6 +35,7 @@ class Notification(SQLModel, table=True):
     webhook_secret: str | None = Field(default=None, max_length=500)
     rendered_subject: str | None = Field(default=None)
     rendered_body: str | None = Field(default=None)
+    rendered_text: str | None = Field(default=None)
     retry_count: int = Field(default=0)
     max_retries: int = Field(default=5)
     next_retry_at: datetime | None = Field(default=None)

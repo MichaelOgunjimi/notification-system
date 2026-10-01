@@ -34,6 +34,7 @@ func TestPublishSendsAuthenticatedSnakeCaseRequest(t *testing.T) {
 	event, err := client.Events.Publish(context.Background(), PublishEventInput{
 		EventType:  "user.welcome",
 		Recipients: []Recipient{{Channels: []string{"email"}, Email: "user@example.com"}},
+		Inline:     &InlineEmail{Subject: "Welcome", HTML: "<p>Welcome</p>"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +58,10 @@ func TestAllResourceGroupsUseExpectedRoutes(t *testing.T) {
 		switch r.URL.Path {
 		case "/templates":
 			_, _ = w.Write([]byte(`{"id":"tpl_1","name":"welcome","channel":"email","body":"Hi"}`))
+		case "/templates/by-name/welcome":
+			_, _ = w.Write([]byte(`{"id":"tpl_1","name":"welcome","channel":"email","body":"Hi"}`))
+		case "/templates/import":
+			_, _ = w.Write([]byte(`{"template":{"id":"tpl_2"},"preview":{"html":"Hi Ada"}}`))
 		case "/notifications/ntf_1":
 			_, _ = w.Write([]byte(`{"id":"ntf_1","event_id":"evt_1","channel":"email","status":"delivered","notification_logs":[]}`))
 		case "/scheduled-events":
@@ -79,6 +84,12 @@ func TestAllResourceGroupsUseExpectedRoutes(t *testing.T) {
 	if _, err = client.Templates.Create(ctx, CreateTemplateInput{Name: "welcome", Channel: "email", Body: "Hi"}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = client.Templates.UpsertByName(ctx, "welcome", "email", UpsertTemplateInput{Body: "Hi"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = client.Templates.ImportHTML(ctx, ImportTemplateInput{Name: "imported", HTML: "<p>Hi Ada</p>", Variables: map[string]string{"name": "Ada"}}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = client.Notifications.Retrieve(ctx, "ntf_1"); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +107,8 @@ func TestAllResourceGroupsUseExpectedRoutes(t *testing.T) {
 	}
 
 	for _, route := range []string{
-		"POST /templates", "GET /notifications/ntf_1", "POST /scheduled-events",
+		"POST /templates", "PUT /templates/by-name/welcome", "POST /templates/import",
+		"GET /notifications/ntf_1", "POST /scheduled-events",
 		"POST /suppressions", "DELETE /suppressions/sup_1",
 	} {
 		if !seen[route] {

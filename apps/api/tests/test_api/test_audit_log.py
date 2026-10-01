@@ -13,6 +13,7 @@ async def test_audit_log_lists_key_actions(auth_client: AsyncClient) -> None:
             "recipients": [
                 {"user_id": "u1", "channels": ["email"], "email": "user@example.com"},
             ],
+            "inline": {"subject": "Test", "html": "<p>Test</p>"},
             "payload": {"name": "User"},
         },
     )

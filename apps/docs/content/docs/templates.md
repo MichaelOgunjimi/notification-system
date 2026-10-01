@@ -8,7 +8,7 @@ They let you keep message content centralized while producers focus on sending s
 
 A template defines message content for one channel.
 
-You can reference a template by `template_id` when creating events.
+You can reference a template by `template_id` or `template_name` when creating events.
 
 Beaco renders the template using values from event `payload`.
 
@@ -22,13 +22,15 @@ Benefits:
 
 Each template has a core schema:
 
-| Field       | Type          | Required   | Notes                                     |
-| ----------- | ------------- | ---------- | ----------------------------------------- |
-| `name`      | string        | yes        | Human-readable identifier                 |
-| `channel`   | enum          | yes        | `email`, `sms`, or `webhook`              |
-| `subject`   | string        | email only | Subject line for email templates          |
-| `body`      | string        | yes        | Main message content                      |
-| `variables` | array<string> | no         | Variable names expected in render context |
+| Field                 | Type          | Required   | Notes                                                 |
+| --------------------- | ------------- | ---------- | ----------------------------------------------------- |
+| `name`                | string        | yes        | Human-readable identifier                             |
+| `channel`             | enum          | yes        | `email`, `sms`, or `webhook`                          |
+| `subject`             | string        | email only | Plain-text subject; values are never HTML-escaped     |
+| `body`                | string        | yes        | HTML for email; injected values are HTML-escaped      |
+| `text_body`           | string        | no         | Plain-text alternative; derived from HTML when absent |
+| `variables`           | array<string> | no         | Auto-detected; must exactly match when supplied       |
+| `on_missing_variable` | enum          | no         | `error` (default) or legacy-compatible `blank`        |
 
 ## Jinja2 Variable Syntax
 
@@ -42,6 +44,7 @@ You can use variables in:
 
 - `subject` (email templates)
 - `body` (all channels)
+- `text_body` (email templates)
 
 Example:
 
@@ -67,8 +70,9 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates \
     "name": "welcome-email",
     "channel": "email",
     "subject": "Welcome, {{ user_name }}!",
-    "body": "Hi {{ user_name }},\n\nWelcome to {{ app_name }}. Your account is ready.",
-    "variables": ["user_name", "app_name"]
+    "body": "<h1>Hi {{ user_name }}</h1><p>Welcome to {{ app_name }}.</p>",
+    "text_body": "Hi {{ user_name }} — welcome to {{ app_name }}.",
+    "on_missing_variable": "error"
   }'
 ```
 
@@ -79,7 +83,47 @@ Example response:
   "id": "tmpl_01j4zb7h0ws8f5m6a2x1v4q7pk",
   "name": "welcome-email",
   "channel": "email",
+  "variables": ["app_name", "user_name"],
+  "detected_variables": ["app_name", "user_name"],
   "created_at": "2026-01-12T11:24:19Z"
+}
+```
+
+If `variables` differs from the variables detected in the subject or bodies, Beaco returns `422`.
+New templates default to `on_missing_variable: "error"`; a missing payload value permanently
+fails that notification without retrying or sending an email with a blank hole.
+
+## Sync a Template on Every Deploy
+
+`PUT /templates/by-name/{name}?channel=email` creates the template once and updates that same
+template on later deploys.
+
+```bash
+curl -X PUT 'https://beaco.michaelogunjimi.com/api/v1/templates/by-name/order-confirmed?channel=email' \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Key: YOUR_PROJECT_KEY' \
+  -d '{
+    "subject": "Order {{ order_number }} confirmed",
+    "body": "<main style=\"font-family:sans-serif;color:#172033\"><h1>Thanks, {{ customer_name }}</h1><p>Order <strong>{{ order_number }}</strong> is confirmed.</p></main>",
+    "text_body": "Thanks, {{ customer_name }}. Order {{ order_number }} is confirmed."
+  }'
+```
+
+## Import Existing HTML
+
+`POST /templates/import` turns sample values in HTML text nodes into variables and returns the
+created template plus a preview. It rejects samples found in attributes or anywhere other than one
+unambiguous text occurrence.
+
+```json
+{
+  "name": "branded-order",
+  "subject": "Your order is confirmed",
+  "html": "<main><h1>Thanks, Chidi</h1><p>Order BEA-1042 is confirmed.</p></main>",
+  "variables": {
+    "customer_name": "Chidi",
+    "order_number": "BEA-1042"
+  }
 }
 ```
 
@@ -139,7 +183,11 @@ Example preview response:
 ```json
 {
   "subject": "Welcome, Alice!",
-  "body": "Hi Alice,\n\nWelcome to Beaco Cloud. Your account is ready."
+  "html": "<h1>Hi Alice</h1><p>Welcome to Beaco Cloud.</p>",
+  "text": "Hi Alice — welcome to Beaco Cloud.",
+  "variables_used": ["app_name", "user_name"],
+  "missing_variables": [],
+  "body": "<h1>Hi Alice</h1><p>Welcome to Beaco Cloud.</p>"
 }
 ```
 

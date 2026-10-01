@@ -1,6 +1,7 @@
 """Event publication and lookup operations."""
 
 from typing import Any
+
 from ._http import Transport
 
 
@@ -13,8 +14,8 @@ def event_body(
         event_type: Application-defined event name, between 1 and 255 characters.
         recipients: Recipient dictionaries containing at least one delivery channel.
         **options: Optional API fields such as ``priority``, ``template_id``,
-            ``payload``, ``metadata``, or ``idempotency_key``. Values set to ``None``
-            are omitted.
+            ``template_name``, ``inline``, ``payload``, ``metadata``, or
+            ``idempotency_key``. Values set to ``None`` are omitted.
 
     Returns:
         A JSON-serializable event request body.
@@ -35,6 +36,14 @@ def event_body(
     }
 
 
+def _validate_content_source(options: dict[str, Any]) -> None:
+    sources = [options.get(name) for name in ("template_id", "template_name", "inline")]
+    if sum(value is not None for value in sources) != 1:
+        raise ValueError(
+            "exactly one of template_id, template_name, or inline is required."
+        )
+
+
 class Events:
     """Publishes and queries Beaco events."""
 
@@ -52,7 +61,8 @@ class Events:
             recipients: Recipient dictionaries. Each recipient must contain a non-empty
                 ``channels`` list and the address required by each selected channel.
             **options: Optional API fields: ``priority``, ``template_id``,
-                ``template_name``, ``payload``, ``metadata``, and ``idempotency_key``.
+                ``template_name``, ``inline``, ``payload``, ``metadata``, and
+                ``idempotency_key``.
 
         Returns:
             The accepted event summary returned by Beaco.
@@ -65,6 +75,7 @@ class Events:
             This call creates an event and may enqueue one notification per recipient
             channel. Supply ``idempotency_key`` when retries must not duplicate work.
         """
+        _validate_content_source(options)
         return self._transport.request(
             "/events", method="POST", body=event_body(event_type, recipients, **options)
         )
@@ -90,18 +101,15 @@ class Events:
         """
         if not events:
             raise ValueError("events must contain at least one event.")
-        values = [
-            event_body(
-                event["event_type"],
-                event["recipients"],
-                **{
-                    k: v
-                    for k, v in event.items()
-                    if k not in {"event_type", "recipients"}
-                },
+        values = []
+        for event in events:
+            options = {
+                k: v for k, v in event.items() if k not in {"event_type", "recipients"}
+            }
+            _validate_content_source(options)
+            values.append(
+                event_body(event["event_type"], event["recipients"], **options)
             )
-            for event in events
-        ]
         return self._transport.request(
             "/events/batch", method="POST", body={"events": values}
         )

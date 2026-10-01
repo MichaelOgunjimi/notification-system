@@ -8,41 +8,75 @@ import (
 
 // CreateTemplateInput contains a reusable delivery template.
 type CreateTemplateInput struct {
-	Name      string   `json:"name"`
-	Channel   string   `json:"channel"`
-	Subject   string   `json:"subject,omitempty"`
-	Body      string   `json:"body"`
-	Variables []string `json:"variables,omitempty"`
+	Name              string   `json:"name"`
+	Channel           string   `json:"channel"`
+	Subject           string   `json:"subject,omitempty"`
+	Body              string   `json:"body"`
+	TextBody          string   `json:"text_body,omitempty"`
+	Variables         []string `json:"variables,omitempty"`
+	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
 }
 
 // UpdateTemplateInput contains editable template fields.
 type UpdateTemplateInput struct {
-	Name      string   `json:"name,omitempty"`
-	Channel   string   `json:"channel,omitempty"`
-	Subject   *string  `json:"subject,omitempty"`
-	Body      string   `json:"body,omitempty"`
-	Variables []string `json:"variables,omitempty"`
+	Name              string   `json:"name,omitempty"`
+	Channel           string   `json:"channel,omitempty"`
+	Subject           *string  `json:"subject,omitempty"`
+	Body              string   `json:"body,omitempty"`
+	TextBody          *string  `json:"text_body,omitempty"`
+	Variables         []string `json:"variables,omitempty"`
+	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
+}
+
+// UpsertTemplateInput contains complete template content synchronized by name.
+type UpsertTemplateInput struct {
+	Subject           string   `json:"subject,omitempty"`
+	Body              string   `json:"body"`
+	TextBody          string   `json:"text_body,omitempty"`
+	Variables         []string `json:"variables,omitempty"`
+	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
+}
+
+// ImportTemplateInput contains HTML and sample values used to mark variable text.
+type ImportTemplateInput struct {
+	Name      string            `json:"name"`
+	Subject   string            `json:"subject,omitempty"`
+	HTML      string            `json:"html"`
+	Variables map[string]string `json:"variables,omitempty"`
 }
 
 // Template is a reusable channel-specific delivery template.
 type Template struct {
-	ID        string   `json:"id"`
-	ProjectID *string  `json:"project_id"`
-	APIKeyID  *string  `json:"api_key_id"`
-	Name      string   `json:"name"`
-	Channel   string   `json:"channel"`
-	Subject   *string  `json:"subject"`
-	Body      string   `json:"body"`
-	Variables []string `json:"variables"`
-	IsActive  bool     `json:"is_active"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID                string   `json:"id"`
+	ProjectID         *string  `json:"project_id"`
+	APIKeyID          *string  `json:"api_key_id"`
+	Name              string   `json:"name"`
+	Channel           string   `json:"channel"`
+	Subject           *string  `json:"subject"`
+	Body              string   `json:"body"`
+	TextBody          *string  `json:"text_body"`
+	Variables         []string `json:"variables"`
+	DetectedVariables []string `json:"detected_variables"`
+	OnMissingVariable string   `json:"on_missing_variable"`
+	IsActive          bool     `json:"is_active"`
+	CreatedAt         string   `json:"created_at"`
+	UpdatedAt         string   `json:"updated_at"`
 }
 
 // TemplatePreview contains rendered template content.
 type TemplatePreview struct {
-	Subject *string `json:"subject"`
-	Body    string  `json:"body"`
+	Subject          *string  `json:"subject"`
+	HTML             string   `json:"html"`
+	Text             string   `json:"text"`
+	Body             string   `json:"body"`
+	VariablesUsed    []string `json:"variables_used"`
+	MissingVariables []string `json:"missing_variables"`
+}
+
+// ImportTemplateResult contains an imported template and its sample preview.
+type ImportTemplateResult struct {
+	Template Template        `json:"template"`
+	Preview  TemplatePreview `json:"preview"`
 }
 
 // TemplateListOptions filters template list requests.
@@ -126,6 +160,35 @@ func (s *TemplatesService) Update(ctx context.Context, id string, input UpdateTe
 		return nil, err
 	}
 	return &template, nil
+}
+
+// UpsertByName creates or updates one project template identified by name and channel.
+func (s *TemplatesService) UpsertByName(ctx context.Context, name, channel string, input UpsertTemplateInput) (*Template, error) {
+	for field, value := range map[string]string{"template name": name, "template channel": channel, "template body": input.Body} {
+		if err := required(value, field); err != nil {
+			return nil, err
+		}
+	}
+	query := url.Values{"channel": []string{channel}}
+	var template Template
+	if err := s.client.request(ctx, http.MethodPut, queryPath("/templates/by-name/"+url.PathEscape(name), query), input, &template); err != nil {
+		return nil, err
+	}
+	return &template, nil
+}
+
+// ImportHTML creates an email template from HTML and unambiguous sample text values.
+func (s *TemplatesService) ImportHTML(ctx context.Context, input ImportTemplateInput) (*ImportTemplateResult, error) {
+	for field, value := range map[string]string{"template name": input.Name, "template HTML": input.HTML} {
+		if err := required(value, field); err != nil {
+			return nil, err
+		}
+	}
+	var result ImportTemplateResult
+	if err := s.client.request(ctx, http.MethodPost, "/templates/import", input, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // Preview renders a template with variables without creating an event or notification.

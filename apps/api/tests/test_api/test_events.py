@@ -17,6 +17,7 @@ def _event_payload(**overrides):
             }
         ],
         "priority": "high",
+        "inline": {"subject": "Test", "html": "<p>Test</p>"},
         "payload": {"welcome": True},
     }
     base.update(overrides)
@@ -33,6 +34,16 @@ async def test_create_event(auth_client: AsyncClient) -> None:
     assert data["status"] == "accepted"
     assert data["recipient_count"] >= 1
     assert "notification_ids" not in data
+
+
+@pytest.mark.asyncio
+async def test_event_requires_exactly_one_content_source(auth_client: AsyncClient) -> None:
+    missing = _event_payload()
+    del missing["inline"]
+    assert (await auth_client.post("/api/v1/events", json=missing)).status_code == 422
+
+    multiple = _event_payload(template_name="welcome")
+    assert (await auth_client.post("/api/v1/events", json=multiple)).status_code == 422
 
 
 @pytest.mark.asyncio
