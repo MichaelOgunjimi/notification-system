@@ -1,10 +1,13 @@
 """Template service — CRUD helpers plus template resolution/rendering."""
 
+import re
 import uuid
+from html.parser import HTMLParser
 from typing import Any
 
 from fastapi import HTTPException, status
-from jinja2 import BaseLoader
+from jinja2 import BaseLoader, StrictUndefined, meta
+from jinja2.exceptions import TemplateError
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -17,14 +20,170 @@ from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
 from app.modules.notifications.enums import NotificationChannel
 from app.modules.templates.model import Template
-from app.modules.templates.schemas import TemplateCreate, TemplateUpdate
+from app.modules.templates.schemas import TemplateCreate, TemplateUpdate, TemplateUpsert
 from app.modules.tenancy.errors import TenantResourceNotFoundError
 from app.modules.tenancy.models.project import Project
 
 _jinja_env_html = SandboxedEnvironment(loader=BaseLoader(), autoescape=True)
 _jinja_env_text = SandboxedEnvironment(loader=BaseLoader(), autoescape=False)
+_jinja_env_html_strict = SandboxedEnvironment(
+    loader=BaseLoader(), autoescape=True, undefined=StrictUndefined
+)
+_jinja_env_text_strict = SandboxedEnvironment(
+    loader=BaseLoader(), autoescape=False, undefined=StrictUndefined
+)
 
 _DUPLICATE_NAME_DETAIL = "A template with this name and channel already exists in this project"
+
+
+class _TextExtractor(HTMLParser):
+    _HIDDEN_TAGS = frozenset({"head", "script", "style"})
+    _BLOCK_TAGS = frozenset(
+        {
+            "address",
+            "article",
+            "br",
+            "div",
+            "footer",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "li",
+            "p",
+            "section",
+            "tr",
+        }
+    )
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self.hidden_depth = 0
+
+    def handle_data(self, data: str) -> None:
+        if not self.hidden_depth:
+            self.parts.append(data)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del attrs
+        if tag in self._HIDDEN_TAGS:
+            self.hidden_depth += 1
+        elif not self.hidden_depth and tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._HIDDEN_TAGS:
+            self.hidden_depth = max(0, self.hidden_depth - 1)
+        elif not self.hidden_depth and tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+
+
+class _ImportInspector(HTMLParser):
+    def __init__(self, samples: set[str]) -> None:
+        super().__init__(convert_charrefs=False)
+        self.samples = samples
+        self.text_counts = dict.fromkeys(samples, 0)
+        self.attribute_samples: set[str] = set()
+
+    def handle_data(self, data: str) -> None:
+        for sample in self.samples:
+            self.text_counts[sample] += data.count(sample)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del tag
+        for _name, value in attrs:
+            if value is None:
+                continue
+            self.attribute_samples.update(sample for sample in self.samples if sample in value)
+
+
+def html_to_text(html: str) -> str:
+    """Derive readable plain text from an HTML email without another dependency."""
+    parser = _TextExtractor()
+    parser.feed(html)
+    return "\n".join(line.strip() for line in "".join(parser.parts).splitlines() if line.strip())
+
+
+def detect_variables(
+    body: str, subject: str | None = None, text_body: str | None = None
+) -> list[str]:
+    """Return sorted undeclared Jinja variables across all template parts."""
+    detected: set[str] = set()
+    for source in (subject, body, text_body):
+        if source:
+            detected.update(meta.find_undeclared_variables(_jinja_env_text.parse(source)))
+    return sorted(detected)
+
+
+def _validated_variables(
+    body: str,
+    subject: str | None,
+    text_body: str | None,
+    declared: list[str] | None,
+) -> list[str]:
+    try:
+        detected = detect_variables(body, subject, text_body)
+    except TemplateError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Invalid template syntax: {exc}",
+        ) from exc
+    if declared is not None and set(declared) != set(detected):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "variables must exactly match variables used by the template; "
+                f"declared={sorted(set(declared))}, detected={detected}"
+            ),
+        )
+    return detected
+
+
+def import_html_variables(html: str, variables: dict[str, str]) -> str:
+    """Replace unambiguous sample values found once in HTML text nodes."""
+    if any(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None for name in variables):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Import variable names must be valid identifiers",
+        )
+    if any(not value for value in variables.values()):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Import sample values cannot be empty",
+        )
+    if len(set(variables.values())) != len(variables):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Each import variable must have a unique sample value",
+        )
+    samples = set(variables.values())
+    if any(left != right and left in right for left in samples for right in samples):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Import sample values cannot overlap",
+        )
+
+    inspector = _ImportInspector(samples)
+    inspector.feed(html)
+    for name, sample in variables.items():
+        if sample in inspector.attribute_samples:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    f"Sample value for '{name}' appears in an HTML attribute; "
+                    "replacement is ambiguous"
+                ),
+            )
+        if inspector.text_counts[sample] != 1 or html.count(sample) != 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Sample value for '{name}' must appear exactly once in an HTML text node",
+            )
+        html = html.replace(sample, "{{ " + name + " }}")
+    return html
 
 
 async def _insert_template(db: AsyncSession, template: Template) -> Template:
@@ -54,7 +213,9 @@ async def create_template(
         channel=data.channel,
         subject=data.subject,
         body=data.body,
-        variables=data.variables,
+        text_body=data.text_body,
+        variables=_validated_variables(data.body, data.subject, data.text_body, data.variables),
+        on_missing_variable=data.on_missing_variable,
     )
     return await _insert_template(db, template)
 
@@ -180,7 +341,9 @@ async def fork_template(
         channel=source.channel,
         subject=source.subject,
         body=source.body,
+        text_body=source.text_body,
         variables=list(source.variables),
+        on_missing_variable=source.on_missing_variable,
     )
     return await _insert_template(db, fork)
 
@@ -221,6 +384,12 @@ async def get_owned_template(
 
 async def update_template(db: AsyncSession, template: Template, data: TemplateUpdate) -> Template:
     update_data = data.model_dump(exclude_unset=True)
+    body = update_data.get("body", template.body)
+    subject = update_data.get("subject", template.subject)
+    text_body = update_data.get("text_body", template.text_body)
+    update_data["variables"] = _validated_variables(
+        body, subject, text_body, update_data.get("variables")
+    )
     for key, value in update_data.items():
         setattr(template, key, value)
     template.updated_at = utc_now()
@@ -228,6 +397,39 @@ async def update_template(db: AsyncSession, template: Template, data: TemplateUp
     await db.flush()
     await db.refresh(template)
     return template
+
+
+async def upsert_template_by_name(
+    db: AsyncSession,
+    data: TemplateUpsert,
+    *,
+    name: str,
+    channel: NotificationChannel,
+    project_id: uuid.UUID,
+    api_key_id: uuid.UUID,
+) -> Template:
+    """Create or replace one active project template identified by name and channel."""
+    template = (
+        await db.execute(
+            select(Template).where(
+                col(Template.project_id) == project_id,
+                col(Template.name) == name,
+                col(Template.channel) == channel,
+                col(Template.is_active),
+            )
+        )
+    ).scalar_one_or_none()
+    if template is None:
+        return await create_template(
+            db,
+            TemplateCreate(name=name, channel=channel, **data.model_dump()),
+            project_id=project_id,
+            api_key_id=api_key_id,
+        )
+    update_data = data.model_dump()
+    if update_data["variables"] is None:
+        del update_data["variables"]
+    return await update_template(db, template, TemplateUpdate(**update_data))
 
 
 async def soft_delete_template(db: AsyncSession, template: Template) -> None:
@@ -266,13 +468,48 @@ def resolve_template(
     return db.execute(query).scalars().first()
 
 
-def render_template(template: Template, payload_vars: dict[str, Any]) -> tuple[str | None, str]:
-    env = _jinja_env_html if template.channel == NotificationChannel.EMAIL else _jinja_env_text
-    rendered_subject = (
-        env.from_string(template.subject).render(**payload_vars) if template.subject else None
+def render_template_parts(
+    template: Template, payload_vars: dict[str, Any]
+) -> tuple[str | None, str, str | None]:
+    """Render subject, channel body, and optional email plain text."""
+    policy = getattr(template, "on_missing_variable", "blank")
+    if policy not in ("error", "blank"):
+        policy = "blank"
+    text_body = template.text_body if isinstance(template.text_body, str) else None
+    missing = sorted(
+        set(detect_variables(template.body, template.subject, text_body)) - payload_vars.keys()
     )
-    rendered_body = env.from_string(template.body).render(**payload_vars)
-    return rendered_subject, rendered_body
+    if missing and policy == "error":
+        raise ValueError(f"Missing template variable(s): {', '.join(missing)}")
+
+    text_env = _jinja_env_text_strict if policy == "error" else _jinja_env_text
+    body_env = (
+        _jinja_env_html_strict
+        if policy == "error" and template.channel == NotificationChannel.EMAIL
+        else _jinja_env_text_strict
+        if policy == "error"
+        else _jinja_env_html
+        if template.channel == NotificationChannel.EMAIL
+        else _jinja_env_text
+    )
+    rendered_subject = (
+        text_env.from_string(template.subject).render(**payload_vars) if template.subject else None
+    )
+    rendered_body = body_env.from_string(template.body).render(**payload_vars)
+    rendered_text = None
+    if template.channel == NotificationChannel.EMAIL:
+        rendered_text = (
+            text_env.from_string(text_body).render(**payload_vars)
+            if text_body
+            else html_to_text(rendered_body)
+        )
+    return rendered_subject, rendered_body, rendered_text
+
+
+def render_template(template: Template, payload_vars: dict[str, Any]) -> tuple[str | None, str]:
+    """Render a template while preserving the original two-part return contract."""
+    subject, body, _text = render_template_parts(template, payload_vars)
+    return subject, body
 
 
 def preview_template(
@@ -281,7 +518,27 @@ def preview_template(
     channel: NotificationChannel,
     variables: dict[str, Any],
 ) -> tuple[str | None, str]:
+    rendered_subject = _jinja_env_text.from_string(subject).render(**variables) if subject else None
     env = _jinja_env_html if channel == NotificationChannel.EMAIL else _jinja_env_text
-    rendered_subject = env.from_string(subject).render(**variables) if subject else None
     rendered_body = env.from_string(body).render(**variables)
     return rendered_subject, rendered_body
+
+
+def preview_template_parts(
+    body: str,
+    subject: str | None,
+    text_body: str | None,
+    channel: NotificationChannel,
+    variables: dict[str, Any],
+) -> tuple[str | None, str, str, list[str], list[str]]:
+    """Render a non-strict preview and report supplied and missing variables."""
+    detected = detect_variables(body, subject, text_body)
+    used = sorted(set(detected) & variables.keys())
+    missing = sorted(set(detected) - variables.keys())
+    rendered_subject, rendered_body = preview_template(body, subject, channel, variables)
+    rendered_text = (
+        _jinja_env_text.from_string(text_body).render(**variables)
+        if text_body
+        else html_to_text(rendered_body)
+    )
+    return rendered_subject, rendered_body, rendered_text, used, missing

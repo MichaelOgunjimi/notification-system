@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, HttpUrl, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, HttpUrl, TypeAdapter, field_validator, model_validator
 
 from app.core.config import settings as app_settings
 from app.modules.events.enums import EventPriority, EventStatus
@@ -59,15 +59,67 @@ class RecipientCreate(BaseModel):
         return str(validated_url)
 
 
+class InlineEmail(BaseModel):
+    """Already-rendered email content that bypasses template processing."""
+
+    subject: str | None = Field(default=None, max_length=500)
+    html: str = Field(min_length=1)
+    text: str | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "subject": "Order BEA-1042 confirmed",
+                "html": "<h1>Thanks for your order</h1>",
+                "text": "Thanks for your order",
+            }
+        }
+    }
+
+    @model_validator(mode="after")
+    def validate_size(self) -> "InlineEmail":
+        """Keep inline email content within the configured payload limit."""
+        size = len(
+            json.dumps(self.model_dump(), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        )
+        if size > app_settings.MAX_PAYLOAD_BYTES:
+            raise ValueError(
+                f"inline exceeds maximum size of {app_settings.MAX_PAYLOAD_BYTES} bytes "
+                f"(got {size} bytes)"
+            )
+        return self
+
+
 class EventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=255)
     recipients: list[RecipientCreate]
     priority: EventPriority = EventPriority.MEDIUM
     template_id: uuid.UUID | None = None
     template_name: str | None = Field(default=None, min_length=1, max_length=255)
+    inline: InlineEmail | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "event_type": "order.confirmed",
+                "recipients": [{"channels": ["email"], "email": "chidi@example.com"}],
+                "template_name": "order-confirmed",
+                "payload": {"customer_name": "Chidi", "order_number": "BEA-1042"},
+                "idempotency_key": "order-BEA-1042-confirmed",
+            }
+        }
+    }
+
+    @model_validator(mode="after")
+    def require_one_content_source(self) -> "EventCreate":
+        """Require exactly one template reference or inline email body."""
+        sources = (self.template_id, self.template_name, self.inline)
+        if sum(value is not None for value in sources) != 1:
+            raise ValueError("exactly one of template_id, template_name, or inline is required")
+        return self
 
     @field_validator("payload")
     @classmethod

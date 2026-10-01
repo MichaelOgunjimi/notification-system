@@ -43,7 +43,11 @@ Publish a batch atomically with `beaco.events.publish_batch(events)`.
 ### Events
 
 ```python
-beaco.events.publish(event_type, recipients, payload={"name": "Alice"})
+beaco.events.publish(
+    event_type,
+    recipients,
+    inline={"subject": "Welcome", "html": "<h1>Welcome</h1>"},
+)
 beaco.events.publish_batch(events)
 beaco.events.retrieve(event_id)
 beaco.events.list(status="completed", page=1)
@@ -63,11 +67,23 @@ template = beaco.templates.create(
 )
 
 beaco.templates.retrieve(template["id"])
+beaco.templates.upsert_by_name(
+    "order-shipped",
+    "<p>Hi {{ name }}</p>",
+    text_body="Hi {{ name }}",
+)
+beaco.templates.import_html(
+    "welcome",
+    "<h1>Hi Alice</h1>",
+    {"name": "Alice"},
+)
 beaco.templates.list(channel="email")
 beaco.templates.update(template["id"], subject="Updated subject")
 beaco.templates.preview(template["id"], {"name": "Alice", "order_id": "ord_123"})
 beaco.templates.delete(template["id"])
 ```
+
+Exactly one of `template_id`, `template_name`, or `inline` is required for immediate events.
 
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 

@@ -74,12 +74,10 @@ const beaco = new Beaco({
 The API key needs `templates:write` to create templates and `events:write` to publish events.
 
 ```ts
-const template = await beaco.templates.create({
-  name: "order-shipped",
-  channel: "email",
+const template = await beaco.templates.upsertByName("order-shipped", {
   subject: "Your order has shipped",
-  body: "Hi {{ name }}, order {{ order_id }} is on its way.",
-  variables: ["name", "order_id"],
+  body: "<p>Hi {{ name }}, order {{ order_id }} is on its way.</p>",
+  textBody: "Hi {{ name }}, order {{ order_id }} is on its way.",
 });
 
 const event = await beaco.events.publish({
@@ -119,12 +117,21 @@ Scopes: `events:write` for publishing and `events:read` for retrieving and listi
 
 ```ts
 await beaco.templates.create(input);
+await beaco.templates.upsertByName("order-shipped", input, "email");
+await beaco.templates.importHtml({
+  name: "welcome",
+  html: "<h1>Hi Alice</h1>",
+  variables: { name: "Alice" },
+});
 await beaco.templates.retrieve(templateId);
 await beaco.templates.list({ channel: "email" });
 await beaco.templates.update(templateId, { subject: "Updated subject" });
 await beaco.templates.preview(templateId, { name: "Alice" });
 await beaco.templates.delete(templateId);
 ```
+
+Send content your app already rendered with `inline: { subject, html, text }` instead of a template
+reference. Exactly one of `templateId`, `templateName`, or `inline` is required.
 
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 

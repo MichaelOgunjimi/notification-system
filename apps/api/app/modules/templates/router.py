@@ -16,10 +16,13 @@ from app.modules.observability.audit.service import log_action
 from app.modules.templates import service as template_service
 from app.modules.templates.schemas import (
     TemplateCreate,
+    TemplateImportRequest,
+    TemplateImportResponse,
     TemplatePreviewRequest,
     TemplatePreviewResponse,
     TemplateResponse,
     TemplateUpdate,
+    TemplateUpsert,
 )
 
 router = APIRouter(prefix="/templates", tags=["templates"])
@@ -70,6 +73,87 @@ async def create_template(
     )
     await db.commit()
     return TemplateResponse.model_validate(template)
+
+
+@router.put("/by-name/{name}", response_model=TemplateResponse)
+async def upsert_template_by_name(
+    name: str,
+    body: TemplateUpsert,
+    channel: NotificationChannel = Query(default=NotificationChannel.EMAIL),
+    *,
+    db: SessionDep,
+    api_key: TemplatesWriteApiKeyDep,
+    request: Request,
+) -> TemplateResponse:
+    template = await template_service.upsert_template_by_name(
+        db,
+        body,
+        name=name,
+        channel=channel,
+        project_id=api_key.project_id,
+        api_key_id=api_key.id,
+    )
+    await log_action(
+        db,
+        api_key_id=api_key_filter_id(api_key),
+        action="template.synced",
+        resource_type="template",
+        resource_id=str(template.id),
+        metadata={"name": template.name, "channel": str(template.channel)},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return TemplateResponse.model_validate(template)
+
+
+@router.post("/import", response_model=TemplateImportResponse, status_code=status.HTTP_201_CREATED)
+async def import_template(
+    body: TemplateImportRequest,
+    *,
+    db: SessionDep,
+    api_key: TemplatesWriteApiKeyDep,
+    request: Request,
+) -> TemplateImportResponse:
+    imported_html = template_service.import_html_variables(body.html, body.variables)
+    template = await template_service.create_template(
+        db,
+        TemplateCreate(
+            name=body.name,
+            channel=NotificationChannel.EMAIL,
+            subject=body.subject,
+            body=imported_html,
+        ),
+        project_id=api_key.project_id,
+        api_key_id=api_key.id,
+    )
+    subject, html, text, used, missing = template_service.preview_template_parts(
+        template.body,
+        template.subject,
+        template.text_body,
+        template.channel,
+        body.variables,
+    )
+    await log_action(
+        db,
+        api_key_id=api_key_filter_id(api_key),
+        action="template.imported",
+        resource_type="template",
+        resource_id=str(template.id),
+        metadata={"name": template.name, "channel": str(template.channel)},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return TemplateImportResponse(
+        template=TemplateResponse.model_validate(template),
+        preview=TemplatePreviewResponse(
+            subject=subject,
+            html=html,
+            text=text,
+            body=html,
+            variables_used=used,
+            missing_variables=missing,
+        ),
+    )
 
 
 @router.get("/{template_id}", response_model=TemplateResponse)
@@ -132,13 +216,23 @@ async def preview_template(
     )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
-    rendered_subject, rendered_body = template_service.preview_template(
-        template.body,
-        template.subject,
-        channel=template.channel,
-        variables=body.variables,
+    rendered_subject, rendered_body, rendered_text, used, missing = (
+        template_service.preview_template_parts(
+            template.body,
+            template.subject,
+            template.text_body,
+            channel=template.channel,
+            variables=body.variables,
+        )
     )
-    return TemplatePreviewResponse(subject=rendered_subject, body=rendered_body)
+    return TemplatePreviewResponse(
+        subject=rendered_subject,
+        html=rendered_body,
+        text=rendered_text,
+        body=rendered_body,
+        variables_used=used,
+        missing_variables=missing,
+    )
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -19,6 +19,7 @@ def _event_payload() -> dict:
             }
         ],
         "priority": "high",
+        "inline": {"subject": "Test", "html": "<p>Test</p>"},
         "payload": {"hello": "world"},
     }
 

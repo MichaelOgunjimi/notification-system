@@ -15,10 +15,11 @@ beaco = Beaco(os.environ["BEACO_API_KEY"])
 event = beaco.events.publish(
     "user.welcome",
     [{"channels": ["email"], "email": "user@example.com"}],
-    payload={"name": "Alice"},
+    inline={"subject": "Welcome", "html": "<h1>Welcome, Alice</h1>"},
 )
 
 template = beaco.templates.create("welcome", "email", "Hi {{ name }}")
+beaco.templates.upsert_by_name("welcome", "<h1>Hi {{ name }}</h1>")
 notification = beaco.notifications.retrieve("ntf_123")
 scheduled = beaco.scheduled_events.create(
     "renewal.reminder",

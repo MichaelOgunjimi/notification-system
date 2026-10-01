@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DocGroup, DocSearchItem } from "@/lib/docs";
@@ -120,6 +121,7 @@ export function DocsSearch({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -176,7 +178,10 @@ export function DocsSearch({
             setActiveIndex((index) => Math.max(index - 1, 0));
           }
           if (event.key === "Enter" && results[activeIndex]) {
-            window.location.href = `/${results[activeIndex].slug}`;
+            event.preventDefault();
+            const href = `/${results[activeIndex].slug}`;
+            closeSearch();
+            router.push(href);
           }
         }}
       >

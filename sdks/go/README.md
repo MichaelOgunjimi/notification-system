@@ -28,7 +28,7 @@ func main() {
 			Channels: []string{"email"},
 			Email:    "user@example.com",
 		}},
-		Payload: map[string]any{"name": "Alice"},
+		Inline: &beaco.InlineEmail{Subject: "Welcome", HTML: "<h1>Welcome, Alice</h1>"},
 	})
 	if err != nil {
 		panic(err)
@@ -36,6 +36,9 @@ func main() {
 
 	_, _ = client.Templates.Create(context.Background(), beaco.CreateTemplateInput{
 		Name: "welcome", Channel: "email", Body: "Hi {{ name }}",
+	})
+	_, _ = client.Templates.UpsertByName(context.Background(), "welcome", "email", beaco.UpsertTemplateInput{
+		Body: "<h1>Hi {{ name }}</h1>",
 	})
 	_, _ = client.Notifications.Retrieve(context.Background(), "ntf_123")
 	_, _ = client.Suppressions.Create(context.Background(), beaco.CreateSuppressionInput{

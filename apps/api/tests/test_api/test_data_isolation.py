@@ -15,6 +15,7 @@ def _event_payload(**overrides):
             }
         ],
         "priority": "medium",
+        "inline": {"subject": "Test", "html": "<p>Test</p>"},
         "payload": {"test": True},
     }
     base.update(overrides)

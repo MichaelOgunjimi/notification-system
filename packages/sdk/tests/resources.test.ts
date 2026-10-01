@@ -27,7 +27,11 @@ describe("EventsResource", () => {
     const client = new Beaco({ apiKey: "secret", baseUrl: "https://example.test/v1", fetch });
 
     const events = await client.events.publishBatch([
-      { eventType: "user.welcome", recipients: [{ channels: ["email"], email: "a@example.com" }] },
+      {
+        eventType: "user.welcome",
+        recipients: [{ channels: ["email"], email: "a@example.com" }],
+        inline: { subject: "Welcome", html: "<p>Welcome</p>" },
+      },
     ]);
 
     expect(events).toMatchObject([{ eventType: "user.welcome", recipientCount: 1 }]);
@@ -83,7 +87,10 @@ describe("TemplatesResource", () => {
       channel: "email",
       subject: "Welcome",
       body: "Hello {{ name }}",
+      text_body: "Hello {{ name }}",
       variables: ["name"],
+      detected_variables: ["name"],
+      on_missing_variable: "error",
       is_active: true,
       created_at: "2026-09-20T10:00:00Z",
       updated_at: "2026-09-20T10:00:00Z",
@@ -93,7 +100,16 @@ describe("TemplatesResource", () => {
       .mockResolvedValueOnce(Response.json(emptyPage))
       .mockResolvedValueOnce(Response.json(apiTemplate))
       .mockResolvedValueOnce(Response.json({ ...apiTemplate, subject: "Updated" }))
-      .mockResolvedValueOnce(Response.json({ subject: "Updated", body: "Hello Alice" }));
+      .mockResolvedValueOnce(
+        Response.json({
+          subject: "Updated",
+          html: "<p>Hello Alice</p>",
+          text: "Hello Alice",
+          body: "<p>Hello Alice</p>",
+          variables_used: ["name"],
+          missing_variables: [],
+        }),
+      );
     const client = new Beaco({
       apiKey: "secret",
       baseUrl: "https://example.test/v1",
@@ -112,7 +128,68 @@ describe("TemplatesResource", () => {
       "https://example.test/v1/templates/template-1/preview",
     ]);
     expect(updated).toMatchObject({ subject: "Updated" });
-    expect(preview).toMatchObject({ subject: "Updated", body: "Hello Alice" });
+    expect(preview).toMatchObject({
+      subject: "Updated",
+      html: "<p>Hello Alice</p>",
+      text: "Hello Alice",
+      variablesUsed: ["name"],
+    });
+  });
+
+  it("upserts and imports HTML templates", async () => {
+    const apiTemplate = {
+      id: "template-1",
+      project_id: "project-1",
+      api_key_id: "key-1",
+      name: "order-confirmed",
+      channel: "email",
+      subject: "Order confirmed",
+      body: "<p>Hi {{ name }}</p>",
+      text_body: null,
+      variables: ["name"],
+      detected_variables: ["name"],
+      on_missing_variable: "error",
+      is_active: true,
+      created_at: "2026-09-20T10:00:00Z",
+      updated_at: "2026-09-20T10:00:00Z",
+    };
+    const apiPreview = {
+      subject: "Order confirmed",
+      html: "<p>Hi Ada</p>",
+      text: "Hi Ada",
+      body: "<p>Hi Ada</p>",
+      variables_used: ["name"],
+      missing_variables: [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(apiTemplate))
+      .mockResolvedValueOnce(Response.json({ template: apiTemplate, preview: apiPreview }));
+    const client = new Beaco({
+      apiKey: "secret",
+      baseUrl: "https://example.test/v1",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    await client.templates.upsertByName(
+      "order confirmed",
+      { body: "<p>Hi {{ name }}</p>", textBody: "Hi {{ name }}" },
+      "email",
+    );
+    const imported = await client.templates.importHtml({
+      name: "order-confirmed",
+      html: "<p>Hi Ada</p>",
+      variables: { name: "Ada" },
+    });
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "https://example.test/v1/templates/by-name/order%20confirmed?channel=email",
+      "https://example.test/v1/templates/import",
+    ]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      text_body: "Hi {{ name }}",
+    });
+    expect(imported.preview.text).toBe("Hi Ada");
   });
 });
 

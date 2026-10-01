@@ -197,6 +197,7 @@ async def test_api_key_scope_allows_event_writes_but_denies_template_reads(
                     "email": "user@example.com",
                 }
             ],
+            "inline": {"subject": "Test", "html": "<p>Test</p>"},
             "payload": {"welcome": True},
         },
     )

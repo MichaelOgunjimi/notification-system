@@ -17,6 +17,13 @@ type Recipient struct {
 	WebhookURL string   `json:"webhook_url,omitempty"`
 }
 
+// InlineEmail is already-rendered content sent without Jinja processing.
+type InlineEmail struct {
+	Subject string `json:"subject,omitempty"`
+	HTML    string `json:"html"`
+	Text    string `json:"text,omitempty"`
+}
+
 // PublishEventInput contains an event and its delivery controls.
 type PublishEventInput struct {
 	EventType      string         `json:"event_type"`
@@ -24,6 +31,7 @@ type PublishEventInput struct {
 	Priority       string         `json:"priority,omitempty"`
 	TemplateID     string         `json:"template_id,omitempty"`
 	TemplateName   string         `json:"template_name,omitempty"`
+	Inline         *InlineEmail   `json:"inline,omitempty"`
 	Payload        map[string]any `json:"payload,omitempty"`
 	Metadata       map[string]any `json:"metadata,omitempty"`
 	IdempotencyKey string         `json:"idempotency_key,omitempty"`
@@ -61,8 +69,8 @@ type EventListOptions struct {
 // EventsService publishes and queries Beaco events.
 type EventsService struct{ client *Client }
 
-// validateEvent enforces the event and recipient invariants shared by publish operations.
-func validateEvent(input PublishEventInput) error {
+// validateEventBase enforces event and recipient invariants shared with scheduled events.
+func validateEventBase(input PublishEventInput) error {
 	if input.EventType == "" || len(input.EventType) > 255 {
 		return errors.New("beaco: event type must contain 1 to 255 characters")
 	}
@@ -73,6 +81,27 @@ func validateEvent(input PublishEventInput) error {
 		if len(recipient.Channels) == 0 {
 			return errors.New("beaco: each recipient must contain at least one channel")
 		}
+	}
+	return nil
+}
+
+// validateEvent additionally enforces the content source required for immediate delivery.
+func validateEvent(input PublishEventInput) error {
+	if err := validateEventBase(input); err != nil {
+		return err
+	}
+	sources := 0
+	if input.TemplateID != "" {
+		sources++
+	}
+	if input.TemplateName != "" {
+		sources++
+	}
+	if input.Inline != nil {
+		sources++
+	}
+	if sources != 1 {
+		return errors.New("beaco: exactly one of template ID, template name, or inline is required")
 	}
 	return nil
 }

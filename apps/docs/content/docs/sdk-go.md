@@ -75,12 +75,22 @@ template, err := client.Templates.Create(ctx, beaco.CreateTemplateInput{
     Variables: []string{"name", "order_id"},
 })
 
+template, err = client.Templates.UpsertByName(ctx, "order-shipped", "email", beaco.UpsertTemplateInput{
+    Body:     "<p>Hi {{ name }}</p>",
+    TextBody: "Hi {{ name }}",
+})
+imported, err := client.Templates.ImportHTML(ctx, beaco.ImportTemplateInput{
+    Name: "welcome", HTML: "<h1>Hi Alice</h1>", Variables: map[string]string{"name": "Alice"},
+})
+
 client.Templates.Retrieve(ctx, template.ID)
 client.Templates.List(ctx, beaco.TemplateListOptions{Channel: "email"})
 client.Templates.Update(ctx, template.ID, beaco.UpdateTemplateInput{Body: "Updated"})
 client.Templates.Preview(ctx, template.ID, map[string]any{"name": "Alice"})
 client.Templates.Delete(ctx, template.ID)
 ```
+
+Immediate events require exactly one of `TemplateID`, `TemplateName`, or `Inline`.
 
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 

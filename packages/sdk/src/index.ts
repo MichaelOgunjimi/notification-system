@@ -4,9 +4,12 @@ export {
   CreateScheduledEventInputSchema,
   CreateSuppressionInputSchema,
   CreateTemplateInputSchema,
+  ImportTemplateInputSchema,
+  InlineEmailSchema,
   PublishEventInputSchema,
   RecipientSchema,
   UpdateTemplateInputSchema,
+  UpsertTemplateInputSchema,
 } from "./schemas";
 export type {
   BeacoOptions,
@@ -18,6 +21,9 @@ export type {
   EventListOptions,
   EventPriority,
   EventStatus,
+  ImportTemplateInput,
+  ImportTemplateResult,
+  InlineEmail,
   Notification,
   NotificationChannel,
   NotificationDetail,
@@ -40,4 +46,5 @@ export type {
   TemplateListOptions,
   TemplatePreview,
   UpdateTemplateInput,
+  UpsertTemplateInput,
 } from "./types";

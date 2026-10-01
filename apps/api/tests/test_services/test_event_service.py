@@ -86,6 +86,7 @@ def _make_event_data(**kwargs) -> EventCreate:
             )
         ],
         "priority": EventPriority.MEDIUM,
+        "inline": {"subject": "Test", "html": "<p>Test</p>"},
     }
     defaults.update(kwargs)
     return EventCreate(**defaults)
