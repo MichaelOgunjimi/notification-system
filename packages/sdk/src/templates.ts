@@ -28,6 +28,9 @@ type ApiTemplate = {
   subject: string | null;
   body: string;
   text_body: string | null;
+  from_local: string | null;
+  from_name: string | null;
+  reply_to: string | null;
   variables: string[];
   detected_variables: string[];
   on_missing_variable: "error" | "blank";
@@ -56,6 +59,9 @@ function mapTemplate(value: ApiTemplate): Template {
     subject: value.subject,
     body: value.body,
     textBody: value.text_body,
+    fromLocal: value.from_local,
+    fromName: value.from_name,
+    replyTo: value.reply_to,
     variables: value.variables,
     detectedVariables: value.detected_variables,
     onMissingVariable: value.on_missing_variable,
@@ -69,8 +75,14 @@ function mapTemplateInput(value: CreateTemplateInput | UpdateTemplateInput | Ups
   return {
     ...value,
     textBody: undefined,
+    fromLocal: undefined,
+    fromName: undefined,
+    replyTo: undefined,
     onMissingVariable: undefined,
     text_body: value.textBody,
+    from_local: value.fromLocal,
+    from_name: value.fromName,
+    reply_to: value.replyTo,
     on_missing_variable: value.onMissingVariable,
   };
 }

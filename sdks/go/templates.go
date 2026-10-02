@@ -13,6 +13,9 @@ type CreateTemplateInput struct {
 	Subject           string   `json:"subject,omitempty"`
 	Body              string   `json:"body"`
 	TextBody          string   `json:"text_body,omitempty"`
+	FromLocal         string   `json:"from_local,omitempty"`
+	FromName          string   `json:"from_name,omitempty"`
+	ReplyTo           string   `json:"reply_to,omitempty"`
 	Variables         []string `json:"variables,omitempty"`
 	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
 }
@@ -24,6 +27,9 @@ type UpdateTemplateInput struct {
 	Subject           *string  `json:"subject,omitempty"`
 	Body              string   `json:"body,omitempty"`
 	TextBody          *string  `json:"text_body,omitempty"`
+	FromLocal         *string  `json:"from_local,omitempty"`
+	FromName          *string  `json:"from_name,omitempty"`
+	ReplyTo           *string  `json:"reply_to,omitempty"`
 	Variables         []string `json:"variables,omitempty"`
 	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
 }
@@ -33,6 +39,9 @@ type UpsertTemplateInput struct {
 	Subject           string   `json:"subject,omitempty"`
 	Body              string   `json:"body"`
 	TextBody          string   `json:"text_body,omitempty"`
+	FromLocal         string   `json:"from_local,omitempty"`
+	FromName          string   `json:"from_name,omitempty"`
+	ReplyTo           string   `json:"reply_to,omitempty"`
 	Variables         []string `json:"variables,omitempty"`
 	OnMissingVariable string   `json:"on_missing_variable,omitempty"`
 }
@@ -55,6 +64,9 @@ type Template struct {
 	Subject           *string  `json:"subject"`
 	Body              string   `json:"body"`
 	TextBody          *string  `json:"text_body"`
+	FromLocal         *string  `json:"from_local"`
+	FromName          *string  `json:"from_name"`
+	ReplyTo           *string  `json:"reply_to"`
 	Variables         []string `json:"variables"`
 	DetectedVariables []string `json:"detected_variables"`
 	OnMissingVariable string   `json:"on_missing_variable"`
@@ -146,7 +158,8 @@ func (s *TemplatesService) Retrieve(ctx context.Context, id string) (*Template, 
 // Update replaces the supplied editable fields on an owned template.
 //
 // The id must be non-empty. A non-nil Subject may set or replace the subject; other zero
-// values are omitted by JSON encoding. The operation mutates server state and returns the
+// values are omitted by JSON encoding. A non-nil FromLocal, FromName, or ReplyTo sets that sender
+// field, and a pointer to an empty string clears it. The operation mutates server state and returns the
 // updated template.
 //
 // Update returns a validation error, a context cancellation error, or *Error when

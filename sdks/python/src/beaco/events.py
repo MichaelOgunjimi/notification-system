@@ -15,7 +15,9 @@ def event_body(
         recipients: Recipient dictionaries containing at least one delivery channel.
         **options: Optional API fields such as ``priority``, ``template_id``,
             ``template_name``, ``inline``, ``payload``, ``metadata``, or
-            ``idempotency_key``. Values set to ``None`` are omitted.
+            ``idempotency_key``. Values set to ``None`` are omitted. ``inline`` is
+            ``{"html": ..., "subject": ..., "text": ..., "from_local": ...,
+            "from_name": ..., "reply_to": ...}``; the sender fields are optional.
 
     Returns:
         A JSON-serializable event request body.

@@ -18,6 +18,9 @@ await beaco.events.publish({
 });
 ```
 
+Pick the sender of an email with `fromLocal`, `fromName`, and `replyTo` on `inline` or a template.
+The domain always stays the server's verified domain.
+
 Use `templates.upsertByName()` to sync templates on deploy and `templates.importHtml()` to turn
 sample values in existing HTML into template variables.
 

@@ -17,6 +17,8 @@ event = beaco.events.publish(
     [{"channels": ["email"], "email": "user@example.com"}],
     inline={"subject": "Welcome", "html": "<h1>Welcome, Alice</h1>"},
 )
+# Optional sender: inline={..., "from_local": "orders", "from_name": "Winwell Orders",
+#                          "reply_to": "support@example.com"}
 
 template = beaco.templates.create("welcome", "email", "Hi {{ name }}")
 beaco.templates.upsert_by_name("welcome", "<h1>Hi {{ name }}</h1>")

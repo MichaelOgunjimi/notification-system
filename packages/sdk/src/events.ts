@@ -7,6 +7,7 @@ import type {
   EventListOptions,
   EventPriority,
   EventStatus,
+  InlineEmail,
   Page,
   PublishEventInput,
   Recipient,
@@ -44,6 +45,18 @@ export function mapRecipient(value: Recipient) {
   };
 }
 
+/** @internal Converts inline email content to the REST representation. */
+function mapInline(value: InlineEmail) {
+  return {
+    subject: value.subject,
+    html: value.html,
+    text: value.text,
+    from_local: value.fromLocal,
+    from_name: value.fromName,
+    reply_to: value.replyTo,
+  };
+}
+
 /** @internal Converts one SDK event input to the REST representation. */
 export function mapEventInput(value: PublishEventInput) {
   return {
@@ -52,7 +65,7 @@ export function mapEventInput(value: PublishEventInput) {
     priority: value.priority,
     template_id: value.templateId,
     template_name: value.templateName,
-    inline: value.inline,
+    inline: value.inline && mapInline(value.inline),
     payload: value.payload,
     metadata: value.metadata,
     idempotency_key: value.idempotencyKey,

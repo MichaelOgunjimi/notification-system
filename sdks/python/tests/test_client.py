@@ -44,6 +44,43 @@ class BeacoTest(unittest.TestCase):
             },
         )
 
+    def test_inline_email_carries_sender_fields(self):
+        inline = {
+            "subject": "Order confirmed",
+            "html": "<p>Thanks</p>",
+            "from_local": "orders",
+            "from_name": "Winwell Orders",
+            "reply_to": "support@winwell.example",
+        }
+        with patch("beaco._http.urlopen", return_value=Response()) as mocked:
+            Beaco("secret", base_url="http://localhost:8000/api/v1").events.publish(
+                "order.confirmed",
+                [{"channels": ["email"], "email": "user@example.com"}],
+                inline=inline,
+            )
+
+        self.assertEqual(json.loads(mocked.call_args.args[0].data)["inline"], inline)
+
+    def test_template_sender_fields_are_sent_and_clearable(self):
+        client = Beaco("secret", base_url="http://localhost:8000/api/v1")
+        with patch("beaco._http.urlopen", return_value=Response()) as mocked:
+            client.templates.create(
+                "order-confirmed",
+                "email",
+                "<p>Hi</p>",
+                from_local="billing",
+                from_name="Acme Billing",
+                reply_to="help@acme.example",
+            )
+            created = json.loads(mocked.call_args.args[0].data)
+            client.templates.update("tpl_1", from_local=None, reply_to=None)
+            updated = json.loads(mocked.call_args.args[0].data)
+
+        self.assertEqual(created["from_local"], "billing")
+        self.assertEqual(created["from_name"], "Acme Billing")
+        self.assertEqual(created["reply_to"], "help@acme.example")
+        self.assertEqual(updated, {"from_local": None, "reply_to": None})
+
     def test_rejects_insecure_remote_base_url(self):
         with self.assertRaisesRegex(ValueError, "must use HTTPS"):
             Beaco("secret", base_url="http://api.example.com/v1")
