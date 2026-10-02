@@ -14,6 +14,9 @@ import { emailTemplates } from "@/lib/email-templates";
 import { BeacoEmailPreview, type EmailColorScheme } from "./beaco-email-preview";
 import BrandLogo from "@/components/brand/brand-logo";
 
+/** Adds zero-width break points after path/query separators so long routes wrap cleanly. */
+const breakable = (value: string) => value.replace(/([/?&=])/g, "$1\u200b");
+
 /**
  * Renders searchable email previews and their review metadata.
  *
@@ -35,6 +38,7 @@ export function EmailTemplateGallery() {
 
   return (
     <main id="main-content" className="min-h-dvh bg-[#0b0b0a] text-[#eeeae0]">
+      <h1 className="sr-only">Email template review</h1>
       <header className="flex min-h-16 items-center justify-between border-b border-white/10 px-4 sm:px-6">
         <div className="flex items-center gap-4">
           <Link href="/" aria-label="Back to Beaco">
@@ -69,12 +73,14 @@ export function EmailTemplateGallery() {
               <button
                 key={template.id}
                 onClick={() => setSelectedId(template.id)}
+                aria-current={selected.id === template.id ? "true" : undefined}
                 className={`min-w-[13rem] rounded-lg px-3 py-3 text-left transition lg:w-full ${selected.id === template.id ? "bg-white/[0.08] text-white" : "text-white/55 hover:bg-white/[0.04] hover:text-white/80"}`}
               >
                 <span className="font-mono text-[10px] text-[#e9aa31]">0{index + 1}</span>
                 <span className="ml-3 text-[12px] font-medium">{template.name}</span>
                 <span className="mt-1.5 block pl-7 text-[10px] text-white/35">
                   {template.category}
+                  {template.status === "proposed" ? " · Proposed" : ""}
                 </span>
               </button>
             ))}
@@ -91,15 +97,17 @@ export function EmailTemplateGallery() {
               <div className="flex rounded-lg border border-white/10 p-1">
                 <button
                   aria-label="Light email preview"
+                  aria-pressed={colorScheme === "light"}
                   onClick={() => setColorScheme("light")}
-                  className={`grid size-9 place-items-center rounded-md ${colorScheme === "light" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
+                  className={`grid size-11 place-items-center rounded-md ${colorScheme === "light" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
                 >
                   <Sun size={17} />
                 </button>
                 <button
                   aria-label="Dark email preview"
+                  aria-pressed={colorScheme === "dark"}
                   onClick={() => setColorScheme("dark")}
-                  className={`grid size-9 place-items-center rounded-md ${colorScheme === "dark" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
+                  className={`grid size-11 place-items-center rounded-md ${colorScheme === "dark" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
                 >
                   <Moon size={17} />
                 </button>
@@ -107,15 +115,17 @@ export function EmailTemplateGallery() {
               <div className="flex rounded-lg border border-white/10 p-1">
                 <button
                   aria-label="Desktop preview"
+                  aria-pressed={viewport === "desktop"}
                   onClick={() => setViewport("desktop")}
-                  className={`grid size-9 place-items-center rounded-md ${viewport === "desktop" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
+                  className={`grid size-11 place-items-center rounded-md ${viewport === "desktop" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
                 >
                   <Desktop size={17} />
                 </button>
                 <button
                   aria-label="Mobile preview"
+                  aria-pressed={viewport === "mobile"}
                   onClick={() => setViewport("mobile")}
-                  className={`grid size-9 place-items-center rounded-md ${viewport === "mobile" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
+                  className={`grid size-11 place-items-center rounded-md ${viewport === "mobile" ? "bg-white/10 text-[#e9aa31]" : "text-white/40"}`}
                 >
                   <DeviceMobile size={17} />
                 </button>
@@ -126,7 +136,9 @@ export function EmailTemplateGallery() {
             <div
               className={`mx-auto transition-all ${viewport === "mobile" ? "max-w-[390px]" : "max-w-[760px]"}`}
             >
-              <BeacoEmailPreview template={selected} colorScheme={colorScheme} />
+              <div role="region" aria-label={`Preview: ${selected.name}`}>
+                <BeacoEmailPreview template={selected} colorScheme={colorScheme} />
+              </div>
             </div>
           </div>
         </section>
@@ -140,8 +152,8 @@ export function EmailTemplateGallery() {
             </div>
             <div>
               <dt className="text-white/35">Trigger</dt>
-              <dd className="mt-1.5 break-words font-mono text-[10px] leading-5 text-white/65">
-                {selected.trigger}
+              <dd className="mt-1.5 [overflow-wrap:anywhere] font-mono text-[10px] leading-5 text-white/65">
+                {breakable(selected.trigger)}
               </dd>
             </div>
             <div>
@@ -158,8 +170,8 @@ export function EmailTemplateGallery() {
             </div>
             <div>
               <dt className="text-white/35">Action destination</dt>
-              <dd className="mt-1.5 break-words font-mono text-[10px] leading-5 text-white/65">
-                {selected.action.destination}
+              <dd className="mt-1.5 [overflow-wrap:anywhere] font-mono text-[10px] leading-5 text-white/65">
+                {breakable(selected.action.destination)}
               </dd>
             </div>
           </dl>

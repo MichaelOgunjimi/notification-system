@@ -43,17 +43,17 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
   return (
     <article
       data-color-scheme={colorScheme}
-      className="group/email mx-auto w-full max-w-[640px] overflow-hidden rounded-[2px] border border-[#d9d4c8] bg-[#f7f4eb] text-[#211f1a] shadow-[0_30px_90px_rgba(0,0,0,0.28)] transition-colors data-[color-scheme=dark]:border-[#34332e] data-[color-scheme=dark]:bg-[#11110f] data-[color-scheme=dark]:text-[#f2eee4]"
+      className="@container group/email mx-auto w-full max-w-[640px] overflow-hidden rounded-[2px] border border-[#d9d4c8] bg-[#f7f4eb] text-[#211f1a] shadow-[0_30px_90px_rgba(0,0,0,0.28)] transition-colors data-[color-scheme=dark]:border-[#34332e] data-[color-scheme=dark]:bg-[#11110f] data-[color-scheme=dark]:text-[#f2eee4]"
       aria-label={`${template.name} email preview in ${colorScheme} mode`}
     >
-      <header className="border-b-2 border-[#e9aa31] bg-[#11110f] px-6 py-6 sm:px-10 sm:py-7">
+      <header className="border-b-2 border-[#e9aa31] bg-[#11110f] px-6 py-6 @lg:px-10 @lg:py-7">
         <div className="flex items-center justify-between gap-6">
           <Image
             src="/brand/png/beaco-lockup-horizontal-dark.png"
             width={220}
             height={72}
             alt="Beaco"
-            className="h-auto w-[118px] sm:w-[132px]"
+            className="h-auto w-[118px] @lg:w-[132px]"
             priority
           />
           <span className="text-right font-mono text-[9px] uppercase tracking-[0.16em] text-white/48">
@@ -62,7 +62,7 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
         </div>
       </header>
 
-      <div className="px-6 py-9 sm:px-10 sm:py-12">
+      <div className="px-6 py-9 @lg:px-10 @lg:py-12">
         <div className="flex items-center gap-3">
           <span className="size-2 bg-[#e9aa31] shadow-[0_0_16px_rgba(233,170,49,.55)]" />
           <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#9c968b]">
@@ -70,21 +70,21 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
           </p>
         </div>
 
-        <h1 className="mt-7 max-w-[15ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.052em] sm:text-[44px]">
+        <h1 className="mt-7 max-w-[15ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.052em] @lg:text-[44px]">
           {headline}
         </h1>
         <p className="mt-6 max-w-[32rem] text-[14px] leading-7 text-[#5f5a50] group-data-[color-scheme=dark]/email:text-[#b4aea2]">
           {intro}
         </p>
 
-        <dl className="mt-9 grid grid-cols-1 border-y border-[#ded9cc] sm:grid-cols-2 group-data-[color-scheme=dark]/email:border-[#37362f]">
-          <div className="py-5 sm:pr-6">
+        <dl className="mt-9 grid grid-cols-1 border-y border-[#ded9cc] @lg:grid-cols-2 group-data-[color-scheme=dark]/email:border-[#37362f]">
+          <div className="py-5 @lg:pr-6">
             <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">
               {detailLabel}
             </dt>
             <dd className="mt-2 text-[14px] font-semibold">{detailValue}</dd>
           </div>
-          <div className="border-t border-[#ded9cc] py-5 sm:border-l sm:border-t-0 sm:pl-6 group-data-[color-scheme=dark]/email:border-[#37362f]">
+          <div className="border-t border-[#ded9cc] py-5 @lg:border-l @lg:border-t-0 @lg:pl-6 group-data-[color-scheme=dark]/email:border-[#37362f]">
             <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">
               Security
             </dt>
@@ -118,14 +118,14 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
             <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#777064] group-data-[color-scheme=dark]/email:text-[#8e887d]">
               Button not working?
             </p>
-            <p className="mt-2 break-all font-mono text-[9px] leading-4 text-[#514d45] group-data-[color-scheme=dark]/email:text-[#aba59a]">
-              https://beaco.app{template.action.destination}
+            <p className="mt-2 [overflow-wrap:anywhere] font-mono text-[9px] leading-4 text-[#514d45] group-data-[color-scheme=dark]/email:text-[#aba59a]">
+              https://beaco.app{template.action.destination.replace(/([/?&=])/g, "$1\u200b")}
             </p>
           </div>
         ) : null}
       </div>
 
-      <footer className="border-t border-[#ddd7ca] bg-[#ebe7dc] px-6 py-7 group-data-[color-scheme=dark]/email:border-[#34332e] group-data-[color-scheme=dark]/email:bg-[#0b0b0a] sm:px-10">
+      <footer className="border-t border-[#ddd7ca] bg-[#ebe7dc] px-6 py-7 group-data-[color-scheme=dark]/email:border-[#34332e] group-data-[color-scheme=dark]/email:bg-[#0b0b0a] @lg:px-10">
         <div className="flex items-start gap-4">
           <Image
             src={
