@@ -2,15 +2,23 @@
 
 import { FormEvent, useId, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
-import type { AlertMetric, AlertRule } from "@beaco/control-plane";
-import { useCreateProjectAlertRule, useUpdateProjectAlertRule } from "@beaco/control-plane/react";
+import type { AlertComparison, AlertMetric, AlertRule } from "@beaco/control-plane";
+import {
+  useCreateOrganizationAlertRule,
+  useCreateProjectAlertRule,
+  useUpdateOrganizationAlertRule,
+  useUpdateProjectAlertRule,
+} from "@beaco/control-plane/react";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { useToast } from "@/components/ui/toast";
 
+/** Owned by a project, or an org-wide default owned by an organization. */
+type AlertRuleScope = { projectId: string } | { organizationId: string };
+
 type AlertRuleFormDialogProps = Readonly<{
   open: boolean;
-  projectId: string;
-  /** A rule to edit, or null to create a new one owned by this project. */
+  scope: AlertRuleScope;
+  /** A rule to edit, or null to create a new one owned by this scope. */
   rule: AlertRule | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -22,18 +30,24 @@ const METRICS: ReadonlyArray<{ value: AlertMetric; label: string; placeholder: s
   { value: "avg_latency_ms", label: "Avg latency", placeholder: "2000" },
 ];
 
+const COMPARISONS: ReadonlyArray<{ value: AlertComparison; label: string }> = [
+  { value: "gt", label: "Above" },
+  { value: "lt", label: "Below" },
+];
+
 /**
- * Modal form for creating or editing a project's alert rule. Fires an email
- * when the chosen metric exceeds its threshold over the trailing window, at
- * most once per window (the evaluator's own cooldown).
+ * Modal form for creating or editing an alert rule, owned by either a
+ * project or (for an org-wide default) an organization. Fires an email when
+ * the chosen metric exceeds its threshold over the trailing window, at most
+ * once per window (the evaluator's own cooldown).
  *
- * @param props Dialog visibility, the target project, an optional rule to
+ * @param props Dialog visibility, the target scope, an optional rule to
  *   edit, and success/close callbacks.
  * @returns The create/edit alert rule dialog.
  */
 export function AlertRuleFormDialog({
   open,
-  projectId,
+  scope,
   rule,
   onOpenChange,
   onSaved,
@@ -44,12 +58,18 @@ export function AlertRuleFormDialog({
   const thresholdId = useId();
   const windowId = useId();
   const emailId = useId();
-  const createRule = useCreateProjectAlertRule();
-  const updateRule = useUpdateProjectAlertRule();
+  const createProjectRule = useCreateProjectAlertRule();
+  const updateProjectRule = useUpdateProjectAlertRule();
+  const createOrgRule = useCreateOrganizationAlertRule();
+  const updateOrgRule = useUpdateOrganizationAlertRule();
+  const isOrgScope = "organizationId" in scope;
+  const createRule = isOrgScope ? createOrgRule : createProjectRule;
+  const updateRule = isOrgScope ? updateOrgRule : updateProjectRule;
   const mutation = rule ? updateRule : createRule;
 
   const [name, setName] = useState(rule?.name ?? "");
   const [metric, setMetric] = useState<AlertMetric>(rule?.metric ?? "failure_rate");
+  const [comparison, setComparison] = useState<AlertComparison>(rule?.comparison ?? "gt");
   const [threshold, setThreshold] = useState(rule ? String(rule.threshold) : "");
   const [windowMinutes, setWindowMinutes] = useState(String(rule?.windowMinutes ?? 60));
   const [notifyEmail, setNotifyEmail] = useState(rule?.notifyEmail ?? "");
@@ -71,31 +91,37 @@ export function AlertRuleFormDialog({
       return setFormError("Enter a window in whole minutes, greater than 0.");
     }
 
+    const fields = {
+      name: name.trim(),
+      metric,
+      comparison,
+      threshold: thresholdValue,
+      windowMinutes: windowValue,
+      notifyEmail: notifyEmail.trim() || null,
+    };
+
     try {
       if (rule) {
-        await updateRule.mutateAsync({
-          projectId,
-          ruleId: rule.id,
-          changes: {
-            name: name.trim(),
-            metric,
-            threshold: thresholdValue,
-            windowMinutes: windowValue,
-            notifyEmail: notifyEmail.trim() || null,
-          },
-        });
+        if (isOrgScope) {
+          await updateOrgRule.mutateAsync({
+            organizationId: scope.organizationId,
+            ruleId: rule.id,
+            changes: fields,
+          });
+        } else {
+          await updateProjectRule.mutateAsync({
+            projectId: scope.projectId,
+            ruleId: rule.id,
+            changes: fields,
+          });
+        }
         toast.success(`${name.trim()} updated`);
       } else {
-        await createRule.mutateAsync({
-          projectId,
-          input: {
-            name: name.trim(),
-            metric,
-            threshold: thresholdValue,
-            windowMinutes: windowValue,
-            notifyEmail: notifyEmail.trim() || null,
-          },
-        });
+        if (isOrgScope) {
+          await createOrgRule.mutateAsync({ organizationId: scope.organizationId, input: fields });
+        } else {
+          await createProjectRule.mutateAsync({ projectId: scope.projectId, input: fields });
+        }
         toast.success(`${name.trim()} created`);
       }
       onSaved();
@@ -112,7 +138,7 @@ export function AlertRuleFormDialog({
       }}
       eyebrow="Alert rules"
       title={rule ? "Edit alert rule" : "New alert rule"}
-      description="Fires an email when this metric exceeds its threshold, at most once per window."
+      description="Fires an email when this metric crosses its threshold, at most once per window."
       busy={mutation.isPending}
       formId={formId}
       submitLabel={rule ? "Save changes" : "Create rule"}
@@ -143,6 +169,22 @@ export function AlertRuleFormDialog({
             aria-checked={metric === option.value}
             data-active={metric === option.value || undefined}
             onClick={() => setMetric(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="form-dialog__field-label">Trigger when the metric is</span>
+      <div className="form-dialog__segmented" role="radiogroup" aria-label="Comparison">
+        {COMPARISONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={comparison === option.value}
+            data-active={comparison === option.value || undefined}
+            onClick={() => setComparison(option.value)}
           >
             {option.label}
           </button>

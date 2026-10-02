@@ -1,43 +1,55 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PencilSimple, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
-import type { AlertMetric, AlertRule, Organization, Project } from "@beaco/control-plane";
-import { useDeleteProjectAlertRule, useProjectAlertRules } from "@beaco/control-plane/react";
+import { CaretRight, PencilSimple, Plus, Trash, WarningCircle } from "@phosphor-icons/react";
+import type { AlertRule, Organization, Project } from "@beaco/control-plane";
+import {
+  useDeleteProjectAlertRule,
+  useForkProjectAlertRule,
+  useProjectAlertRuleDefaults,
+  useProjectAlertRules,
+} from "@beaco/control-plane/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { AlertRuleFormDialog } from "./alert-rule-form-dialog";
+import { formatThreshold, METRIC_LABELS } from "./alert-rule-format";
 import "./alert-rules-panel.css";
 
 type AlertRulesPanelProps = Readonly<{ organization: Organization; project: Project }>;
-
-const METRIC_LABELS: Record<AlertMetric, string> = {
-  failure_rate: "Failure rate",
-  dead_letter_count: "Dead letters",
-  avg_latency_ms: "Avg latency",
-};
-
-function formatThreshold(metric: AlertMetric, threshold: number): string {
-  if (metric === "failure_rate") return `${threshold}%`;
-  if (metric === "avg_latency_ms") return `${threshold}ms`;
-  return String(threshold);
-}
 
 /** Config panel for a project's alert rules — sits above the issue list on /alerts. */
 export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps) {
   const toast = useToast();
   const rules = useProjectAlertRules(project.id);
+  const defaults = useProjectAlertRuleDefaults(project.id, { perPage: 50 });
   const deleteRule = useDeleteProjectAlertRule();
+  const forkRule = useForkProjectAlertRule();
   const [formOpen, setFormOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AlertRule | null>(null);
+  const [defaultsOpen, setDefaultsOpen] = useState(true);
 
   const capabilities = useMemo(
     () => new Set(organization.capabilities),
     [organization.capabilities],
   );
   const canManage = capabilities.has("project:deliveries:manage");
+
+  const items = rules.data?.items ?? [];
+  const defaultItems = defaults.data?.items ?? [];
+  // A project's own rule for a metric overrides the org-wide default for
+  // that same metric — mirrors the evaluator's "project-owned wins" check.
+  const ownedMetrics = new Set(items.map((rule) => rule.metric));
+
+  async function handleFork(rule: AlertRule) {
+    try {
+      await forkRule.mutateAsync({ projectId: project.id, ruleId: rule.id });
+      toast.success(`${rule.name} forked into this project`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to fork this rule");
+    }
+  }
 
   function openCreate() {
     setEditingRule(null);
@@ -59,8 +71,6 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
       toast.error(error instanceof Error ? error.message : "Unable to delete this rule");
     }
   }
-
-  const items = rules.data?.items ?? [];
 
   return (
     <section className="alert-rules-panel" aria-busy={rules.isFetching || undefined}>
@@ -114,8 +124,8 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
               <div className="alert-rules-panel__summary">
                 <strong>{rule.name}</strong>
                 <span>
-                  {METRIC_LABELS[rule.metric]} &gt; {formatThreshold(rule.metric, rule.threshold)}{" "}
-                  over {rule.windowMinutes}m
+                  {METRIC_LABELS[rule.metric]} {rule.comparison === "lt" ? "<" : ">"}{" "}
+                  {formatThreshold(rule.metric, rule.threshold)} over {rule.windowMinutes}m
                 </span>
               </div>
               <div className="alert-rules-panel__meta">
@@ -160,10 +170,63 @@ export function AlertRulesPanel({ organization, project }: AlertRulesPanelProps)
         </div>
       ) : null}
 
+      <div className="alert-rules-panel__defaults">
+        <button
+          type="button"
+          className="alert-rules-panel__defaults-toggle"
+          data-open={defaultsOpen || undefined}
+          onClick={() => setDefaultsOpen((open) => !open)}
+        >
+          <CaretRight size={10} weight="bold" aria-hidden />
+          <h3>Shared from organization</h3>
+          <span>{defaultItems.length}</span>
+        </button>
+        {defaultsOpen ? (
+          defaultItems.length === 0 ? (
+            <p className="alert-rules-panel__empty">No org-wide rules yet.</p>
+          ) : (
+            <ul className="alert-rules-panel__list">
+              {defaultItems.map((rule) => (
+                <li key={rule.id}>
+                  <div className="alert-rules-panel__summary">
+                    <strong>{rule.name}</strong>
+                    <span>
+                      {METRIC_LABELS[rule.metric]} {rule.comparison === "lt" ? "<" : ">"}{" "}
+                      {formatThreshold(rule.metric, rule.threshold)} over {rule.windowMinutes}m
+                    </span>
+                  </div>
+                  <div className="alert-rules-panel__meta">
+                    {canManage ? (
+                      ownedMetrics.has(rule.metric) ? (
+                        <span
+                          className="alert-rules-panel__already"
+                          title="This project already has a rule for this metric"
+                        >
+                          Already added
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="alert-rules-panel__fork-btn"
+                          onClick={() => handleFork(rule)}
+                          disabled={forkRule.isPending}
+                        >
+                          Fork
+                        </button>
+                      )
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : null}
+      </div>
+
       {formOpen ? (
         <AlertRuleFormDialog
           open={formOpen}
-          projectId={project.id}
+          scope={{ projectId: project.id }}
           rule={editingRule}
           onOpenChange={setFormOpen}
           onSaved={() => setFormOpen(false)}

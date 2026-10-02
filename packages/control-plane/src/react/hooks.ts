@@ -30,6 +30,7 @@ import { useControlPlaneClient } from "./provider";
 import {
   controlPlaneQueryKeys,
   invitationPreviewQuery,
+  organizationAlertRulesQuery,
   organizationAnalyticsQuery,
   organizationAuditLogQuery,
   organizationInvitationsQuery,
@@ -43,6 +44,7 @@ import {
   organizationUsageHourlyQuery,
   organizationUsageQuery,
   organizationUsageSummaryQuery,
+  projectAlertRuleDefaultsQuery,
   projectAlertRulesQuery,
   projectAnalyticsQuery,
   projectApiKeysQuery,
@@ -982,6 +984,124 @@ export function useDeleteProjectAlertRule() {
     mutationFn: ({ projectId, ruleId }: { projectId: string; ruleId: string }) =>
       client.alertRules.delete(projectId, ruleId),
     onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectAlertRules(variables.projectId),
+      }),
+  });
+}
+
+/**
+ * Loads one page of the org-wide default rules shared with a project.
+ *
+ * @param projectId Project used only to authorize the request; null disables the query.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query result containing one page of org-wide default rules.
+ */
+export function useProjectAlertRuleDefaults(
+  projectId: string | null,
+  options: AlertRuleListOptions = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectAlertRuleDefaultsQuery(client, projectId ?? "pending", options),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one page of an organization's org-wide default alert rules.
+ *
+ * @param organizationId Organization whose alert rules should load; null disables the query.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query result containing one page of org-wide default rules.
+ */
+export function useOrganizationAlertRules(
+  organizationId: string | null,
+  options: AlertRuleListOptions = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...organizationAlertRulesQuery(client, organizationId ?? "pending", options),
+    enabled: Boolean(organizationId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Creates an org-wide default alert rule and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the organization identifier and the new rule's fields.
+ */
+export function useCreateOrganizationAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ organizationId, input }: { organizationId: string; input: AlertRuleCreate }) =>
+      client.alertRules.createForOrganization(organizationId, input),
+    onSuccess: (_rule, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.organizationAlertRules(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Updates an org-wide default alert rule and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the organization and rule identifiers and field changes.
+ */
+export function useUpdateOrganizationAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      organizationId,
+      ruleId,
+      changes,
+    }: {
+      organizationId: string;
+      ruleId: string;
+      changes: AlertRuleUpdate;
+    }) => client.alertRules.updateForOrganization(organizationId, ruleId, changes),
+    onSuccess: (_rule, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.organizationAlertRules(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Deletes an org-wide default alert rule and refreshes its rule cache.
+ *
+ * @returns TanStack mutation accepting the organization and rule identifiers.
+ */
+export function useDeleteOrganizationAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ organizationId, ruleId }: { organizationId: string; ruleId: string }) =>
+      client.alertRules.deleteForOrganization(organizationId, ruleId),
+    onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.organizationAlertRules(variables.organizationId),
+      }),
+  });
+}
+
+/**
+ * Copies an org-wide default rule into a new rule owned by a project, and
+ * refreshes both rule caches. The original default is never modified.
+ *
+ * @returns TanStack mutation accepting the project identifier and the source rule identifier.
+ */
+export function useForkProjectAlertRule() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ruleId }: { projectId: string; ruleId: string }) =>
+      client.alertRules.fork(projectId, ruleId),
+    onSuccess: (_rule, variables) =>
       queryClient.invalidateQueries({
         queryKey: controlPlaneQueryKeys.projectAlertRules(variables.projectId),
       }),

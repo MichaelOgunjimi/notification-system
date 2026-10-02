@@ -4,18 +4,22 @@ import { FormEvent, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  BellRinging,
   Buildings,
   Check,
   EnvelopeSimple,
   FolderSimple,
   GearSix,
   PaperPlaneTilt,
+  PencilSimple,
+  Plus,
   SpinnerGap,
   Trash,
   UserMinus,
   WarningCircle,
 } from "@phosphor-icons/react";
 import type {
+  AlertRule,
   Organization,
   OrganizationMember,
   OrganizationRole,
@@ -24,7 +28,9 @@ import type {
 import {
   useArchiveOrganization,
   useCreateProject,
+  useDeleteOrganizationAlertRule,
   useInviteOrganizationMember,
+  useOrganizationAlertRules,
   useOrganizationInvitations,
   useOrganizationMembers,
   useRemoveOrganizationMember,
@@ -32,6 +38,8 @@ import {
   useUpdateOrganization,
   useUpdateOrganizationMemberRole,
 } from "@beaco/control-plane/react";
+import { AlertRuleFormDialog } from "@/components/alerts/alert-rule-form-dialog";
+import { formatThreshold, METRIC_LABELS } from "@/components/alerts/alert-rule-format";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { AppSelect } from "@/components/ui/app-select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,6 +94,9 @@ export function OrganizationSettings({
   const [memberToRemove, setMemberToRemove] = useState<OrganizationMember | null>(null);
   const [resendingInvitation, setResendingInvitation] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [alertRuleFormOpen, setAlertRuleFormOpen] = useState(false);
+  const [editingAlertRule, setEditingAlertRule] = useState<AlertRule | null>(null);
+  const [alertRuleToDelete, setAlertRuleToDelete] = useState<AlertRule | null>(null);
   const capabilities = useMemo(
     () => new Set(organization.capabilities),
     [organization.capabilities],
@@ -104,6 +115,8 @@ export function OrganizationSettings({
   const revokeInvitation = useRevokeOrganizationInvitation();
   const createProject = useCreateProject();
   const archiveOrganization = useArchiveOrganization();
+  const alertRules = useOrganizationAlertRules(organization.id, { perPage: 50 });
+  const deleteAlertRule = useDeleteOrganizationAlertRule();
   const profileChanged =
     name.trim() !== organization.name ||
     slug.trim() !== organization.slug ||
@@ -213,6 +226,32 @@ export function OrganizationSettings({
     }
   }
 
+  function openCreateAlertRule() {
+    setEditingAlertRule(null);
+    setAlertRuleFormOpen(true);
+  }
+
+  function openEditAlertRule(rule: AlertRule) {
+    setEditingAlertRule(rule);
+    setAlertRuleFormOpen(true);
+  }
+
+  async function handleDeleteAlertRule() {
+    if (!alertRuleToDelete) return;
+    try {
+      await deleteAlertRule.mutateAsync({
+        organizationId: organization.id,
+        ruleId: alertRuleToDelete.id,
+      });
+      toast.success(`${alertRuleToDelete.name} deleted`);
+      setAlertRuleToDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete this rule");
+    }
+  }
+
+  const alertRuleItems = alertRules.data?.items ?? [];
+
   return (
     <div className="organization-settings">
       <header className="organization-settings__heading">
@@ -230,7 +269,8 @@ export function OrganizationSettings({
         <a href="#general">01 General</a>
         <a href="#members">02 Members</a>
         <a href="#projects">03 Projects</a>
-        {canDeleteOrganization ? <a href="#danger">04 Danger</a> : null}
+        <a href="#alert-rules">04 Alert rules</a>
+        {canDeleteOrganization ? <a href="#danger">05 Danger</a> : null}
       </nav>
 
       <div className="organization-settings__sections">
@@ -577,13 +617,82 @@ export function OrganizationSettings({
           </div>
         </section>
 
+        <section id="alert-rules" className="organization-settings__section">
+          <div className="organization-settings__section-heading">
+            <span>04</span>
+            <div>
+              <h2>Alert rules</h2>
+              <p>
+                Org-wide defaults, evaluated for every project that doesn&apos;t have its own rule
+                for the same metric. A project can fork one to make its own editable copy.
+              </p>
+            </div>
+          </div>
+          {canManageOrganization ? (
+            <div className="organization-settings__alert-rules-actions">
+              <span>{alertRuleItems.length} org-wide rule(s)</span>
+              <button type="button" onClick={openCreateAlertRule}>
+                <Plus size={13} weight="bold" />
+                New rule
+              </button>
+            </div>
+          ) : null}
+          <div className="organization-settings__list">
+            {alertRules.isPending ? (
+              <p className="organization-settings__empty">
+                <SpinnerGap className="animate-spin" size={16} /> Loading alert rules
+              </p>
+            ) : null}
+            {alertRuleItems.length === 0 && !alertRules.isPending ? (
+              <p className="organization-settings__empty">No org-wide alert rules yet.</p>
+            ) : null}
+            {alertRuleItems.map((rule) => (
+              <article key={rule.id} className="organization-settings__row">
+                <span className="organization-settings__avatar">
+                  <BellRinging size={16} />
+                </span>
+                <div>
+                  <strong>{rule.name}</strong>
+                  <small>
+                    {METRIC_LABELS[rule.metric]} {rule.comparison === "lt" ? "<" : ">"}{" "}
+                    {formatThreshold(rule.metric, rule.threshold)} over {rule.windowMinutes}m
+                  </small>
+                </div>
+                {canManageOrganization ? (
+                  <span className="organization-settings__member-trailing">
+                    <button
+                      type="button"
+                      className="organization-settings__icon-action"
+                      aria-label={`Edit ${rule.name}`}
+                      onClick={() => openEditAlertRule(rule)}
+                    >
+                      <PencilSimple size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="organization-settings__icon-action"
+                      aria-label={`Delete ${rule.name}`}
+                      onClick={() => {
+                        deleteAlertRule.reset();
+                        setAlertRuleToDelete(rule);
+                      }}
+                    >
+                      <Trash size={15} />
+                    </button>
+                  </span>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
         {canDeleteOrganization ? (
           <section
             id="danger"
             className="organization-settings__section organization-settings__section--danger"
           >
             <div className="organization-settings__section-heading">
-              <span>04</span>
+              <span>05</span>
               <div>
                 <h2>Danger zone</h2>
                 <p>
@@ -674,6 +783,50 @@ export function OrganizationSettings({
         {archiveOrganization.isError ? (
           <p className="app-dialog__error" role="alert">
             {archiveOrganization.error.message}
+          </p>
+        ) : null}
+      </AppDialog>
+
+      {alertRuleFormOpen ? (
+        <AlertRuleFormDialog
+          open={alertRuleFormOpen}
+          scope={{ organizationId: organization.id }}
+          rule={editingAlertRule}
+          onOpenChange={setAlertRuleFormOpen}
+          onSaved={() => setAlertRuleFormOpen(false)}
+        />
+      ) : null}
+
+      <AppDialog
+        open={alertRuleToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteAlertRule.isPending) setAlertRuleToDelete(null);
+        }}
+        eyebrow="Alert rules"
+        title={`Delete ${alertRuleToDelete?.name ?? "this rule"}?`}
+        description="Every project using this default stops being monitored by it immediately. This can't be undone."
+        busy={deleteAlertRule.isPending}
+        footer={
+          <>
+            <DialogAction
+              disabled={deleteAlertRule.isPending}
+              onClick={() => setAlertRuleToDelete(null)}
+            >
+              Cancel
+            </DialogAction>
+            <DialogAction
+              tone="danger"
+              disabled={deleteAlertRule.isPending}
+              onClick={handleDeleteAlertRule}
+            >
+              {deleteAlertRule.isPending ? "Deleting…" : "Delete rule"}
+            </DialogAction>
+          </>
+        }
+      >
+        {deleteAlertRule.isError ? (
+          <p className="app-dialog__error" role="alert">
+            {deleteAlertRule.error.message}
           </p>
         ) : null}
       </AppDialog>
