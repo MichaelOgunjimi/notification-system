@@ -514,12 +514,17 @@ export type TemplateChannel = "email" | "sms" | "webhook";
 /** Metric an alert rule watches — each reuses a field Usage already computes. */
 export type AlertMetric = "failure_rate" | "dead_letter_count" | "avg_latency_ms";
 
-/** A project's own delivery-health monitoring rule. */
+/** Which direction of a threshold crossing fires a rule. */
+export type AlertComparison = "gt" | "lt";
+
+/** A project's own alert rule, or an org-wide default when `projectId` is null. */
 export type AlertRule = Readonly<{
   id: string;
-  projectId: string;
+  projectId: string | null;
+  organizationId: string | null;
   name: string;
   metric: AlertMetric;
+  comparison: AlertComparison;
   threshold: number;
   windowMinutes: number;
   notifyEmail: string | null;
@@ -538,6 +543,7 @@ export type AlertRuleListOptions = Readonly<{
 export type AlertRuleCreate = Readonly<{
   name: string;
   metric: AlertMetric;
+  comparison?: AlertComparison;
   threshold: number;
   windowMinutes?: number;
   notifyEmail?: string | null;
@@ -548,6 +554,7 @@ export type AlertRuleCreate = Readonly<{
 export type AlertRuleUpdate = Readonly<{
   name?: string;
   metric?: AlertMetric;
+  comparison?: AlertComparison;
   threshold?: number;
   windowMinutes?: number;
   notifyEmail?: string | null;
@@ -1090,7 +1097,7 @@ export interface ControlPlaneClient {
      */
     fork(projectId: string, templateId: string): Promise<Template>;
   };
-  /** A project's own delivery-health monitoring rules. */
+  /** A project's own alert rules, plus org-wide defaults shared across an organization. */
   readonly alertRules: {
     /**
      * Lists alert rules owned by this project.
@@ -1101,6 +1108,30 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the `project:deliveries:read` capability is unavailable.
      */
     forProject(projectId: string, options?: AlertRuleListOptions): Promise<Paginated<AlertRule>>;
+    /**
+     * Lists the org-wide default rules shared with this project.
+     *
+     * @param projectId Stable project identifier (used only to authorize the request).
+     * @param options Optional page and page size (1-100, default 20).
+     * @returns One page of org-wide default rules.
+     * @throws {ControlPlaneError} When the `project:deliveries:read` capability is unavailable.
+     */
+    defaultsForProject(
+      projectId: string,
+      options?: AlertRuleListOptions,
+    ): Promise<Paginated<AlertRule>>;
+    /**
+     * Lists the org-wide default alert rules for an organization.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param options Optional page and page size (1-100, default 20).
+     * @returns One page of org-wide default rules.
+     * @throws {ControlPlaneError} When the `organization:manage` capability is unavailable.
+     */
+    forOrganization(
+      organizationId: string,
+      options?: AlertRuleListOptions,
+    ): Promise<Paginated<AlertRule>>;
     /**
      * Creates an alert rule owned by this project.
      *
@@ -1129,6 +1160,49 @@ export interface ControlPlaneClient {
      * @throws {ControlPlaneError} When the rule isn't owned by this project, or access is denied.
      */
     delete(projectId: string, ruleId: string): Promise<void>;
+    /**
+     * Creates an org-wide default alert rule.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param input Name, metric, threshold, and optional window/notify/active fields.
+     * @returns The new org-wide alert rule.
+     * @throws {ControlPlaneError} When the `organization:manage` capability is unavailable.
+     */
+    createForOrganization(organizationId: string, input: AlertRuleCreate): Promise<AlertRule>;
+    /**
+     * Updates an org-wide default alert rule.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param ruleId Stable alert rule identifier.
+     * @param changes Fields to update; omitted fields remain unchanged.
+     * @returns The updated org-wide alert rule.
+     * @throws {ControlPlaneError} When the rule isn't owned by this organization, or access is denied.
+     */
+    updateForOrganization(
+      organizationId: string,
+      ruleId: string,
+      changes: AlertRuleUpdate,
+    ): Promise<AlertRule>;
+    /**
+     * Deletes an org-wide default alert rule.
+     *
+     * @param organizationId Stable organization identifier.
+     * @param ruleId Stable alert rule identifier.
+     * @returns Promise resolved after the delete succeeds.
+     * @throws {ControlPlaneError} When the rule isn't owned by this organization, or access is denied.
+     */
+    deleteForOrganization(organizationId: string, ruleId: string): Promise<void>;
+    /**
+     * Copies an org-wide default rule into a new rule owned by this project. The
+     * original default is never modified, and the evaluator then prefers the
+     * fork over the org-wide default for the same metric.
+     *
+     * @param projectId Stable project identifier.
+     * @param ruleId Stable identifier of the org-wide rule to fork.
+     * @returns The new, independently-editable copy.
+     * @throws {ControlPlaneError} When the source isn't an org-wide rule, or access is denied.
+     */
+    fork(projectId: string, ruleId: string): Promise<AlertRule>;
   };
   /** Read-only tenant event log — every ingested notification request, by project. */
   readonly events: {
@@ -1378,9 +1452,11 @@ export type ApiTemplate = {
 /** Raw alert rule payload returned by FastAPI. */
 export type ApiAlertRule = {
   id: string;
-  project_id: string;
+  project_id: string | null;
+  organization_id: string | null;
   name: string;
   metric: AlertMetric;
+  comparison: AlertComparison;
   threshold: number;
   window_minutes: number;
   notify_email: string | null;

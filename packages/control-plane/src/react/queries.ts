@@ -76,6 +76,10 @@ export const controlPlaneQueryKeys = {
     ["control-plane", "organizations", organizationId, "events"] as const,
   projectAlertRules: (projectId: string) =>
     ["control-plane", "projects", projectId, "alert-rules"] as const,
+  projectAlertRuleDefaults: (projectId: string) =>
+    ["control-plane", "projects", projectId, "alert-rules", "defaults"] as const,
+  organizationAlertRules: (organizationId: string) =>
+    ["control-plane", "organizations", organizationId, "alert-rules"] as const,
 };
 
 const retryTransientFailure = (failureCount: number, error: Error) =>
@@ -623,6 +627,50 @@ export function projectAlertRulesQuery(
   return queryOptions({
     queryKey: [...controlPlaneQueryKeys.projectAlertRules(projectId), ...key] as const,
     queryFn: () => client.alertRules.forProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of the org-wide default rules shared with a project.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project used only to authorize the request.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query options scoped to the project, page, and filters.
+ */
+export function projectAlertRuleDefaultsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  options: AlertRuleListOptions,
+) {
+  const { args, key } = alertRuleListKeyParts(options);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.projectAlertRuleDefaults(projectId), ...key] as const,
+    queryFn: () => client.alertRules.defaultsForProject(projectId, args),
+    retry: retryTransientFailure,
+    ...tenantConfiguration,
+  });
+}
+
+/**
+ * Builds query options for one page of an organization's org-wide default alert rules.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param organizationId Organization whose alert rules should be loaded.
+ * @param options 1-based page and page size.
+ * @returns TanStack Query options scoped to the organization, page, and filters.
+ */
+export function organizationAlertRulesQuery(
+  client: ControlPlaneClient,
+  organizationId: string,
+  options: AlertRuleListOptions,
+) {
+  const { args, key } = alertRuleListKeyParts(options);
+  return queryOptions({
+    queryKey: [...controlPlaneQueryKeys.organizationAlertRules(organizationId), ...key] as const,
+    queryFn: () => client.alertRules.forOrganization(organizationId, args),
     retry: retryTransientFailure,
     ...tenantConfiguration,
   });

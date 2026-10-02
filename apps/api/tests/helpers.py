@@ -60,3 +60,32 @@ def create_sync_project_api_key(session: Session, *, name: str) -> ApiKey:
     session.add(api_key)
     session.flush()
     return api_key
+
+
+def create_sync_project_in_org(
+    session: Session, *, organization_id: uuid.UUID, created_by_user_id: uuid.UUID, name: str
+) -> ApiKey:
+    """Add a second project (and its own API key) to an existing organization."""
+    identity = uuid.uuid4().hex
+    project = Project(
+        organization_id=organization_id,
+        name=name,
+        slug=f"project-{identity}",
+        created_by_user_id=created_by_user_id,
+    )
+    session.add(project)
+    session.flush()
+
+    api_key = ApiKey(
+        project_id=project.id,
+        created_by_user_id=created_by_user_id,
+        key_hash=f"testhash_{identity}",
+        key_prefix="test_pref",
+        name=name,
+        scopes=list(ALL_API_KEY_SCOPES),
+        is_active=True,
+        created_at=utc_now(),
+    )
+    session.add(api_key)
+    session.flush()
+    return api_key

@@ -1,7 +1,8 @@
-"""Session-auth alert rule endpoints — a project's own delivery health rules.
+"""Session-auth alert rule endpoints — a project's own rules, plus org-wide defaults.
 
 Distinct from the deleted api-key-scoped /alerts CRUD: these rules are owned
-by a project (matching the same pivot Templates made), not an individual key.
+by a project or an organization (matching the same pivot Templates made), not
+an individual key.
 """
 
 import uuid
@@ -20,7 +21,11 @@ from app.modules.observability.alerts.schemas import (
     AlertRuleUpdate,
 )
 from app.modules.observability.audit.service import log_action
-from app.modules.tenancy.authorization import OrganizationCapability, authorize_project
+from app.modules.tenancy.authorization import (
+    OrganizationCapability,
+    authorize_organization,
+    authorize_project,
+)
 from app.modules.tenancy.errors import TenantResourceNotFoundError
 
 router = APIRouter(tags=["tenant-alert-rules"])
@@ -45,6 +50,29 @@ async def list_project_alert_rules(
     )
     return await alert_service.list_alert_rules_for_project(
         db, project_id=project_id, page=page, per_page=per_page
+    )
+
+
+@router.get(
+    "/projects/{project_id}/alert-rules/defaults",
+    response_model=PaginatedResponse[AlertRuleResponse],
+)
+async def list_project_default_alert_rules(
+    project_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+) -> Page[AlertRule]:
+    """Org-wide rules shared with this project — its own rules take priority."""
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.READ_PROJECT_DELIVERIES,
+    )
+    return await alert_service.list_org_alert_rules(
+        db, organization_id=access.project.organization_id, page=page, per_page=per_page
     )
 
 
@@ -149,6 +177,179 @@ async def delete_project_alert_rule(
         api_key_id=None,
         organization_id=access.project.organization_id,
         project_id=access.project.id,
+        actor_user_id=user.id,
+        action="alert_rule.deleted",
+        resource_type="alert_rule",
+        resource_id=str(rule.id),
+        metadata={"name": rule.name},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+
+
+@router.post(
+    "/projects/{project_id}/alert-rules/{rule_id}/fork",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def fork_project_alert_rule(
+    project_id: uuid.UUID,
+    rule_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    request: Request,
+) -> AlertRuleResponse:
+    access = await authorize_project(
+        db,
+        user_id=user.id,
+        project_id=project_id,
+        capability=OrganizationCapability.MANAGE_PROJECT_DELIVERIES,
+    )
+    fork = await alert_service.fork_alert_rule(
+        db,
+        rule_id=rule_id,
+        project_id=access.project.id,
+        organization_id=access.project.organization_id,
+    )
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=access.project.organization_id,
+        project_id=access.project.id,
+        actor_user_id=user.id,
+        action="alert_rule.forked",
+        resource_type="alert_rule",
+        resource_id=str(fork.id),
+        metadata={"name": fork.name, "source_rule_id": str(rule_id)},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return AlertRuleResponse.model_validate(fork)
+
+
+@router.get(
+    "/organizations/{organization_id}/alert-rules",
+    response_model=PaginatedResponse[AlertRuleResponse],
+)
+async def list_organization_alert_rules(
+    organization_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+) -> Page[AlertRule]:
+    await authorize_organization(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.MANAGE,
+    )
+    return await alert_service.list_org_alert_rules(
+        db, organization_id=organization_id, page=page, per_page=per_page
+    )
+
+
+@router.post(
+    "/organizations/{organization_id}/alert-rules",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_organization_alert_rule(
+    organization_id: uuid.UUID,
+    body: AlertRuleCreate,
+    user: CurrentUserDep,
+    db: SessionDep,
+    request: Request,
+) -> AlertRuleResponse:
+    await authorize_organization(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.MANAGE,
+    )
+    rule = await alert_service.create_org_alert_rule(db, body, organization_id=organization_id)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=organization_id,
+        project_id=None,
+        actor_user_id=user.id,
+        action="alert_rule.created",
+        resource_type="alert_rule",
+        resource_id=str(rule.id),
+        metadata={"name": rule.name, "metric": str(rule.metric)},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return AlertRuleResponse.model_validate(rule)
+
+
+@router.put(
+    "/organizations/{organization_id}/alert-rules/{rule_id}",
+    response_model=AlertRuleResponse,
+)
+async def update_organization_alert_rule(
+    organization_id: uuid.UUID,
+    rule_id: uuid.UUID,
+    body: AlertRuleUpdate,
+    user: CurrentUserDep,
+    db: SessionDep,
+    request: Request,
+) -> AlertRuleResponse:
+    await authorize_organization(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.MANAGE,
+    )
+    rule = await alert_service.get_org_alert_rule(db, rule_id, organization_id=organization_id)
+    if rule is None:
+        raise TenantResourceNotFoundError("Alert rule")
+
+    updated = await alert_service.update_alert_rule(db, rule, body)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=organization_id,
+        project_id=None,
+        actor_user_id=user.id,
+        action="alert_rule.updated",
+        resource_type="alert_rule",
+        resource_id=str(updated.id),
+        metadata={"name": updated.name, "metric": str(updated.metric)},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return AlertRuleResponse.model_validate(updated)
+
+
+@router.delete(
+    "/organizations/{organization_id}/alert-rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_organization_alert_rule(
+    organization_id: uuid.UUID,
+    rule_id: uuid.UUID,
+    user: CurrentUserDep,
+    db: SessionDep,
+    request: Request,
+) -> None:
+    await authorize_organization(
+        db,
+        user_id=user.id,
+        organization_id=organization_id,
+        capability=OrganizationCapability.MANAGE,
+    )
+    rule = await alert_service.get_org_alert_rule(db, rule_id, organization_id=organization_id)
+    if rule is None:
+        raise TenantResourceNotFoundError("Alert rule")
+
+    await alert_service.delete_alert_rule(db, rule)
+    await log_action(
+        db,
+        api_key_id=None,
+        organization_id=organization_id,
+        project_id=None,
         actor_user_id=user.id,
         action="alert_rule.deleted",
         resource_type="alert_rule",
