@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field, HttpUrl, TypeAdapter, field_validator, model_validator
 
 from app.core.config import settings as app_settings
+from app.modules.delivery.sender import FromLocal, FromName, ReplyTo
 from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.notifications.enums import NotificationChannel
 from app.modules.notifications.schemas import NotificationResponse
@@ -65,6 +66,9 @@ class InlineEmail(BaseModel):
     subject: str | None = Field(default=None, max_length=500)
     html: str = Field(min_length=1)
     text: str | None = None
+    from_local: FromLocal = None
+    from_name: FromName = None
+    reply_to: ReplyTo = None
 
     model_config = {
         "json_schema_extra": {
@@ -72,6 +76,9 @@ class InlineEmail(BaseModel):
                 "subject": "Order BEA-1042 confirmed",
                 "html": "<h1>Thanks for your order</h1>",
                 "text": "Thanks for your order",
+                "from_local": "orders",
+                "from_name": "Winwell Orders",
+                "reply_to": "support@winwell.example",
             }
         }
     }

@@ -162,3 +162,56 @@ async def test_preview_reports_used_missing_and_plain_text(auth_client: AsyncCli
     assert response.json()["variables_used"] == ["name"]
     assert response.json()["missing_variables"] == ["order"]
     assert response.json()["text"] == "Hi Chidi, order "
+
+
+@pytest.mark.asyncio
+async def test_template_sender_fields_round_trip_and_clear(auth_client: AsyncClient) -> None:
+    created = await auth_client.post(
+        "/api/v1/templates",
+        json=_template_payload(
+            name="sender-fields",
+            from_local="billing",
+            from_name="Acme Billing",
+            reply_to="help@acme.example",
+        ),
+    )
+    assert created.status_code == 201
+    data = created.json()
+    assert data["from_local"] == "billing"
+    assert data["from_name"] == "Acme Billing"
+    assert data["reply_to"] == "help@acme.example"
+
+    cleared = await auth_client.put(
+        f"/api/v1/templates/{data['id']}", json={"from_local": None, "reply_to": None}
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["from_local"] is None
+    assert cleared.json()["reply_to"] is None
+    assert cleared.json()["from_name"] == "Acme Billing"
+
+
+@pytest.mark.asyncio
+async def test_template_sender_fields_default_to_none(auth_client: AsyncClient) -> None:
+    created = await auth_client.post("/api/v1/templates", json=_template_payload(name="no-sender"))
+    data = created.json()
+    assert (data["from_local"], data["from_name"], data["reply_to"]) == (None, None, None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"from_local": "orders@evil.example"},
+        {"from_local": "Orders"},
+        {"from_name": "Line\nBreak"},
+        {"reply_to": "not-an-address"},
+        {"reply_to": "a@b.com\nBcc: x@y.z"},
+    ],
+)
+async def test_template_rejects_invalid_sender_fields(
+    auth_client: AsyncClient, overrides: dict
+) -> None:
+    resp = await auth_client.post(
+        "/api/v1/templates", json=_template_payload(name="bad-sender", **overrides)
+    )
+    assert resp.status_code == 422

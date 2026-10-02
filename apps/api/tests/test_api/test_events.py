@@ -420,3 +420,43 @@ async def test_non_ascii_payload_measured_in_utf8_bytes(auth_client: AsyncClient
         json=_event_payload(payload={"greeting": "日本語テスト"}),
     )
     assert resp.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_inline_email_accepts_sender_fields(auth_client: AsyncClient) -> None:
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(
+            inline={
+                "subject": "Order confirmed",
+                "html": "<p>Thanks</p>",
+                "from_local": "orders",
+                "from_name": "Winwell Orders",
+                "reply_to": "support@winwell.example",
+            }
+        ),
+    )
+    assert resp.status_code == 202
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "inline_extra",
+    [
+        {"from_local": "orders@evil.example"},
+        {"from_local": "has space"},
+        {"from_local": "UPPER"},
+        {"from_local": "line\nbreak"},
+        {"from_name": "Bad\nName"},
+        {"reply_to": "nope"},
+        {"reply_to": "a@b.com\nBcc: x@y.z"},
+    ],
+)
+async def test_inline_email_rejects_invalid_sender_fields(
+    auth_client: AsyncClient, inline_extra: dict
+) -> None:
+    resp = await auth_client.post(
+        "/api/v1/events",
+        json=_event_payload(inline={"html": "<p>Hi</p>", **inline_extra}),
+    )
+    assert resp.status_code == 422

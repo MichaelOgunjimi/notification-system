@@ -214,6 +214,9 @@ async def create_template(
         subject=data.subject,
         body=data.body,
         text_body=data.text_body,
+        from_local=data.from_local,
+        from_name=data.from_name,
+        reply_to=data.reply_to,
         variables=_validated_variables(data.body, data.subject, data.text_body, data.variables),
         on_missing_variable=data.on_missing_variable,
     )
@@ -342,6 +345,9 @@ async def fork_template(
         subject=source.subject,
         body=source.body,
         text_body=source.text_body,
+        from_local=source.from_local,
+        from_name=source.from_name,
+        reply_to=source.reply_to,
         variables=list(source.variables),
         on_missing_variable=source.on_missing_variable,
     )

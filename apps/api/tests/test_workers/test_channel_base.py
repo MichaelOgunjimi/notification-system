@@ -266,6 +266,105 @@ class TestProcessNotification:
 
     @patch("app.modules.delivery.processing.channel.get_sync_session")
     @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_inline_email_passes_sender_fields_to_adapter(self, mock_get_adapter, mock_get_session):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session)
+        event.inline_content = {
+            "subject": "Order confirmed",
+            "html": "<p>Thanks</p>",
+            "text": None,
+            "from_local": "orders",
+            "from_name": "Winwell Orders",
+            "reply_to": "support@winwell.example",
+        }
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        assert process_notification(str(notification.id), "email")["status"] == "delivered"
+        call = mock_adapter.send.call_args.kwargs
+        assert call["from_local"] == "orders"
+        assert call["from_name"] == "Winwell Orders"
+        assert call["reply_to"] == "support@winwell.example"
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_legacy_inline_email_without_sender_fields_uses_defaults(
+        self, mock_get_adapter, mock_get_session
+    ):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session)
+        event.inline_content = {"subject": "Hi", "html": "<p>Hi</p>", "text": None}
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        assert process_notification(str(notification.id), "email")["status"] == "delivered"
+        call = mock_adapter.send.call_args.kwargs
+        assert call["from_local"] is None
+        assert call["from_name"] is None
+        assert call["reply_to"] is None
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_template_sender_fields_reach_adapter(self, mock_get_adapter, mock_get_session):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session)
+        api_key = session.get(ApiKey, event.api_key_id)
+        template = Template(
+            project_id=api_key.project_id,
+            name="order-confirmed",
+            channel="email",
+            subject="Order",
+            body="<p>Thanks</p>",
+            from_local="billing",
+            from_name="Acme Billing",
+            reply_to="help@acme.example",
+        )
+        session.add(template)
+        session.flush()
+        event.template_id = template.id
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        assert process_notification(str(notification.id), "email")["status"] == "delivered"
+        call = mock_adapter.send.call_args.kwargs
+        assert call["from_local"] == "billing"
+        assert call["from_name"] == "Acme Billing"
+        assert call["reply_to"] == "help@acme.example"
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
+    def test_non_email_channels_get_no_sender_fields(self, mock_get_adapter, mock_get_session):
+        session = _get_test_session()
+        event, notification = _seed_event_and_notification(session, channel="sms")
+        event.inline_content = {"html": "<p>x</p>", "from_local": "orders"}
+        session.commit()
+        session.close()
+
+        mock_adapter = MagicMock()
+        mock_adapter.send.return_value = DeliveryResult(success=True)
+        mock_get_adapter.return_value = mock_adapter
+        mock_get_session.return_value = _get_test_session()
+
+        process_notification(str(notification.id), "sms")
+        assert "from_local" not in mock_adapter.send.call_args.kwargs
+
+    @patch("app.modules.delivery.processing.channel.get_sync_session")
+    @patch("app.modules.delivery.processing.channel.get_adapter")
     def test_inline_email_is_not_used_for_other_channels(self, mock_get_adapter, mock_get_session):
         session = _get_test_session()
         event, notification = _seed_event_and_notification(session, channel="sms")
