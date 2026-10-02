@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Renders the unlinked, review-only email template gallery.
+ *
+ * @returns The interactive gallery after validating its static catalogue.
+ */
 export default function EmailTemplatePage() {
   assertEmailCatalogue();
   return <EmailTemplateGallery />;

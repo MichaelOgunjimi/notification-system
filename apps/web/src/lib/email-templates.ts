@@ -1,5 +1,7 @@
+/** Whether a reviewed email is live or remains a design proposal. */
 export type EmailTemplateStatus = "integrated" | "proposed";
 
+/** Review metadata and fixture content for one transactional email. */
 export type EmailTemplate = {
   id: string;
   category: "Account access" | "Organizations";
@@ -10,7 +12,13 @@ export type EmailTemplate = {
   variables: string[];
   action: { label: string; destination: string };
   status: EmailTemplateStatus;
-  sample: { recipientName: string; email: string; organization?: string; inviter?: string; expiry: string };
+  sample: {
+    recipientName: string;
+    email: string;
+    organization?: string;
+    inviter?: string;
+    expiry: string;
+  };
 };
 
 export const emailTemplates: EmailTemplate[] = [
@@ -36,7 +44,12 @@ export const emailTemplates: EmailTemplate[] = [
     variables: ["recipient_name", "organization_name", "project_name", "dashboard_url"],
     action: { label: "Open your workspace", destination: "/auth/complete" },
     status: "proposed",
-    sample: { recipientName: "Maya", email: "maya@northstar.dev", organization: "Northstar", expiry: "—" },
+    sample: {
+      recipientName: "Maya",
+      email: "maya@northstar.dev",
+      organization: "Northstar",
+      expiry: "—",
+    },
   },
   {
     id: "organization-invitation",
@@ -45,13 +58,31 @@ export const emailTemplates: EmailTemplate[] = [
     audience: "Invited organization member",
     subject: "Join Northstar on Beaco",
     trigger: "POST /organizations/{organization_id}/invitations",
-    variables: ["recipient_email", "inviter_name", "organization_name", "role", "invitation_url", "expires_in_days"],
+    variables: [
+      "recipient_email",
+      "inviter_name",
+      "organization_name",
+      "role",
+      "invitation_url",
+      "expires_in_days",
+    ],
     action: { label: "Review invitation", destination: "/invitations/accept?token={{ token }}" },
     status: "integrated",
-    sample: { recipientName: "Maya", email: "maya@northstar.dev", organization: "Northstar", inviter: "Jon Bell", expiry: "7 days" },
+    sample: {
+      recipientName: "Maya",
+      email: "maya@northstar.dev",
+      organization: "Northstar",
+      inviter: "Jon Bell",
+      expiry: "7 days",
+    },
   },
 ];
 
+/**
+ * Validates catalogue identifiers and required review metadata.
+ *
+ * @throws {Error} When IDs are duplicated or a template lacks variables or a local action path.
+ */
 export function assertEmailCatalogue(): void {
   const ids = new Set(emailTemplates.map((template) => template.id));
   if (ids.size !== emailTemplates.length) throw new Error("Email template IDs must be unique.");

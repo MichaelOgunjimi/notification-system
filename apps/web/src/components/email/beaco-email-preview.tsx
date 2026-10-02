@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { EmailTemplate } from "@/lib/email-templates";
 
+/** Supported presentation modes for the review-only email preview. */
 export type EmailColorScheme = "light" | "dark";
 
 type BeacoEmailPreviewProps = {
@@ -8,6 +9,12 @@ type BeacoEmailPreviewProps = {
   colorScheme: EmailColorScheme;
 };
 
+/**
+ * Renders a realistic branded email fixture for visual review.
+ *
+ * @param props Template fixture and requested preview color scheme.
+ * @returns The rendered transactional email preview.
+ */
 export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewProps) {
   const isInvite = template.id === "organization-invitation";
   const isWelcome = template.id === "account-ready";
@@ -21,9 +28,17 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
     : isWelcome
       ? `Hi ${template.sample.recipientName}, your organization and first project are ready. The control plane is yours.`
       : `Hi ${template.sample.recipientName}, use this one-time link to securely sign in. No password, no credentials left behind.`;
-  const eyebrow = isInvite ? "Organization invitation" : isWelcome ? "Workspace provisioned" : "Secure account access";
+  const eyebrow = isInvite
+    ? "Organization invitation"
+    : isWelcome
+      ? "Workspace provisioned"
+      : "Secure account access";
   const detailLabel = isInvite ? "Organization" : isWelcome ? "First project" : "Valid for";
-  const detailValue = isInvite ? template.sample.organization : isWelcome ? "Default" : template.sample.expiry;
+  const detailValue = isInvite
+    ? template.sample.organization
+    : isWelcome
+      ? "Default"
+      : template.sample.expiry;
 
   return (
     <article
@@ -41,27 +56,41 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
             className="h-auto w-[118px] sm:w-[132px]"
             priority
           />
-          <span className="text-right font-mono text-[9px] uppercase tracking-[0.16em] text-white/48">Identity message / {template.id.replaceAll("-", " ")}</span>
+          <span className="text-right font-mono text-[9px] uppercase tracking-[0.16em] text-white/48">
+            Identity message / {template.id.replaceAll("-", " ")}
+          </span>
         </div>
       </header>
 
       <div className="px-6 py-9 sm:px-10 sm:py-12">
         <div className="flex items-center gap-3">
           <span className="size-2 bg-[#e9aa31] shadow-[0_0_16px_rgba(233,170,49,.55)]" />
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#9c968b]">{eyebrow}</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#9c968b]">
+            {eyebrow}
+          </p>
         </div>
 
-        <h1 className="mt-7 max-w-[15ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.052em] sm:text-[44px]">{headline}</h1>
-        <p className="mt-6 max-w-[32rem] text-[14px] leading-7 text-[#5f5a50] group-data-[color-scheme=dark]/email:text-[#b4aea2]">{intro}</p>
+        <h1 className="mt-7 max-w-[15ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.052em] sm:text-[44px]">
+          {headline}
+        </h1>
+        <p className="mt-6 max-w-[32rem] text-[14px] leading-7 text-[#5f5a50] group-data-[color-scheme=dark]/email:text-[#b4aea2]">
+          {intro}
+        </p>
 
         <dl className="mt-9 grid grid-cols-1 border-y border-[#ded9cc] sm:grid-cols-2 group-data-[color-scheme=dark]/email:border-[#37362f]">
           <div className="py-5 sm:pr-6">
-            <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">{detailLabel}</dt>
+            <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">
+              {detailLabel}
+            </dt>
             <dd className="mt-2 text-[14px] font-semibold">{detailValue}</dd>
           </div>
           <div className="border-t border-[#ded9cc] py-5 sm:border-l sm:border-t-0 sm:pl-6 group-data-[color-scheme=dark]/email:border-[#37362f]">
-            <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">Security</dt>
-            <dd className="mt-2 text-[14px] font-semibold">{isWelcome ? "Account verified" : "Single-use access"}</dd>
+            <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#8a8274] group-data-[color-scheme=dark]/email:text-[#827d73]">
+              Security
+            </dt>
+            <dd className="mt-2 text-[14px] font-semibold">
+              {isWelcome ? "Account verified" : "Single-use access"}
+            </dd>
           </div>
         </dl>
 
@@ -69,7 +98,10 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
           href={template.action.destination}
           className="mt-9 inline-flex min-h-12 items-center justify-center bg-[#e9aa31] px-6 text-[12px] font-bold tracking-[-0.01em] text-[#1d160b] no-underline"
         >
-          {template.action.label}<span className="ml-4 font-mono" aria-hidden="true">→</span>
+          {template.action.label}
+          <span className="ml-4 font-mono" aria-hidden="true">
+            →
+          </span>
         </a>
 
         <p className="mt-7 text-[11px] leading-5 text-[#7c7569] group-data-[color-scheme=dark]/email:text-[#8f897e]">
@@ -83,8 +115,12 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
 
         {!isWelcome ? (
           <div className="mt-7 border-l-2 border-[#e9aa31] bg-[#eeeadf] px-4 py-3 group-data-[color-scheme=dark]/email:bg-[#191916]">
-            <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#777064] group-data-[color-scheme=dark]/email:text-[#8e887d]">Button not working?</p>
-            <p className="mt-2 break-all font-mono text-[9px] leading-4 text-[#514d45] group-data-[color-scheme=dark]/email:text-[#aba59a]">https://beaco.app{template.action.destination}</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#777064] group-data-[color-scheme=dark]/email:text-[#8e887d]">
+              Button not working?
+            </p>
+            <p className="mt-2 break-all font-mono text-[9px] leading-4 text-[#514d45] group-data-[color-scheme=dark]/email:text-[#aba59a]">
+              https://beaco.app{template.action.destination}
+            </p>
           </div>
         ) : null}
       </div>
@@ -92,7 +128,11 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
       <footer className="border-t border-[#ddd7ca] bg-[#ebe7dc] px-6 py-7 group-data-[color-scheme=dark]/email:border-[#34332e] group-data-[color-scheme=dark]/email:bg-[#0b0b0a] sm:px-10">
         <div className="flex items-start gap-4">
           <Image
-            src={colorScheme === "light" ? "/brand/png/beaco-mark-on-light.png" : "/brand/png/beaco-mark-128.png"}
+            src={
+              colorScheme === "light"
+                ? "/brand/png/beaco-mark-on-light.png"
+                : "/brand/png/beaco-mark-128.png"
+            }
             width={38}
             height={38}
             alt=""
@@ -100,11 +140,18 @@ export function BeacoEmailPreview({ template, colorScheme }: BeacoEmailPreviewPr
           />
           <div className="min-w-0 flex-1">
             <strong className="text-[13px] tracking-[-0.02em]">Beaco</strong>
-            <p className="mt-1 text-[10px] leading-4 text-[#777064] group-data-[color-scheme=dark]/email:text-[#8d877d]">Notification infrastructure with an accountable delivery record.</p>
+            <p className="mt-1 text-[10px] leading-4 text-[#777064] group-data-[color-scheme=dark]/email:text-[#8d877d]">
+              Notification infrastructure with an accountable delivery record.
+            </p>
           </div>
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#d7d1c4] pt-5 font-mono text-[9px] text-[#777064] group-data-[color-scheme=dark]/email:border-[#302f2a] group-data-[color-scheme=dark]/email:text-[#807b72]">
-          <span>Docs</span><span aria-hidden="true">·</span><span>Security</span><span aria-hidden="true">·</span><span>Privacy</span><span className="ml-auto">Sent to {template.sample.email}</span>
+          <span>Docs</span>
+          <span aria-hidden="true">·</span>
+          <span>Security</span>
+          <span aria-hidden="true">·</span>
+          <span>Privacy</span>
+          <span className="ml-auto">Sent to {template.sample.email}</span>
         </div>
       </footer>
     </article>

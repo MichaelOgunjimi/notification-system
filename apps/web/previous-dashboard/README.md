@@ -9,7 +9,7 @@ It is a reference archive, not an active application surface.
 - Dashboard-only API proxy, hooks, types, providers, and client modules
 - Dashboard, layout, shared, and UI components used by those routes
 - Dashboard layout rules and design tokens in `dashboard-layout.css`
-- The former email-template review page and components
+- Other dashboard-only review and UI components
 - Unused landing-page experiments that depended on the old UI layer
 
 The files retain their original `src`-relative structure where practical so their role and
@@ -40,3 +40,6 @@ archived module is selected for reuse, reinstall only the packages required by i
 
 Do not add new product code here. This directory exists only to support deliberate extraction
 while the frontend is rebuilt.
+
+On the `preview/email-template-gallery` branch, the former email-template review files have been
+moved back under `apps/web/src` so the gallery is available at `/emailtemplate`.
