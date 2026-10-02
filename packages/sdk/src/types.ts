@@ -36,6 +36,12 @@ export interface InlineEmail {
   subject?: string;
   html: string;
   text?: string;
+  /** Part before the @ of the sender, e.g. `orders`. The domain is always the server's. */
+  fromLocal?: string;
+  /** Sender display name, e.g. `Winwell Orders`. Plain text only. */
+  fromName?: string;
+  /** Address replies go to. Any valid email address; needs no DNS. */
+  replyTo?: string;
 }
 
 /** Input for publishing an event immediately. */
@@ -90,6 +96,12 @@ export interface CreateTemplateInput {
   subject?: string;
   body: string;
   textBody?: string;
+  /** Part before the @ of the sender. The domain is always the server's. */
+  fromLocal?: string;
+  /** Sender display name. Plain text only. */
+  fromName?: string;
+  /** Address replies go to. Any valid email address. */
+  replyTo?: string;
   variables?: string[];
   onMissingVariable?: "error" | "blank";
 }
@@ -101,6 +113,12 @@ export interface UpdateTemplateInput {
   subject?: string | null;
   body?: string;
   textBody?: string | null;
+  /** Part before the @ of the sender. Pass `null` to clear it. */
+  fromLocal?: string | null;
+  /** Sender display name. Pass `null` to clear it. */
+  fromName?: string | null;
+  /** Address replies go to. Pass `null` to clear it. */
+  replyTo?: string | null;
   variables?: string[];
   onMissingVariable?: "error" | "blank";
 }
@@ -110,6 +128,12 @@ export interface UpsertTemplateInput {
   subject?: string;
   body: string;
   textBody?: string;
+  /** Part before the @ of the sender. The domain is always the server's. */
+  fromLocal?: string;
+  /** Sender display name. Plain text only. */
+  fromName?: string;
+  /** Address replies go to. Any valid email address. */
+  replyTo?: string;
   variables?: string[];
   onMissingVariable?: "error" | "blank";
 }
@@ -132,6 +156,9 @@ export interface Template {
   subject: string | null;
   body: string;
   textBody: string | null;
+  fromLocal: string | null;
+  fromName: string | null;
+  replyTo: string | null;
   variables: string[];
   detectedVariables: string[];
   onMissingVariable: "error" | "blank";

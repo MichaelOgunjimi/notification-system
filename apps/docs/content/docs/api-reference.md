@@ -43,12 +43,29 @@ Create an event and enqueue notification fan-out.
 | `priority`        | enum   | No           | `high`, `medium`, `low`          |
 | `template_id`     | UUID   | One of three | Template to render               |
 | `template_name`   | string | One of three | Template name to render          |
-| `inline`          | object | One of three | Rendered `{subject,html,text}`   |
+| `inline`          | object | One of three | Rendered email, see below        |
 | `idempotency_key` | string | No           | Deduplication key                |
 | `metadata`        | object | No           | Optional metadata                |
 
 Exactly one of `template_id`, `template_name`, or `inline` is required. Inline content is size
 validated and delivered without Jinja processing.
+
+`inline` object:
+
+| Field        | Type   | Required | Description                                             |
+| ------------ | ------ | -------- | ------------------------------------------------------- |
+| `html`       | string | Yes      | Rendered HTML body                                      |
+| `subject`    | string | No       | Plain-text subject (max 500)                            |
+| `text`       | string | No       | Plain-text alternative; derived from `html` when absent |
+| `from_local` | string | No       | Sender name before the `@`: `^[a-z0-9._+-]+$`, max 64   |
+| `from_name`  | string | No       | Sender display name, plain text, max 100                |
+| `reply_to`   | string | No       | Reply-To address; any valid email address               |
+
+The sender domain always comes from the server's configured address, so `from_local` and
+`from_name` can never move an email to another domain. When none is set, the default sender is
+used. Example: `"inline": {"subject": "Order confirmed", "html": "<p>Thanks</p>", "from_local":
+"orders", "from_name": "Winwell Orders", "reply_to": "support@winwell.example"}` sends as
+`Winwell Orders <orders@your-verified-domain>`.
 
 `recipients[]` object:
 
@@ -332,6 +349,9 @@ Create template.
 | `subject`             | string | No       | Plain-text email subject           |
 | `body`                | string | Yes      | Template body / email HTML         |
 | `text_body`           | string | No       | Plain-text email alternative       |
+| `from_local`          | string | No       | Email sender name before the `@`   |
+| `from_name`           | string | No       | Email sender display name          |
+| `reply_to`            | string | No       | Email Reply-To address             |
 | `variables`           | array  | No       | Must match auto-detected variables |
 | `on_missing_variable` | enum   | No       | `error` (default) or `blank`       |
 

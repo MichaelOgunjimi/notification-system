@@ -4,12 +4,27 @@ const channel = z.enum(["email", "sms", "webhook"]);
 const priority = z.enum(["high", "medium", "low"]);
 const missingVariablePolicy = z.enum(["error", "blank"]);
 
+/** Local part only: the sending domain always comes from the Beaco server. */
+const fromLocal = z
+  .string()
+  .max(64)
+  .regex(/^[a-z0-9._+-]+$/, "fromLocal must be lowercase letters, digits, '.', '_', '+' or '-'");
+// Plain text: no C0/C1 control characters, newlines, or Unicode line separators.
+const fromName = z
+  .string()
+  .max(100)
+  .regex(/^[^\u0000-\u001f\u007f-\u009f\u2028\u2029]*$/, "fromName must be plain text");
+const replyTo = z.email().max(320);
+
 /** Runtime schema for already-rendered inline email content. */
 export const InlineEmailSchema = z
   .object({
     subject: z.string().max(500).optional(),
     html: z.string().min(1),
     text: z.string().optional(),
+    fromLocal: fromLocal.optional(),
+    fromName: fromName.optional(),
+    replyTo: replyTo.optional(),
   })
   .strict();
 
@@ -55,6 +70,9 @@ export const CreateTemplateInputSchema = z
     subject: z.string().max(500).optional(),
     body: z.string().min(1),
     textBody: z.string().optional(),
+    fromLocal: fromLocal.optional(),
+    fromName: fromName.optional(),
+    replyTo: replyTo.optional(),
     variables: z.array(z.string()).optional(),
     onMissingVariable: missingVariablePolicy.optional(),
   })
@@ -68,6 +86,9 @@ export const UpdateTemplateInputSchema = z
     subject: z.string().max(500).nullable().optional(),
     body: z.string().min(1).optional(),
     textBody: z.string().nullable().optional(),
+    fromLocal: fromLocal.nullable().optional(),
+    fromName: fromName.nullable().optional(),
+    replyTo: replyTo.nullable().optional(),
     variables: z.array(z.string()).optional(),
     onMissingVariable: missingVariablePolicy.optional(),
   })

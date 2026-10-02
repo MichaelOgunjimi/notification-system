@@ -85,6 +85,25 @@ beaco.templates.delete(template["id"])
 
 Exactly one of `template_id`, `template_name`, or `inline` is required for immediate events.
 
+Choose the sender with `from_local` (the part before the `@`), `from_name`, and `reply_to` on
+`inline`, `templates.create()`, `templates.upsert_by_name()`, and `templates.update()`. The domain
+always stays the server's verified domain; `reply_to` can be any valid address. Pass `None` to
+`update()` to clear a field.
+
+```python
+beaco.events.publish(
+    "order.confirmed",
+    [{"channels": ["email"], "email": "chidi@example.com"}],
+    inline={
+        "subject": "Order BEA-1042 confirmed",
+        "html": "<h1>Thanks for your order</h1>",
+        "from_local": "orders",
+        "from_name": "Winwell Orders",
+        "reply_to": "support@winwell.example",
+    },
+)
+```
+
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 
 ### Notifications

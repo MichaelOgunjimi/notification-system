@@ -17,6 +17,7 @@ from resend.exceptions import (
 
 from app.core.config import settings
 from app.modules.delivery.adapters.base import BaseAdapter, DeliveryResult
+from app.modules.delivery.sender import compose_from
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,11 @@ logger = logging.getLogger(__name__)
 # thread-unsafe and causes unpredictable behaviour in tests.
 if settings.RESEND_API_KEY:
     resend.api_key = settings.RESEND_API_KEY
+
+
+def _str_kwarg(kwargs: dict[str, object], key: str) -> str | None:
+    value = kwargs.get(key)
+    return value if isinstance(value, str) and value else None
 
 
 class EmailAdapter(BaseAdapter):
@@ -43,9 +49,13 @@ class EmailAdapter(BaseAdapter):
         subject: str | None,
         body: str,
         plain_text: str | None = None,
+        from_address: str | None = None,
+        reply_to: str | None = None,
     ) -> DeliveryResult:
         message = EmailMessage()
-        message["From"] = self.from_address
+        message["From"] = from_address or self.from_address
+        if reply_to:
+            message["Reply-To"] = reply_to
         message["To"] = recipient
         message["Subject"] = subject or "(no subject)"
         message.set_content(
@@ -84,9 +94,13 @@ class EmailAdapter(BaseAdapter):
         **kwargs: object,
     ) -> DeliveryResult:
         provider = self._resolved_provider()
-        plain_text = kwargs.get("plain_text")
-        if plain_text is not None and not isinstance(plain_text, str):
-            plain_text = None
+        plain_text = _str_kwarg(kwargs, "plain_text")
+        reply_to = _str_kwarg(kwargs, "reply_to")
+        from_address = compose_from(
+            _str_kwarg(kwargs, "from_local"),
+            _str_kwarg(kwargs, "from_name"),
+            default=self.from_address,
+        )
         if provider == "mock":
             logger.warning("Using mock email delivery")
             return DeliveryResult(
@@ -94,7 +108,7 @@ class EmailAdapter(BaseAdapter):
                 provider_response={"mock": True, "to": recipient},
             )
         if provider == "smtp":
-            return self._send_smtp(recipient, subject, body, plain_text)
+            return self._send_smtp(recipient, subject, body, plain_text, from_address, reply_to)
         if provider != "resend":
             return DeliveryResult(
                 success=False,
@@ -110,13 +124,15 @@ class EmailAdapter(BaseAdapter):
 
         try:
             payload: resend.Emails.SendParams = {
-                "from": self.from_address,
+                "from": from_address,
                 "to": [recipient],
                 "subject": subject or "(no subject)",
                 "html": body,
             }
             if plain_text:
                 payload["text"] = plain_text
+            if reply_to:
+                payload["reply_to"] = reply_to
             response = resend.Emails.send(payload)
             return DeliveryResult(
                 success=True,

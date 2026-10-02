@@ -22,15 +22,49 @@ Benefits:
 
 Each template has a core schema:
 
-| Field                 | Type          | Required   | Notes                                                 |
-| --------------------- | ------------- | ---------- | ----------------------------------------------------- |
-| `name`                | string        | yes        | Human-readable identifier                             |
-| `channel`             | enum          | yes        | `email`, `sms`, or `webhook`                          |
-| `subject`             | string        | email only | Plain-text subject; values are never HTML-escaped     |
-| `body`                | string        | yes        | HTML for email; injected values are HTML-escaped      |
-| `text_body`           | string        | no         | Plain-text alternative; derived from HTML when absent |
-| `variables`           | array<string> | no         | Auto-detected; must exactly match when supplied       |
-| `on_missing_variable` | enum          | no         | `error` (default) or legacy-compatible `blank`        |
+| Field                 | Type          | Required   | Notes                                                                             |
+| --------------------- | ------------- | ---------- | --------------------------------------------------------------------------------- |
+| `name`                | string        | yes        | Human-readable identifier                                                         |
+| `channel`             | enum          | yes        | `email`, `sms`, or `webhook`                                                      |
+| `subject`             | string        | email only | Plain-text subject; values are never HTML-escaped                                 |
+| `body`                | string        | yes        | HTML for email; injected values are HTML-escaped                                  |
+| `text_body`           | string        | no         | Plain-text alternative; derived from HTML when absent                             |
+| `from_local`          | string        | no         | Email sender name before the `@`; see [Sender and Reply-To](#sender-and-reply-to) |
+| `from_name`           | string        | no         | Email sender display name                                                         |
+| `reply_to`            | string        | no         | Email address replies are sent to                                                 |
+| `variables`           | array<string> | no         | Auto-detected; must exactly match when supplied                                   |
+| `on_missing_variable` | enum          | no         | `error` (default) or legacy-compatible `blank`                                    |
+
+## Sender and Reply-To
+
+Email templates can choose who the email comes from and where replies go. All three fields are
+optional; when none is set, the email is sent from the server's default sender, exactly as before.
+
+| Field        | Rules                                                                           |
+| ------------ | ------------------------------------------------------------------------------- |
+| `from_local` | The part before the `@`: lowercase letters, digits, `.`, `_`, `+`, `-` (max 64) |
+| `from_name`  | Plain-text display name, no control characters or newlines (max 100)            |
+| `reply_to`   | Any valid email address. It needs no DNS setup                                  |
+
+The domain always comes from the server's verified sending address, so a template can never send
+from a different domain. A template with `from_local` `billing` and `from_name` `Acme Billing`
+sends as `Acme Billing <billing@your-verified-domain>`. Values are fixed text, not `{{ variables }}`.
+
+```json
+{
+  "name": "order-confirmed",
+  "channel": "email",
+  "subject": "Order {{ order_number }} confirmed",
+  "body": "<h1>Thanks, {{ customer_name }}</h1>",
+  "from_local": "orders",
+  "from_name": "Winwell Orders",
+  "reply_to": "support@winwell.example"
+}
+```
+
+To remove a sender field later, update the template with that field set to `null`. Emails sent
+inline (without a template) set the same fields on `inline`; see
+[API reference](/api-reference).
 
 ## Jinja2 Variable Syntax
 

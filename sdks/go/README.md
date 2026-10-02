@@ -29,6 +29,7 @@ func main() {
 			Email:    "user@example.com",
 		}},
 		Inline: &beaco.InlineEmail{Subject: "Welcome", HTML: "<h1>Welcome, Alice</h1>"},
+		// Optional sender: FromLocal: "orders", FromName: "Winwell Orders", ReplyTo: "support@example.com"
 	})
 	if err != nil {
 		panic(err)

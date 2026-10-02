@@ -133,6 +133,24 @@ await beaco.templates.delete(templateId);
 Send content your app already rendered with `inline: { subject, html, text }` instead of a template
 reference. Exactly one of `templateId`, `templateName`, or `inline` is required.
 
+Choose the sender with `fromLocal` (the part before the `@`), `fromName`, and `replyTo`. The domain
+always stays the server's verified domain; `replyTo` can be any valid address. Templates accept the
+same three fields.
+
+```ts
+await beaco.events.publish({
+  eventType: "order.confirmed",
+  recipients: [{ channels: ["email"], email: "chidi@example.com" }],
+  inline: {
+    subject: "Order BEA-1042 confirmed",
+    html: "<h1>Thanks for your order</h1>",
+    fromLocal: "orders",
+    fromName: "Winwell Orders",
+    replyTo: "support@winwell.example",
+  },
+});
+```
+
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 
 ### Notifications

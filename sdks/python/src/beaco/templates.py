@@ -21,6 +21,9 @@ class Templates:
         *,
         subject: Optional[str] = None,
         text_body: Optional[str] = None,
+        from_local: Optional[str] = None,
+        from_name: Optional[str] = None,
+        reply_to: Optional[str] = None,
         variables: Optional[list[str]] = None,
         on_missing_variable: str = "error",
     ) -> dict[str, Any]:
@@ -32,6 +35,10 @@ class Templates:
             body: Template body, including any variables supported by the API renderer.
             subject: Optional email subject template.
             text_body: Optional plain-text email alternative.
+            from_local: Optional sender name before the ``@``, e.g. ``orders``. The
+                domain is always the server's verified domain.
+            from_name: Optional sender display name.
+            reply_to: Optional Reply-To email address.
             variables: Names expected in the render payload. Omit to auto-detect.
             on_missing_variable: ``error`` or ``blank``.
 
@@ -48,6 +55,9 @@ class Templates:
             "body": required(body, "body"),
             "subject": subject,
             "text_body": text_body,
+            "from_local": from_local,
+            "from_name": from_name,
+            "reply_to": reply_to,
             "on_missing_variable": on_missing_variable,
         }
         if variables is not None:
@@ -62,6 +72,9 @@ class Templates:
         channel: str = "email",
         subject: Optional[str] = None,
         text_body: Optional[str] = None,
+        from_local: Optional[str] = None,
+        from_name: Optional[str] = None,
+        reply_to: Optional[str] = None,
         variables: Optional[list[str]] = None,
         on_missing_variable: str = "error",
     ) -> dict[str, Any]:
@@ -73,6 +86,10 @@ class Templates:
             channel: Delivery channel, defaulting to ``email``.
             subject: Optional email subject template.
             text_body: Optional plain-text email alternative.
+            from_local: Optional sender name before the ``@``, e.g. ``orders``. The
+                domain is always the server's verified domain.
+            from_name: Optional sender display name.
+            reply_to: Optional Reply-To email address.
             variables: Declared variables, or ``None`` for auto-detection.
             on_missing_variable: ``error`` or ``blank``.
 
@@ -87,6 +104,9 @@ class Templates:
             "body": required(body, "body"),
             "subject": subject,
             "text_body": text_body,
+            "from_local": from_local,
+            "from_name": from_name,
+            "reply_to": reply_to,
             "on_missing_variable": on_missing_variable,
         }
         if variables is not None:
@@ -169,9 +189,10 @@ class Templates:
 
         Args:
             template_id: Unique template identifier.
-            **fields: Editable template fields, including ``text_body`` and
-                ``on_missing_variable``. Set ``subject`` or ``text_body`` to ``None``
-                to clear it.
+            **fields: Editable template fields, including ``text_body``,
+                ``from_local``, ``from_name``, ``reply_to``, and
+                ``on_missing_variable``. Set ``subject``, ``text_body``, or a sender
+                field to ``None`` to clear it.
 
         Returns:
             The updated template.
@@ -187,6 +208,9 @@ class Templates:
             "subject",
             "body",
             "text_body",
+            "from_local",
+            "from_name",
+            "reply_to",
             "variables",
             "on_missing_variable",
         }

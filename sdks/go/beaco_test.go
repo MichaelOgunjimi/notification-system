@@ -116,3 +116,67 @@ func TestAllResourceGroupsUseExpectedRoutes(t *testing.T) {
 		}
 	}
 }
+
+func TestInlineEmailAndTemplateCarrySenderFields(t *testing.T) {
+	var bodies []map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		bodies = append(bodies, body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"id":"x","from_local":"billing"}`))
+	}))
+	defer server.Close()
+
+	client, err := New("secret", &Options{BaseURL: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	if _, err := client.Events.Publish(ctx, PublishEventInput{
+		EventType:  "order.confirmed",
+		Recipients: []Recipient{{Channels: []string{"email"}, Email: "user@example.com"}},
+		Inline: &InlineEmail{
+			Subject:   "Order confirmed",
+			HTML:      "<p>Thanks</p>",
+			FromLocal: "orders",
+			FromName:  "Winwell Orders",
+			ReplyTo:   "support@winwell.example",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	inline, _ := bodies[0]["inline"].(map[string]any)
+	if inline["from_local"] != "orders" || inline["from_name"] != "Winwell Orders" || inline["reply_to"] != "support@winwell.example" {
+		t.Fatalf("inline sender fields missing: %#v", inline)
+	}
+
+	if _, err := client.Templates.Create(ctx, CreateTemplateInput{
+		Name: "order-confirmed", Channel: "email", Body: "<p>Hi</p>",
+		FromLocal: "billing", FromName: "Acme Billing", ReplyTo: "help@acme.example",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if bodies[1]["from_local"] != "billing" || bodies[1]["from_name"] != "Acme Billing" || bodies[1]["reply_to"] != "help@acme.example" {
+		t.Fatalf("template sender fields missing: %#v", bodies[1])
+	}
+
+	empty := ""
+	template, err := client.Templates.Update(ctx, "tpl_1", UpdateTemplateInput{FromLocal: &empty})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := bodies[2]["from_local"]; !ok || v != "" {
+		t.Fatalf("expected empty from_local to clear the field: %#v", bodies[2])
+	}
+	if _, ok := bodies[2]["from_name"]; ok {
+		t.Fatalf("unset sender fields must be omitted: %#v", bodies[2])
+	}
+	if template.FromLocal == nil || *template.FromLocal != "billing" {
+		t.Fatalf("unexpected template: %#v", template)
+	}
+}

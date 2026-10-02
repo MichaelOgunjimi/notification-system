@@ -52,6 +52,9 @@ class Template(SQLModel, table=True):
     subject: str | None = Field(default=None, max_length=500)
     body: str
     text_body: str | None = Field(default=None)
+    from_local: str | None = Field(default=None, max_length=64)
+    from_name: str | None = Field(default=None, max_length=100)
+    reply_to: str | None = Field(default=None, max_length=320)
     variables: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     on_missing_variable: str = Field(default="error", max_length=16)
     is_active: bool = Field(default=True)

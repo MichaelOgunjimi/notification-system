@@ -22,6 +22,13 @@ type InlineEmail struct {
 	Subject string `json:"subject,omitempty"`
 	HTML    string `json:"html"`
 	Text    string `json:"text,omitempty"`
+	// FromLocal is the sender name before the @, e.g. "orders". The domain is always the
+	// server's verified domain.
+	FromLocal string `json:"from_local,omitempty"`
+	// FromName is the sender display name.
+	FromName string `json:"from_name,omitempty"`
+	// ReplyTo is the address replies go to. Any valid email address.
+	ReplyTo string `json:"reply_to,omitempty"`
 }
 
 // PublishEventInput contains an event and its delivery controls.

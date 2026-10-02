@@ -92,6 +92,25 @@ client.Templates.Delete(ctx, template.ID)
 
 Immediate events require exactly one of `TemplateID`, `TemplateName`, or `Inline`.
 
+Choose the sender with `FromLocal` (the part before the `@`), `FromName`, and `ReplyTo` on
+`InlineEmail` and on the template inputs. The domain always stays the server's verified domain;
+`ReplyTo` can be any valid address. In `UpdateTemplateInput` these are `*string`: a pointer to an
+empty string clears the field.
+
+```go
+_, err := client.Events.Publish(ctx, beaco.PublishEventInput{
+	EventType:  "order.confirmed",
+	Recipients: []beaco.Recipient{{Channels: []string{"email"}, Email: "chidi@example.com"}},
+	Inline: &beaco.InlineEmail{
+		Subject:   "Order BEA-1042 confirmed",
+		HTML:      "<h1>Thanks for your order</h1>",
+		FromLocal: "orders",
+		FromName:  "Winwell Orders",
+		ReplyTo:   "support@winwell.example",
+	},
+})
+```
+
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 
 ### Notifications

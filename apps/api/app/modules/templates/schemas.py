@@ -7,6 +7,7 @@ from typing import Any, Literal
 from jinja2.exceptions import TemplateError
 from pydantic import BaseModel, Field, computed_field, model_validator
 
+from app.modules.delivery.sender import FromLocal, FromName, ReplyTo
 from app.modules.notifications.enums import NotificationChannel
 
 
@@ -18,6 +19,9 @@ class TemplateCreate(BaseModel):
     subject: str | None = Field(default=None, max_length=500)
     body: str = Field(min_length=1)
     text_body: str | None = None
+    from_local: FromLocal = None
+    from_name: FromName = None
+    reply_to: ReplyTo = None
     variables: list[str] | None = None
     on_missing_variable: Literal["error", "blank"] = "error"
 
@@ -29,6 +33,9 @@ class TemplateCreate(BaseModel):
                 "subject": "Order {{ order_number }} confirmed",
                 "body": "<h1>Thanks, {{ customer_name }}</h1>",
                 "text_body": "Thanks, {{ customer_name }}",
+                "from_local": "orders",
+                "from_name": "Winwell Orders",
+                "reply_to": "support@winwell.example",
                 "on_missing_variable": "error",
             }
         }
@@ -43,6 +50,9 @@ class TemplateUpdate(BaseModel):
     subject: str | None = Field(default=None, max_length=500)
     body: str | None = Field(default=None, min_length=1)
     text_body: str | None = None
+    from_local: FromLocal = None
+    from_name: FromName = None
+    reply_to: ReplyTo = None
     variables: list[str] | None = None
     on_missing_variable: Literal["error", "blank"] | None = None
 
@@ -65,6 +75,9 @@ class TemplateResponse(BaseModel):
     subject: str | None
     body: str
     text_body: str | None
+    from_local: str | None
+    from_name: str | None
+    reply_to: str | None
     variables: list[str]
     on_missing_variable: Literal["error", "blank"]
     is_active: bool
@@ -91,6 +104,9 @@ class TemplateUpsert(BaseModel):
     subject: str | None = Field(default=None, max_length=500)
     body: str = Field(min_length=1)
     text_body: str | None = None
+    from_local: FromLocal = None
+    from_name: FromName = None
+    reply_to: ReplyTo = None
     variables: list[str] | None = None
     on_missing_variable: Literal["error", "blank"] = "error"
 

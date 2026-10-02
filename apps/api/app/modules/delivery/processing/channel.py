@@ -102,6 +102,36 @@ def _render_body(session: Session, notification: Notification, event: Event) -> 
         notification.rendered_body = json.dumps(event.payload or {}, default=str)
 
 
+def _resolve_sender(session: Session, event: Event, channel: str) -> dict[str, str | None]:
+    """Email sender fields for this event: from the inline email, else its template.
+
+    Resolved separately from rendering so retries (which skip rendering) keep them.
+    """
+    if channel != "email":
+        return {}
+
+    fields: dict[str, str | None] = {}
+    if event.inline_content is not None:
+        fields = dict(event.inline_content)
+    else:
+        payload = event.payload or {}
+        template_ref = payload.get("template_id") or payload.get("template_name")
+        if template_ref is None and event.template_id is not None:
+            template_ref = str(event.template_id)
+        template = (
+            resolve_template(session, str(template_ref), event.api_key_id)
+            if template_ref is not None
+            else None
+        )
+        if template is not None:
+            fields = {
+                "from_local": template.from_local,
+                "from_name": template.from_name,
+                "reply_to": template.reply_to,
+            }
+    return {key: fields.get(key) for key in ("from_local", "from_name", "reply_to")}
+
+
 def _handle_failure(
     session: Session,
     notification: Notification,
@@ -298,6 +328,7 @@ def process_notification(
 
         # --- Deliver via channel adapter ---
         adapter = get_adapter(channel)
+        sender = _resolve_sender(session, event, channel)
         result = adapter.send(
             recipient=notification.recipient_address,
             subject=notification.rendered_subject,
@@ -306,6 +337,7 @@ def process_notification(
             webhook_secret=notification.webhook_secret,
             event_type=event.event_type,
             notification_id=str(notification.id),
+            **sender,
         )
 
         if result.success:

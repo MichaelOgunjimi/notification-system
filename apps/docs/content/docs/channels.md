@@ -54,6 +54,34 @@ Email supports:
 - subject line
 - body content (plain text and/or HTML depending on template usage)
 
+### Sender and Reply-To
+
+By default every email is sent from the server's configured sender address. You can pick a
+different sender per template or per inline email:
+
+- `from_local` is the part before the `@` (for example `orders`). The domain always stays the
+  server's verified domain, so a sender can never leave it.
+- `from_name` is the display name shown by mail clients.
+- `reply_to` is any valid email address and needs no DNS setup.
+
+```json
+{
+  "event_type": "order.confirmed",
+  "recipients": [{ "channels": ["email"], "email": "chidi@example.com" }],
+  "inline": {
+    "subject": "Order BEA-1042 confirmed",
+    "html": "<h1>Thanks for your order</h1>",
+    "from_local": "orders",
+    "from_name": "Winwell Orders",
+    "reply_to": "support@winwell.example"
+  }
+}
+```
+
+This sends as `Winwell Orders <orders@your-verified-domain>` with replies going to
+`support@winwell.example`. When no field is set, the default sender is used. The same fields work
+on templates; see [Templates](/templates#sender-and-reply-to).
+
 Subject behavior:
 
 - Uses template subject when available.

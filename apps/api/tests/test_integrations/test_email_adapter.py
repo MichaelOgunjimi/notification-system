@@ -150,3 +150,81 @@ class TestEmailErrorClassification:
             "Sign in with this private link."
             in message.get_body(preferencelist=("plain",)).get_content()
         )
+
+
+class TestSenderFields:
+    """from_local / from_name / reply_to reach the provider; the domain never changes."""
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_resend_payload_carries_sender_and_reply_to(self, mock_send, adapter):
+        mock_send.return_value = {"id": "email_1"}
+        adapter.from_address = "no-reply@verified.example"
+        adapter.send(
+            "user@test.com",
+            "Hello",
+            "<p>Hi</p>",
+            from_local="orders",
+            from_name="Winwell Orders",
+            reply_to="support@winwell.example",
+        )
+        payload = mock_send.call_args.args[0]
+        assert payload["from"] == "Winwell Orders <orders@verified.example>"
+        assert payload["reply_to"] == "support@winwell.example"
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_resend_falls_back_to_global_default(self, mock_send, adapter):
+        mock_send.return_value = {"id": "email_1"}
+        adapter.from_address = "no-reply@verified.example"
+        adapter.send("user@test.com", "Hello", "<p>Hi</p>")
+        payload = mock_send.call_args.args[0]
+        assert payload["from"] == "no-reply@verified.example"
+        assert "reply_to" not in payload
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_resend_ignores_empty_sender_fields(self, mock_send, adapter):
+        mock_send.return_value = {"id": "email_1"}
+        adapter.from_address = "no-reply@verified.example"
+        adapter.send(
+            "user@test.com", "Hello", "<p>Hi</p>", from_local=None, from_name=None, reply_to=None
+        )
+        payload = mock_send.call_args.args[0]
+        assert payload["from"] == "no-reply@verified.example"
+        assert "reply_to" not in payload
+
+    @patch("app.modules.delivery.adapters.email.smtplib.SMTP")
+    def test_smtp_headers_carry_sender_and_reply_to(self, smtp_class):
+        smtp = smtp_class.return_value.__enter__.return_value
+        with patch.object(EmailAdapter, "__init__", lambda self: None):
+            smtp_adapter = EmailAdapter()
+            smtp_adapter.provider = "smtp"
+            smtp_adapter.api_key = ""
+            smtp_adapter.from_address = "no-reply@verified.example"
+
+        result = smtp_adapter.send(
+            "user@test.com",
+            "Hello",
+            "<p>Hi</p>",
+            from_local="support",
+            from_name="Winwell Support",
+            reply_to="help@winwell.example",
+        )
+
+        assert result.success is True
+        message = smtp.send_message.call_args.args[0]
+        assert message["From"] == "Winwell Support <support@verified.example>"
+        assert message["Reply-To"] == "help@winwell.example"
+
+    @patch("app.modules.delivery.adapters.email.smtplib.SMTP")
+    def test_smtp_falls_back_to_global_default(self, smtp_class):
+        smtp = smtp_class.return_value.__enter__.return_value
+        with patch.object(EmailAdapter, "__init__", lambda self: None):
+            smtp_adapter = EmailAdapter()
+            smtp_adapter.provider = "smtp"
+            smtp_adapter.api_key = ""
+            smtp_adapter.from_address = "no-reply@verified.example"
+
+        smtp_adapter.send("user@test.com", "Hello", "<p>Hi</p>")
+
+        message = smtp.send_message.call_args.args[0]
+        assert message["From"] == "no-reply@verified.example"
+        assert message["Reply-To"] is None
