@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.0.3
+
+### Patch Changes
+
+- Fix TypeScript resolution for CommonJS consumers (`module: Node16`/`NodeNext`): the `require` export now points at `index.d.cts` instead of the ESM typings.
+
 ## 1.0.1
 
 ### Patch Changes

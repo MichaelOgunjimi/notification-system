@@ -1,6 +1,6 @@
 {
   "name": "@beaco/sdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Official server-side TypeScript and JavaScript SDK for Beaco",
   "license": "MIT",
   "type": "module",
@@ -10,9 +10,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
