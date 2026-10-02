@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 -include .env
 
-.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke load-test docker-up docker-up-tunnel docker-stop-tunnel docker-down stop-all docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: help install setup new-worktree status dev dev-api dev-web dev-docs test lint lint-fix format type-check check migrate migrate-create seed smoke load-test docker-up docker-up-tunnel docker-stop-tunnel docker-down docker-clean stop-all docker-migrate docker-seed docker-rebuild docker-rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
 
 API_DIR := apps/api
 
@@ -105,6 +105,17 @@ stop-all: docker-down ## Stop all services for this worktree; keep volumes and i
 
 docker-down: ## Stop the isolated Compose stack
 	docker compose $(COMPOSE_PROFILE_ARGS) down
+
+docker-clean: ## Remove a linked worktree's containers, volumes, networks, and built images
+	@git_dir="$$(git rev-parse --path-format=absolute --git-dir)"; \
+		git_common_dir="$$(git rev-parse --path-format=absolute --git-common-dir)"; \
+		if [ "$$git_dir" = "$$git_common_dir" ]; then \
+			echo 'Refusing to clean Docker from the primary checkout.' >&2; \
+			exit 1; \
+		fi
+	docker compose --profile "*" down --volumes --remove-orphans
+	@images="$$(docker image ls -q --filter label=com.docker.compose.project='$(COMPOSE_PROJECT_NAME)' | sort -u)"; \
+		if [ -n "$$images" ]; then docker image rm $$images; fi
 
 docker-migrate: ## Apply migrations inside Compose
 	docker compose exec -T api alembic upgrade head
