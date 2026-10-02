@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.0.4
+
+### Patch Changes
+
+- fa149d4: Add optional `fromLocal`, `fromName`, and `replyTo` to inline emails and templates, so an application can choose the sender name and Reply-To of an email. The sending domain always stays the server's verified domain.
+
 ## 1.0.3
 
 ### Patch Changes
