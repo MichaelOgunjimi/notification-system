@@ -168,11 +168,11 @@ const RELATIVE_STEPS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
  * Formats an ISO timestamp as a coarse relative phrase (`2 hours ago`,
  * `just now`).
  *
- * @param iso ISO 8601 timestamp.
+ * @param iso ISO 8601 timestamp; values without an offset are treated as UTC.
  * @returns The relative phrase.
  */
 export function relativeTime(iso: string): string {
-  const elapsed = Date.parse(iso) - Date.now();
+  const elapsed = Date.parse(/(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : `${iso}Z`) - Date.now();
   for (const [unit, ms] of RELATIVE_STEPS) {
     if (Math.abs(elapsed) >= ms) return relativeFormatter.format(Math.round(elapsed / ms), unit);
   }
