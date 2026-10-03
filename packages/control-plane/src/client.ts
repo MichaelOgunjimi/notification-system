@@ -69,6 +69,13 @@ import type {
 import { controlPlaneErrorFromResponse, controlPlaneNetworkError } from "./error";
 
 const DEFAULT_CONTROL_PLANE_PATH = "/api/control-plane";
+const ISO_TIMEZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+function utcTimestamp(value: string): string;
+function utcTimestamp(value: string | null): string | null;
+function utcTimestamp(value: string | null): string | null {
+  return value && !ISO_TIMEZONE_SUFFIX.test(value) ? `${value}Z` : value;
+}
 
 function mapOrganization(organization: ApiOrganization): Organization {
   return {
@@ -78,7 +85,7 @@ function mapOrganization(organization: ApiOrganization): Organization {
     description: organization.description,
     role: organization.role,
     capabilities: [...organization.capabilities],
-    archivedAt: organization.archived_at,
+    archivedAt: utcTimestamp(organization.archived_at),
   };
 }
 
@@ -89,7 +96,7 @@ function mapProject(project: ApiProject): Project {
     name: project.name,
     slug: project.slug,
     description: project.description,
-    archivedAt: project.archived_at,
+    archivedAt: utcTimestamp(project.archived_at),
   };
 }
 
@@ -100,7 +107,7 @@ function mapMember(member: ApiOrganizationMember): OrganizationMember {
     email: member.email,
     name: member.name,
     role: member.role,
-    joinedAt: member.joined_at,
+    joinedAt: utcTimestamp(member.joined_at),
   };
 }
 
@@ -128,10 +135,10 @@ function mapApiKey(apiKey: ApiProjectApiKey): ProjectApiKey {
     scopes: [...apiKey.scopes],
     isActive: apiKey.is_active,
     rateLimitPerMin: apiKey.rate_limit_per_min,
-    createdAt: apiKey.created_at,
-    updatedAt: apiKey.updated_at,
-    lastUsedAt: apiKey.last_used_at,
-    revokedAt: apiKey.revoked_at,
+    createdAt: utcTimestamp(apiKey.created_at),
+    updatedAt: utcTimestamp(apiKey.updated_at),
+    lastUsedAt: utcTimestamp(apiKey.last_used_at),
+    revokedAt: utcTimestamp(apiKey.revoked_at),
     rotatedFromId: apiKey.rotated_from_id,
   };
 }
@@ -148,7 +155,7 @@ function mapInvitationPreview(
     email: preview.email,
     role: preview.role,
     inviterName: preview.inviter_name,
-    expiresAt: preview.expires_at,
+    expiresAt: utcTimestamp(preview.expires_at),
   };
 }
 
@@ -159,10 +166,10 @@ function mapInvitation(invitation: ApiOrganizationInvitation): OrganizationInvit
     email: invitation.email,
     role: invitation.role,
     invitedByUserId: invitation.invited_by_user_id,
-    expiresAt: invitation.expires_at,
-    acceptedAt: invitation.accepted_at,
-    revokedAt: invitation.revoked_at,
-    createdAt: invitation.created_at,
+    expiresAt: utcTimestamp(invitation.expires_at),
+    acceptedAt: utcTimestamp(invitation.accepted_at),
+    revokedAt: utcTimestamp(invitation.revoked_at),
+    createdAt: utcTimestamp(invitation.created_at),
   };
 }
 
@@ -182,7 +189,7 @@ function mapAuditLogEntry(entry: ApiAuditLogEntry): AuditLogEntry {
     resourceId: entry.resource_id,
     metadata: entry.metadata ?? {},
     ipAddress: entry.ip_address,
-    createdAt: entry.created_at,
+    createdAt: utcTimestamp(entry.created_at),
   };
 }
 
@@ -206,7 +213,7 @@ function mapUsageEntry(entry: ApiUsageEntry): UsageEntry {
     apiKeyName: entry.api_key_name,
     apiKeyEnvironment: entry.api_key_environment,
     endpoint: entry.endpoint,
-    hourBucket: entry.hour_bucket,
+    hourBucket: utcTimestamp(entry.hour_bucket),
     requestCount: entry.request_count,
   };
 }
@@ -316,7 +323,7 @@ function mapAnalyticsSummary(summary: ApiAnalyticsSummary): AnalyticsSummary {
 
 function mapTrendPoint(point: ApiTrendPoint): TrendPoint {
   return {
-    timestamp: point.timestamp,
+    timestamp: utcTimestamp(point.timestamp),
     delivered: point.delivered,
     failed: point.failed,
     queued: point.queued,
@@ -339,8 +346,8 @@ function mapTemplate(template: ApiTemplate): Template {
     body: template.body,
     variables: [...template.variables],
     isActive: template.is_active,
-    createdAt: template.created_at,
-    updatedAt: template.updated_at,
+    createdAt: utcTimestamp(template.created_at),
+    updatedAt: utcTimestamp(template.updated_at),
   };
 }
 
@@ -366,8 +373,8 @@ function mapAlertRule(rule: ApiAlertRule): AlertRule {
     windowMinutes: rule.window_minutes,
     notifyEmail: rule.notify_email,
     isActive: rule.is_active,
-    lastTriggeredAt: rule.last_triggered_at,
-    createdAt: rule.created_at,
+    lastTriggeredAt: utcTimestamp(rule.last_triggered_at),
+    createdAt: utcTimestamp(rule.created_at),
   };
 }
 
@@ -415,7 +422,7 @@ function mapTenantEvent(event: ApiTenantEvent): TenantEvent {
     apiKeyName: event.api_key_name,
     apiKeyEnvironment: event.api_key_environment,
     hasFailures: event.has_failures,
-    createdAt: event.created_at,
+    createdAt: utcTimestamp(event.created_at),
   };
 }
 
@@ -428,8 +435,8 @@ function mapTenantEventNotification(
     status: notification.status,
     recipientAddress: notification.recipient_address,
     errorMessage: notification.error_message,
-    createdAt: notification.created_at,
-    deliveredAt: notification.delivered_at,
+    createdAt: utcTimestamp(notification.created_at),
+    deliveredAt: utcTimestamp(notification.delivered_at),
   };
 }
 
@@ -447,8 +454,8 @@ function mapTenantEventDetail(detail: ApiTenantEventDetail): TenantEventDetail {
     batchId: detail.batch_id,
     payload: detail.payload,
     metadata: detail.metadata,
-    createdAt: detail.created_at,
-    updatedAt: detail.updated_at,
+    createdAt: utcTimestamp(detail.created_at),
+    updatedAt: utcTimestamp(detail.updated_at),
     notifications: detail.notifications.map(mapTenantEventNotification),
   };
 }
@@ -478,9 +485,9 @@ function mapTenantNotification(notification: ApiTenantNotification): TenantNotif
     retryCount: notification.retry_count,
     maxRetries: notification.max_retries,
     errorMessage: notification.error_message,
-    createdAt: notification.created_at,
-    deliveredAt: notification.delivered_at,
-    failedAt: notification.failed_at,
+    createdAt: utcTimestamp(notification.created_at),
+    deliveredAt: utcTimestamp(notification.delivered_at),
+    failedAt: utcTimestamp(notification.failed_at),
   };
 }
 
@@ -494,7 +501,7 @@ function mapTenantNotificationLog(log: ApiTenantNotificationLog): TenantNotifica
     errorMessage: log.error_message,
     providerResponse: log.provider_response,
     metadata: log.metadata,
-    createdAt: log.created_at,
+    createdAt: utcTimestamp(log.created_at),
   };
 }
 
@@ -506,11 +513,11 @@ function mapTenantNotificationDetail(
     recipientUserId: notification.recipient_user_id,
     renderedSubject: notification.rendered_subject,
     renderedBody: notification.rendered_body,
-    nextRetryAt: notification.next_retry_at,
+    nextRetryAt: utcTimestamp(notification.next_retry_at),
     providerResponse: notification.provider_response,
-    queuedAt: notification.queued_at,
-    processingStartedAt: notification.processing_started_at,
-    updatedAt: notification.updated_at,
+    queuedAt: utcTimestamp(notification.queued_at),
+    processingStartedAt: utcTimestamp(notification.processing_started_at),
+    updatedAt: utcTimestamp(notification.updated_at),
     deadLetterStatus: notification.dead_letter_status,
     logs: notification.logs.map(mapTenantNotificationLog),
   };
