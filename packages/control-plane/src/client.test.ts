@@ -816,7 +816,7 @@ describe("createControlPlaneClient", () => {
       client.usage.trendsForProject("project-1", { granularity: "hour" }),
     ).resolves.toEqual({
       points: [
-        { timestamp: "2026-09-04T00:00:00", delivered: 5, failed: 1, queued: 0, processing: 0 },
+        { timestamp: "2026-09-04T00:00:00Z", delivered: 5, failed: 1, queued: 0, processing: 0 },
       ],
     });
     expect(fetcher).toHaveBeenCalledWith(
@@ -1140,7 +1140,7 @@ describe("createControlPlaneClient", () => {
             api_key_name: "Live",
             api_key_environment: "live",
             has_failures: false,
-            created_at: "2026-09-04T00:00:00Z",
+            created_at: "2026-09-04T00:00:00",
           },
         ],
         total: 1,
