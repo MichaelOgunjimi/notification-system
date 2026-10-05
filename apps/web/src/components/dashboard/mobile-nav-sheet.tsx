@@ -16,7 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import type { User } from "@beaco/auth";
 import type { Organization, Project } from "@beaco/control-plane";
-import { dashboardPath } from "@/lib/dashboard-route";
+import { dashboardPath, WORKSPACE_SELECT_PATH } from "@/lib/dashboard-route";
 import { CONFIGURE_NAV, OPERATE_NAV, type DashboardNavItem } from "./dashboard-navigation";
 import "./mobile-nav-sheet.css";
 
@@ -249,7 +249,11 @@ export function MobileNavSheet({
                   <GearSix size={18} />
                   <span>Account settings</span>
                 </Link>
-                <Link href="/workspace" className="mobile-nav-sheet__row" onClick={onClose}>
+                <Link
+                  href={WORKSPACE_SELECT_PATH}
+                  className="mobile-nav-sheet__row"
+                  onClick={onClose}
+                >
                   <CirclesFour size={18} />
                   <span>Change workspace</span>
                 </Link>
@@ -294,7 +298,11 @@ export function MobileNavSheet({
                 ))}
               </div>
 
-              <Link href="/workspace" className="mobile-nav-sheet__row" onClick={onClose}>
+              <Link
+                href={WORKSPACE_SELECT_PATH}
+                className="mobile-nav-sheet__row"
+                onClick={onClose}
+              >
                 <CirclesFour size={18} />
                 <span>All organizations &amp; projects</span>
               </Link>

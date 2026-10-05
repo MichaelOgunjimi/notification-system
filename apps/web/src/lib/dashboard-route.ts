@@ -18,6 +18,23 @@ export function dashboardPath(organizationSlug: string, projectSlug: string): st
   return `/app/${organizationSlug}/${projectSlug}`;
 }
 
+/** Query flag that keeps `/workspace` on the selector instead of restoring the last project. */
+export const WORKSPACE_SELECT_PATH = "/workspace?select=1";
+
+/**
+ * Splits a canonical dashboard path back into its organization and project slugs.
+ *
+ * @param path Path produced by {@link dashboardPath}.
+ * @returns The slugs, or null when the path is not a canonical dashboard path.
+ */
+export function parseDashboardPath(
+  path: string,
+): { organizationSlug: string; projectSlug: string } | null {
+  if (!DASHBOARD_PATH_PATTERN.test(path)) return null;
+  const [, , organizationSlug, projectSlug] = path.split("/");
+  return organizationSlug && projectSlug ? { organizationSlug, projectSlug } : null;
+}
+
 /**
  * Parses a remembered dashboard preference from the browser cookie payload.
  *

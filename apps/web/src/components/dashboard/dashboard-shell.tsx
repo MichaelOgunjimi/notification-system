@@ -18,7 +18,7 @@ import {
 import { ThemeToggle } from "@beaco/theme";
 import { AccountMenu } from "@/components/ui/account-menu";
 import BrandLogo from "@/components/brand/brand-logo";
-import { dashboardPath } from "@/lib/dashboard-route";
+import { dashboardPath, WORKSPACE_SELECT_PATH } from "@/lib/dashboard-route";
 import {
   readSidebarCollapsedPreference,
   rememberSidebarCollapsedPreference,
@@ -255,7 +255,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 ))}
               </div>
               <Link
-                href="/workspace"
+                href={WORKSPACE_SELECT_PATH}
                 className="dashboard-switcher__all"
                 onClick={closeMobileSidebar}
               >

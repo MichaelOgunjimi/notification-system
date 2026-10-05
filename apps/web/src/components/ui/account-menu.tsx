@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Buildings, CaretDown, GearSix, House, SignOut } from "@phosphor-icons/react";
 import { useSession, useSignOut } from "@beaco/auth/react";
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
+import { WORKSPACE_SELECT_PATH } from "@/lib/dashboard-route";
 import "./account-menu.css";
 
 type AccountMenuProps = Readonly<{
@@ -133,7 +134,7 @@ export function AccountMenu({ accountSettingsHref }: AccountMenuProps) {
                 </span>
               </Link>
             ) : null}
-            <Link href="/workspace" role="menuitem" onClick={() => setOpen(false)}>
+            <Link href={WORKSPACE_SELECT_PATH} role="menuitem" onClick={() => setOpen(false)}>
               <Buildings size={16} />
               <span>
                 <strong>Switch workspace</strong>
