@@ -112,6 +112,21 @@ export function DashboardShell({ children }: DashboardShellProps) {
     rememberSidebarCollapsedPreference(collapsed);
   }
 
+  useEffect(() => {
+    function toggleOnShortcut(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() !== "b") return;
+      // Cmd/Ctrl+B is bold inside rich-text editors; leave it to them.
+      if (event.target instanceof HTMLElement && event.target.isContentEditable) return;
+
+      event.preventDefault();
+      updateSidebarCollapsed(!sidebarCollapsed);
+    }
+
+    window.addEventListener("keydown", toggleOnShortcut);
+    return () => window.removeEventListener("keydown", toggleOnShortcut);
+  });
+
   function toggleSwitcher() {
     if (sidebarCollapsed) {
       updateSidebarCollapsed(false);
@@ -205,6 +220,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             className="dashboard-sidebar__collapse"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={sidebarCollapsed}
+            aria-keyshortcuts="Control+B Meta+B"
             onClick={() => updateSidebarCollapsed(!sidebarCollapsed)}
           >
             <SidebarSimple size={17} />
