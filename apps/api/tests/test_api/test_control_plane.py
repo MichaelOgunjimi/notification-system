@@ -316,6 +316,7 @@ async def test_api_key_can_be_edited_and_rotated(
     )
     old_secret = created.json()["key"]
     key_id = created.json()["id"]
+    assert old_secret.startswith("nk_test_")
 
     updated = await client.patch(
         f"/api/v1/projects/{project.id}/api-keys/{key_id}",
@@ -331,6 +332,7 @@ async def test_api_key_can_be_edited_and_rotated(
     assert updated.json()["name"] == "Updated"
     assert rotated.status_code == 200
     assert rotated.json()["key"] != old_secret
+    assert rotated.json()["key"].startswith("nk_test_")
     assert rotated.json()["environment"] == "test"
     assert rotated.json()["rotated_from_id"] == key_id
     rejected = await client.get("/api/v1/templates", headers={"X-API-Key": old_secret})

@@ -32,7 +32,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -78,7 +77,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1/",
-      publicBackendApiUrl: "https://api.example.com/api/v1/",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -112,7 +110,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -127,39 +124,84 @@ describe("createNextAuthAdapter", () => {
     });
   });
 
-  it("starts GitHub OAuth at the backend login endpoint", async () => {
+  it("starts GitHub OAuth by forwarding the backend's provider redirect", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 307,
+          headers: { Location: "https://github.com/login/oauth/authorize?state=secure" },
+        }),
+      ),
+    );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1/",
+      fetch: fetcher,
     });
 
     const response = await auth.startOAuth("github")(request("/api/auth/oauth/github"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://api.example.com/api/v1/oauth/github/login",
+      "https://github.com/login/oauth/authorize?state=secure",
     );
+    expect(fetcher).toHaveBeenCalledWith("http://api:8000/api/v1/oauth/github/login", {
+      cache: "no-store",
+      redirect: "manual",
+    });
   });
 
   it("forwards a safe return path into the GitHub login redirect", async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 307, headers: { Location: "https://gh" } })),
+    );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
+      fetch: fetcher,
     });
 
-    const safe = await auth.startOAuth("github")(
+    await auth.startOAuth("github")(
       request("/api/auth/oauth/github?next=%2Finvitations%2Faccept%3Ftoken%3Dabc"),
     );
-    expect(safe.headers.get("location")).toBe(
-      "https://api.example.com/api/v1/oauth/github/login?next=%2Finvitations%2Faccept%3Ftoken%3Dabc",
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "http://api:8000/api/v1/oauth/github/login?next=%2Finvitations%2Faccept%3Ftoken%3Dabc",
+      expect.anything(),
     );
 
-    const hostile = await auth.startOAuth("github")(
+    await auth.startOAuth("github")(
       request("/api/auth/oauth/github?next=https%3A%2F%2Fevil.example.com"),
     );
-    expect(hostile.headers.get("location")).toBe(
-      "https://api.example.com/api/v1/oauth/github/login",
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "http://api:8000/api/v1/oauth/github/login",
+      expect.anything(),
     );
+  });
+
+  it("returns to the login page when the backend cannot start OAuth", async () => {
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      fetch: vi.fn(() => Promise.resolve(Response.json({}, { status: 503 }))),
+    });
+
+    const response = await auth.startOAuth("github")(
+      request("/api/auth/oauth/github?next=%2Fworkspace"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "/login?oauth=github-unavailable&next=%2Fworkspace",
+    );
+  });
+
+  it("returns to a custom login path when the backend is unreachable", async () => {
+    const auth = createNextAuthAdapter({
+      backendApiUrl: "http://api:8000/api/v1",
+      loginPath: "/sign-in",
+      fetch: vi.fn(() => Promise.reject(new Error("connect ECONNREFUSED"))),
+    });
+
+    const response = await auth.startOAuth("github")(request("/api/auth/oauth/github"));
+
+    expect(response.headers.get("location")).toBe("/sign-in?oauth=github-unavailable");
   });
 
   it("forwards a return path into the authenticated GitHub connect path", async () => {
@@ -168,7 +210,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -196,7 +237,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -225,7 +265,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -261,7 +300,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -289,7 +327,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -320,7 +357,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json([backendRow])));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -379,7 +415,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -406,7 +441,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
     const profileRequest = new NextRequest("https://app.example.com/api/auth/profile", {
@@ -454,7 +488,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -482,7 +515,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -505,7 +537,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -527,7 +558,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -568,7 +598,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -618,7 +647,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -653,7 +681,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
     const exchangeRequest = new NextRequest("https://app.example.com/api/auth/oauth/exchange", {
@@ -683,7 +710,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
     const magicLinkRequest = new NextRequest(
@@ -723,7 +749,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
     const verifyRequest = new NextRequest("https://app.example.com/api/auth/magic-link/verify", {
@@ -754,7 +779,6 @@ describe("createNextAuthAdapter", () => {
       appAuthPath: "/identity",
       refreshCookiePath: "/identity",
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 

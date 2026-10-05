@@ -9,28 +9,52 @@ import {
 import type { BackendTokenSet, NextAuthRequestContext } from "./types";
 import { fetchUser, forwardAuthenticated } from "./session";
 
-/**
- * Creates an OAuth redirect handler for a specific provider.
- *
- * @param context Shared request context with the public backend base URL.
- * @param provider OAuth provider to redirect the browser to.
- * @returns Route handler that issues the outbound redirect.
- */
 function relativeNext(request: NextRequest): string | null {
   const next = request.nextUrl.searchParams.get("next");
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("://")) return null;
   return next;
 }
 
+/**
+ * Creates an OAuth redirect handler for a specific provider.
+ *
+ * The backend is probed server-side first, so a provider that is not configured
+ * or an unreachable backend sends the browser back to the login page with an
+ * `oauth=<provider>-unavailable` flag instead of a raw API error page.
+ *
+ * @param context Shared request context with the internal and public backend base URLs.
+ * @param provider OAuth provider to redirect the browser to.
+ * @returns Route handler that issues the outbound redirect.
+ */
 export function startOAuth(
   context: NextAuthRequestContext,
   provider: "github",
-): (request: NextRequest) => Response {
-  return (request) => {
-    const target = new URL(`${context.publicBackendApiUrl}/oauth/${provider}/login`);
+): (request: NextRequest) => Promise<Response> {
+  return async (request) => {
     const next = relativeNext(request);
-    if (next) target.searchParams.set("next", next);
-    return NextResponse.redirect(target, 307);
+    const query = next ? `?next=${encodeURIComponent(next)}` : "";
+
+    try {
+      const upstream = await context.fetcher(
+        `${context.backendApiUrl}/oauth/${provider}/login${query}`,
+        { cache: "no-store", redirect: "manual" },
+      );
+      const location = upstream.headers.get("location");
+      if (upstream.status >= 300 && upstream.status < 400 && location) {
+        return NextResponse.redirect(location, 307);
+      }
+    } catch {
+      // Falls through to the same login-page message as an unconfigured provider.
+    }
+
+    // Relative on purpose: behind a proxy or in a container the request host is not
+    // the public one, and the browser resolves this against the address it used.
+    const failure = new URLSearchParams({ oauth: `${provider}-unavailable` });
+    if (next) failure.set("next", next);
+    return new Response(null, {
+      status: 307,
+      headers: { Location: `${context.loginPath}?${failure}` },
+    });
   };
 }
 

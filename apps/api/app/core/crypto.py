@@ -3,11 +3,12 @@
 import hashlib
 import secrets
 import uuid
+from typing import Literal
 
 
-def generate_api_key() -> str:
-    """Generate a secure API key with ``nk_`` prefix."""
-    return f"nk_{secrets.token_urlsafe(32)}"
+def generate_api_key(environment: Literal["live", "test"] = "live") -> str:
+    """Generate a secure project API key labelled with its environment."""
+    return f"nk_{environment}_{secrets.token_urlsafe(32)}"
 
 
 def generate_system_key() -> str:

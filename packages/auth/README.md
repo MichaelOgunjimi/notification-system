@@ -72,7 +72,7 @@ const user = await auth.getCurrentUser();
 ## Next.js application adapter
 
 Configure the adapter once in a server-only module. `backendApiUrl` is reachable by the Next.js
-server; `publicBackendApiUrl` is reachable by the browser for provider redirects.
+server, which makes every backend call itself, including starting provider sign-in.
 
 ```ts
 import "server-only";
@@ -81,7 +81,6 @@ import { createNextAuthAdapter } from "@beaco/auth/next";
 export const beacoAuth = createNextAuthAdapter({
   appAuthPath: "/api/auth",
   backendApiUrl: "http://api:8000/api/v1",
-  publicBackendApiUrl: "https://api.example.com/api/v1",
 });
 ```
 
@@ -104,6 +103,11 @@ export const PATCH = beacoAuth.updateProfile;
 import { beacoAuth } from "@/lib/auth/next";
 export const GET = beacoAuth.startOAuth("github");
 ```
+
+If the backend cannot start the flow (provider not configured, backend unreachable),
+`startOAuth` redirects to `loginPath` (default `/login`) with `?oauth=github-unavailable` so the
+login page can show its own message instead of a raw API error. Pass `loginPath` to
+`createNextAuthAdapter` to change the destination.
 
 Application-specific server routes can forward a request with the same protected session. The
 adapter adds the access credential server-side, refreshes and retries once after a `401`, and
@@ -151,6 +155,8 @@ sequenceDiagram
   participant GitHub
   SDK->>Next: GET /api/auth/oauth/github
   Next->>API: GET /api/v1/oauth/github/login
+  API-->>Next: redirect to GitHub (or 503 if not configured)
+  Next-->>SDK: redirect to GitHub, or /login?oauth=github-unavailable
   API->>GitHub: authorize with stored state
   GitHub-->>API: callback code
   API-->>SDK: redirect with one-time Beaco code

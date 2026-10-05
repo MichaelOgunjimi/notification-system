@@ -18,7 +18,7 @@ import {
 import { ThemeToggle } from "@beaco/theme";
 import { AccountMenu } from "@/components/ui/account-menu";
 import BrandLogo from "@/components/brand/brand-logo";
-import { dashboardPath } from "@/lib/dashboard-route";
+import { dashboardPath, WORKSPACE_SELECT_PATH } from "@/lib/dashboard-route";
 import {
   readSidebarCollapsedPreference,
   rememberSidebarCollapsedPreference,
@@ -112,6 +112,21 @@ export function DashboardShell({ children }: DashboardShellProps) {
     rememberSidebarCollapsedPreference(collapsed);
   }
 
+  useEffect(() => {
+    function toggleOnShortcut(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() !== "b") return;
+      // Cmd/Ctrl+B is bold inside rich-text editors; leave it to them.
+      if (event.target instanceof HTMLElement && event.target.isContentEditable) return;
+
+      event.preventDefault();
+      updateSidebarCollapsed(!sidebarCollapsed);
+    }
+
+    window.addEventListener("keydown", toggleOnShortcut);
+    return () => window.removeEventListener("keydown", toggleOnShortcut);
+  });
+
   function toggleSwitcher() {
     if (sidebarCollapsed) {
       updateSidebarCollapsed(false);
@@ -143,7 +158,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <Link
         key={item.label}
         href={href}
-        title={item.label}
+        aria-label={item.label}
+        data-tooltip={item.label}
         data-active={isActive || undefined}
         aria-current={isActive ? "page" : undefined}
         onClick={closeMobileSidebar}
@@ -204,6 +220,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             className="dashboard-sidebar__collapse"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={sidebarCollapsed}
+            aria-keyshortcuts="Control+B Meta+B"
             onClick={() => updateSidebarCollapsed(!sidebarCollapsed)}
           >
             <SidebarSimple size={17} />
@@ -254,7 +271,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 ))}
               </div>
               <Link
-                href="/workspace"
+                href={WORKSPACE_SELECT_PATH}
                 className="dashboard-switcher__all"
                 onClick={closeMobileSidebar}
               >

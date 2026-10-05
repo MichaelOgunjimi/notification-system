@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Archive,
   ArrowCounterClockwise,
@@ -25,7 +26,7 @@ import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { SessionRecovery } from "@/components/auth/session-recovery";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { dashboardPath } from "@/lib/dashboard-route";
+import { dashboardPath, parseDashboardPath, readLastDashboardPath } from "@/lib/dashboard-route";
 import { CreateOrganizationDialog } from "./create-organization-dialog";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { WorkspaceShell } from "./workspace-shell";
@@ -121,11 +122,15 @@ function WorkspaceSelectorSkeleton() {
 /**
  * Loads the authenticated user's organizations and projects and routes a valid
  * selection into the canonical dashboard URL, with modal recovery for the
- * no-organization and no-project states.
+ * no-organization and no-project states. A bare visit first resumes the user's
+ * last project, but only once live data confirms it is still active, so an
+ * archived or inaccessible project falls through to the selector.
  *
+ * @param props.resumeLastProject Whether to restore the remembered project; false keeps the selector open.
  * @returns Workspace selection interface with authenticated loading and error states.
  */
-export function WorkspaceSelector() {
+export function WorkspaceSelector({ resumeLastProject = true }: { resumeLastProject?: boolean }) {
+  const router = useRouter();
   const session = useSession();
   const toast = useToast();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
@@ -146,6 +151,31 @@ export function WorkspaceSelector() {
   )
     ? organizationId
     : (activeOrganizations[0]?.id ?? null);
+
+  const rememberedPath =
+    resumeLastProject && session.user ? readLastDashboardPath(session.user.id) : null;
+  const rememberedScope = rememberedPath ? parseDashboardPath(rememberedPath) : null;
+  const rememberedOrganization = activeOrganizations.find(
+    (organization) => organization.slug === rememberedScope?.organizationSlug,
+  );
+  const rememberedProjects = useProjects(rememberedOrganization?.id ?? null, true);
+  const rememberedProject = rememberedProjects.data?.find(
+    (project) => !project.archivedAt && project.slug === rememberedScope?.projectSlug,
+  );
+  const resumeTarget =
+    rememberedOrganization && rememberedProject
+      ? dashboardPath(rememberedOrganization.slug, rememberedProject.slug)
+      : null;
+  const resolvingLastProject =
+    rememberedScope !== null &&
+    (organizations.isPending ||
+      (rememberedOrganization !== undefined && rememberedProjects.isPending) ||
+      resumeTarget !== null);
+
+  useEffect(() => {
+    if (resumeTarget) router.replace(resumeTarget);
+  }, [resumeTarget, router]);
+
   const projects = useProjects(activeOrganizationId, true);
   const activeProjects = projects.data?.filter((project) => !project.archivedAt) ?? [];
   const archivedProjects = projects.data?.filter((project) => project.archivedAt) ?? [];
@@ -251,6 +281,15 @@ export function WorkspaceSelector() {
             <span>Return to sign in</span>
             <ArrowRight size={17} />
           </Link>
+        </div>
+      </WorkspaceShell>
+    );
+  }
+  if (resolvingLastProject) {
+    return (
+      <WorkspaceShell>
+        <div aria-live="polite" className="workspace-selector__loading">
+          <SpinnerGap size={19} className="animate-spin" /> Returning to your last project
         </div>
       </WorkspaceShell>
     );
