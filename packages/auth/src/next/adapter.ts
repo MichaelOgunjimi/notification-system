@@ -19,6 +19,7 @@ function createRequestContext(options: NextAuthAdapterOptions): NextAuthRequestC
     refreshCookiePath: (options.refreshCookiePath ?? "/api").replace(/\/$/, ""),
     backendApiUrl: options.backendApiUrl.replace(/\/$/, ""),
     publicBackendApiUrl: options.publicBackendApiUrl.replace(/\/$/, ""),
+    loginPath: options.loginPath ?? "/login",
     fetcher: options.fetch ?? globalThis.fetch.bind(globalThis),
   };
 }

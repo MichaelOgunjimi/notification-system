@@ -1,6 +1,7 @@
 """Project API Key lifecycle use cases."""
 
 import uuid
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +30,7 @@ async def create_project_api_key(
     description: str | None,
     scopes: list[str],
     rate_limit_per_min: int | None,
-    environment: str = "live",
+    environment: Literal["live", "test"] = "live",
 ) -> CreatedApiKeyView:
     access = await authorize_project(
         db,
@@ -37,7 +38,7 @@ async def create_project_api_key(
         project_id=project_id,
         capability=OrganizationCapability.MANAGE_API_KEYS,
     )
-    raw_key = generate_api_key()
+    raw_key = generate_api_key(environment)
     api_key = ApiKey(
         project_id=access.project.id,
         created_by_user_id=user.id,
@@ -258,7 +259,7 @@ async def rotate_project_api_key(
     ).scalar_one_or_none()
     if current is None:
         raise TenantResourceNotFoundError("Active API key")
-    raw_key = generate_api_key()
+    raw_key = generate_api_key("test" if current.environment == "test" else "live")
     replacement = ApiKey(
         project_id=project_id,
         created_by_user_id=user.id,

@@ -53,7 +53,7 @@ async def test_organization_admin_creates_a_scoped_project_api_key(
     assert body["project_id"] == str(project.id)
     assert body["name"] == "Production sender"
     assert body["scopes"] == ["events:write"]
-    assert body["key"].startswith("nk_")
+    assert body["key"].startswith("nk_live_")
 
 
 async def test_organization_member_cannot_manage_project_api_keys(

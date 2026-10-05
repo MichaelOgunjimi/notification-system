@@ -374,6 +374,7 @@
 }
 
 .dashboard-nav > a {
+  position: relative;
   transition:
     background 180ms ease,
     color 180ms ease;
@@ -539,6 +540,37 @@
     > span {
     justify-content: center;
     padding-inline: 0;
+  }
+
+  .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
+    .dashboard-nav
+    > a[data-tooltip]::after {
+    background: var(--dashboard-elevated);
+    border: 1px solid var(--dashboard-line-strong);
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    color: var(--dashboard-ink);
+    content: attr(data-tooltip);
+    font-size: 10px;
+    left: calc(100% + 12px);
+    opacity: 0;
+    padding: 6px 8px;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translate(-4px, -50%);
+    transition:
+      opacity 120ms ease,
+      transform 120ms ease;
+    white-space: nowrap;
+    z-index: 2;
+  }
+
+  .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])
+    .dashboard-nav
+    > a[data-tooltip]:is(:hover, :focus-visible)::after {
+    opacity: 1;
+    transform: translate(0, -50%);
   }
 
   .dashboard-shell[data-sidebar-collapsed="true"]:not([data-sidebar-peeking="true"])

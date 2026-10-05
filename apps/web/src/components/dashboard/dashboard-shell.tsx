@@ -143,7 +143,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <Link
         key={item.label}
         href={href}
-        title={item.label}
+        aria-label={item.label}
+        data-tooltip={item.label}
         data-active={isActive || undefined}
         aria-current={isActive ? "page" : undefined}
         onClick={closeMobileSidebar}

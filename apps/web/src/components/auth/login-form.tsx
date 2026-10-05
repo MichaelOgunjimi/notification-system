@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, GithubLogo, SpinnerGap } from "@phosphor-icons/react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { useToast } from "@/components/ui/toast";
 import { useAuthClient, useSendMagicLink } from "@beaco/auth/react";
 
 /**
@@ -11,15 +12,24 @@ import { useAuthClient, useSendMagicLink } from "@beaco/auth/react";
  * that same-origin path after verification — carried in the magic-link URL for
  * the email flow and in a short-lived cookie for the GitHub redirect.
  *
- * @param props Optional validated return path from the `?next=` query.
+ * @param props Optional validated return path and OAuth availability state.
  */
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, oauthError = false }: { next?: string; oauthError?: boolean }) {
   const router = useRouter();
+  const toast = useToast();
+  const oauthErrorShown = useRef(false);
   const authClient = useAuthClient();
   const sendMagicLink = useSendMagicLink();
   const [email, setEmail] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const error = validationError ?? sendMagicLink.error?.message ?? null;
+
+  useEffect(() => {
+    if (!oauthError || oauthErrorShown.current) return;
+
+    oauthErrorShown.current = true;
+    toast.error("GitHub sign-in unavailable", "GitHub OAuth is not configured. Use email instead.");
+  }, [oauthError, toast]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
