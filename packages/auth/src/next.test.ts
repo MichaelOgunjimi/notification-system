@@ -32,7 +32,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -78,7 +77,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1/",
-      publicBackendApiUrl: "https://api.example.com/api/v1/",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -112,7 +110,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -138,7 +135,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1/",
       fetch: fetcher,
     });
 
@@ -160,7 +156,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -184,7 +179,6 @@ describe("createNextAuthAdapter", () => {
   it("returns to the login page when the backend cannot start OAuth", async () => {
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: vi.fn(() => Promise.resolve(Response.json({}, { status: 503 }))),
     });
 
@@ -201,7 +195,6 @@ describe("createNextAuthAdapter", () => {
   it("returns to a custom login path when the backend is unreachable", async () => {
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       loginPath: "/sign-in",
       fetch: vi.fn(() => Promise.reject(new Error("connect ECONNREFUSED"))),
     });
@@ -217,7 +210,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -245,7 +237,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -274,7 +265,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -310,7 +300,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -338,7 +327,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -369,7 +357,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json([backendRow])));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 
@@ -428,7 +415,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -455,7 +441,6 @@ describe("createNextAuthAdapter", () => {
     const fetcher = vi.fn(() => Promise.resolve(Response.json(backendUser)));
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
     const profileRequest = new NextRequest("https://app.example.com/api/auth/profile", {
@@ -503,7 +488,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -531,7 +515,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -554,7 +537,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -576,7 +558,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -617,7 +598,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -667,7 +647,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
 
@@ -702,7 +681,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
     const exchangeRequest = new NextRequest("https://app.example.com/api/auth/oauth/exchange", {
@@ -732,7 +710,6 @@ describe("createNextAuthAdapter", () => {
     );
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
     const magicLinkRequest = new NextRequest(
@@ -772,7 +749,6 @@ describe("createNextAuthAdapter", () => {
     });
     const auth = createNextAuthAdapter({
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher as typeof globalThis.fetch,
     });
     const verifyRequest = new NextRequest("https://app.example.com/api/auth/magic-link/verify", {
@@ -803,7 +779,6 @@ describe("createNextAuthAdapter", () => {
       appAuthPath: "/identity",
       refreshCookiePath: "/identity",
       backendApiUrl: "http://api:8000/api/v1",
-      publicBackendApiUrl: "https://api.example.com/api/v1",
       fetch: fetcher,
     });
 

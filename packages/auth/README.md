@@ -72,7 +72,7 @@ const user = await auth.getCurrentUser();
 ## Next.js application adapter
 
 Configure the adapter once in a server-only module. `backendApiUrl` is reachable by the Next.js
-server; `publicBackendApiUrl` is reachable by the browser for provider redirects.
+server, which makes every backend call itself, including starting provider sign-in.
 
 ```ts
 import "server-only";
@@ -81,7 +81,6 @@ import { createNextAuthAdapter } from "@beaco/auth/next";
 export const beacoAuth = createNextAuthAdapter({
   appAuthPath: "/api/auth",
   backendApiUrl: "http://api:8000/api/v1",
-  publicBackendApiUrl: "https://api.example.com/api/v1",
 });
 ```
 

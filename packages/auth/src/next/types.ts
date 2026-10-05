@@ -63,7 +63,6 @@ export type BackendEmailAddress = {
  *   so those routes can renew an expired access token. Defaults to `/api`, which
  *   covers both the auth handlers and same-origin API proxies.
  * @property backendApiUrl Internal backend API base URL.
- * @property publicBackendApiUrl Public backend URL used for OAuth redirects.
  * @property loginPath App login route that OAuth start failures return to. Defaults to `/login`.
  * @property fetch Optional fetch implementation for testing or custom transports.
  */
@@ -71,7 +70,6 @@ export type NextAuthAdapterOptions = Readonly<{
   appAuthPath?: string;
   refreshCookiePath?: string;
   backendApiUrl: string;
-  publicBackendApiUrl: string;
   loginPath?: string;
   fetch?: typeof globalThis.fetch;
 }>;
@@ -207,7 +205,6 @@ export type NextAuthAdapter = Readonly<{
  * @property appAuthPath Sanitized app auth route prefix.
  * @property refreshCookiePath Sanitized path scope for the refresh-token cookie.
  * @property backendApiUrl Sanitized internal backend base URL.
- * @property publicBackendApiUrl Sanitized public backend base URL.
  * @property loginPath App login route used when OAuth cannot start.
  * @property fetcher Fetch implementation used for all auth calls.
  */
@@ -215,7 +212,6 @@ export type NextAuthRequestContext = {
   appAuthPath: string;
   refreshCookiePath: string;
   backendApiUrl: string;
-  publicBackendApiUrl: string;
   loginPath: string;
   fetcher: typeof globalThis.fetch;
 };
