@@ -31,7 +31,7 @@ npm install @beaco/sdk
 Python:
 
 ```bash
-pip install beaco   # or: uv add beaco
+uv add beaco   # or: pip install beaco
 ```
 
 Go:

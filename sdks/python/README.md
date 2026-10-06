@@ -7,7 +7,7 @@ Official dependency-free Python SDK for events, templates, notifications, schedu
 - [Source](https://github.com/MichaelOgunjimi/notification-system/tree/main/sdks/python) and [issues](https://github.com/MichaelOgunjimi/notification-system/issues)
 
 ```bash
-pip install beaco   # or: uv add beaco
+uv add beaco   # or: pip install beaco
 ```
 
 ```python

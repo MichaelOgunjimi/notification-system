@@ -9,7 +9,7 @@ The official Python SDK publishes and queries Beaco events without adding a runt
 The package is published on PyPI as `beaco`.
 
 ```bash
-pip install beaco   # or: uv add beaco
+uv add beaco   # or: pip install beaco
 ```
 
 ## Publish an Event
