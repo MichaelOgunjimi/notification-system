@@ -454,6 +454,10 @@ function mapTenantEventDetail(detail: ApiTenantEventDetail): TenantEventDetail {
     batchId: detail.batch_id,
     payload: detail.payload,
     metadata: detail.metadata,
+    attachments: detail.attachments.map(({ filename, size_bytes }) => ({
+      filename,
+      sizeBytes: size_bytes,
+    })),
     createdAt: utcTimestamp(detail.created_at),
     updatedAt: utcTimestamp(detail.updated_at),
     notifications: detail.notifications.map(mapTenantEventNotification),

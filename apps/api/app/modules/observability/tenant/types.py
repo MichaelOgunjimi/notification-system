@@ -76,6 +76,14 @@ class EventNotificationView:
 
 
 @dataclass(frozen=True, slots=True)
+class EventAttachmentView:
+    """Attachment summary; the URL is omitted on purpose since it may be a signed link."""
+
+    filename: str
+    size_bytes: int
+
+
+@dataclass(frozen=True, slots=True)
 class EventDetailView:
     id: uuid.UUID
     event_type: str
@@ -89,6 +97,7 @@ class EventDetailView:
     batch_id: uuid.UUID | None
     payload: dict[str, Any]
     metadata: dict[str, Any] | None
+    attachments: list[EventAttachmentView]
     created_at: datetime
     updated_at: datetime
     notifications: list[EventNotificationView]

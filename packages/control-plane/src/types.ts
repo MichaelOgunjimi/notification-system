@@ -412,6 +412,13 @@ export type TenantEventNotification = Readonly<{
   deliveredAt: string | null;
 }>;
 
+/** An email attachment on an event. The download URL is never exposed to the dashboard. */
+export type TenantEventAttachment = Readonly<{
+  filename: string;
+  /** Size in bytes as declared by the caller that published the event. */
+  sizeBytes: number;
+}>;
+
 /** A single event with its raw payload and fan-out notifications. */
 export type TenantEventDetail = Readonly<{
   id: string;
@@ -426,6 +433,7 @@ export type TenantEventDetail = Readonly<{
   batchId: string | null;
   payload: Record<string, unknown>;
   metadata: Record<string, unknown> | null;
+  attachments: readonly TenantEventAttachment[];
   createdAt: string;
   updatedAt: string;
   notifications: readonly TenantEventNotification[];
@@ -1490,6 +1498,12 @@ export type ApiTenantEventNotification = {
   delivered_at: string | null;
 };
 
+/** Raw tenant event attachment summary returned by FastAPI. */
+export type ApiTenantEventAttachment = {
+  filename: string;
+  size_bytes: number;
+};
+
 /** Raw tenant event detail payload returned by FastAPI. */
 export type ApiTenantEventDetail = {
   id: string;
@@ -1504,6 +1518,7 @@ export type ApiTenantEventDetail = {
   batch_id: string | null;
   payload: Record<string, unknown>;
   metadata: Record<string, unknown> | null;
+  attachments: ApiTenantEventAttachment[];
   created_at: string;
   updated_at: string;
   notifications: ApiTenantEventNotification[];

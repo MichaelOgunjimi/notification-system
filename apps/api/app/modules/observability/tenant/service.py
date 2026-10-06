@@ -26,6 +26,7 @@ from app.modules.observability.analytics.schemas import AnalyticsResponse, Trend
 from app.modules.observability.audit.model import AuditLog
 from app.modules.observability.tenant.types import (
     AuditLogView,
+    EventAttachmentView,
     EventDetailView,
     EventNotificationView,
     EventView,
@@ -1078,6 +1079,10 @@ async def get_project_event(
         batch_id=event.batch_id,
         payload=event.payload,
         metadata=event.metadata_,
+        attachments=[
+            EventAttachmentView(filename=str(a["filename"]), size_bytes=int(a["size_bytes"]))
+            for a in event.attachments or []
+        ],
         created_at=event.created_at,
         updated_at=event.updated_at,
         notifications=[

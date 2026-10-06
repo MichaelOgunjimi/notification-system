@@ -34,6 +34,19 @@ function statusTone(status: string): "success" | "danger" | "warning" | "muted" 
   return "muted";
 }
 
+/** Formats a declared attachment size as B, KB, MB or GB for display. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
+}
+
 function EventDetailSkeleton({ backHref }: Readonly<{ backHref: string }>) {
   return (
     <div className="event-detail-page event-detail-page--skeleton" aria-busy="true" role="status">
@@ -191,6 +204,22 @@ export function EventDetailPage({ organization, project, eventId }: EventDetailP
           </div>
         </div>
       </section>
+
+      {event.attachments.length > 0 && (
+        <section className="event-detail-page__card">
+          <h2>
+            Attachments <span>{event.attachments.length}</span>
+          </h2>
+          <div className="event-detail-page__mgrid">
+            {event.attachments.map((attachment) => (
+              <div key={attachment.filename} className="event-detail-page__mcell">
+                <p className="k">{formatBytes(attachment.sizeBytes)}</p>
+                <p className="v mono">{attachment.filename}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="event-detail-page__card">
         <h2>

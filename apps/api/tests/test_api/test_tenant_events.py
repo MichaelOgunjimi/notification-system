@@ -203,6 +203,31 @@ async def test_event_detail_includes_fan_out_notifications(
     assert body["notifications"][0]["error_message"] == "bounced"
 
 
+async def test_event_detail_lists_attachments_without_their_urls(
+    client: AsyncClient, db: AsyncSession, mock_redis
+) -> None:
+    owner, _org, project, key = await _seed_project(db, slug="ev-attach")
+    event = await _seed_event(db, key)
+    event.attachments = [
+        {
+            "filename": "invoice.pdf",
+            "url": "https://files.example.com/a.pdf?sig=secret",
+            "size_bytes": 48213,
+        }
+    ]
+    db.add(event)
+    await db.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project.id}/events/{event.id}",
+        headers=await _auth(owner, db, mock_redis),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["attachments"] == [{"filename": "invoice.pdf", "size_bytes": 48213}]
+    assert "secret" not in response.text
+
+
 async def test_event_detail_404s_for_another_projects_event(
     client: AsyncClient, db: AsyncSession, mock_redis
 ) -> None:

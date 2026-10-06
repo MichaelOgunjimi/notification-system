@@ -1190,6 +1190,7 @@ describe("createControlPlaneClient", () => {
         batch_id: null,
         payload: { order_id: "o1" },
         metadata: null,
+        attachments: [{ filename: "invoice.pdf", size_bytes: 48213 }],
         created_at: "2026-09-04T00:00:00Z",
         updated_at: "2026-09-04T00:01:00Z",
         notifications: [
@@ -1210,6 +1211,7 @@ describe("createControlPlaneClient", () => {
     const detail = await client.events.get("project-1", "event-1");
 
     expect(detail.payload).toEqual({ order_id: "o1" });
+    expect(detail.attachments).toEqual([{ filename: "invoice.pdf", sizeBytes: 48213 }]);
     expect(detail.notifications[0]).toMatchObject({
       channel: "email",
       status: "failed",

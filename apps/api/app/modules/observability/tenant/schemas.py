@@ -66,6 +66,11 @@ class TenantEventNotificationResponse(BaseModel):
     delivered_at: datetime | None
 
 
+class TenantEventAttachmentResponse(BaseModel):
+    filename: str
+    size_bytes: int
+
+
 class TenantEventDetailResponse(BaseModel):
     id: uuid.UUID
     event_type: str
@@ -79,6 +84,7 @@ class TenantEventDetailResponse(BaseModel):
     batch_id: uuid.UUID | None
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
+    attachments: list[TenantEventAttachmentResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     notifications: list[TenantEventNotificationResponse]

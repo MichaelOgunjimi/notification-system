@@ -43,6 +43,7 @@ export type {
   ProjectCreate,
   ProjectUpdate,
   TenantEvent,
+  TenantEventAttachment,
   TenantEventDetail,
   TenantEventNotification,
   TenantNotification,
