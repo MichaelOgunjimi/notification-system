@@ -6,10 +6,10 @@ The official Python SDK publishes and queries Beaco events without adding a runt
 
 ## Installation
 
-The package currently installs from the Beaco repository. A PyPI release can use the same `beaco` package without changing imports.
+The package is published on PyPI as `beaco`.
 
 ```bash
-uv add "beaco @ git+https://github.com/MichaelOgunjimi/notification-system.git@main#subdirectory=sdks/python"
+pip install beaco   # or: uv add beaco
 ```
 
 ## Publish an Event

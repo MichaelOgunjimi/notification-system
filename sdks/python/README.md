@@ -2,8 +2,12 @@
 
 Official dependency-free Python SDK for events, templates, notifications, scheduled events, and suppressions.
 
+- [SDK guide](https://beaco-docs.michaelogunjimi.com/sdk-python): every method, with examples
+- [API reference](https://beaco-docs.michaelogunjimi.com/api-reference) and [events](https://beaco-docs.michaelogunjimi.com/events)
+- [Source](https://github.com/MichaelOgunjimi/notification-system/tree/main/sdks/python) and [issues](https://github.com/MichaelOgunjimi/notification-system/issues)
+
 ```bash
-uv add "beaco @ git+https://github.com/MichaelOgunjimi/notification-system.git@main#subdirectory=sdks/python"
+pip install beaco   # or: uv add beaco
 ```
 
 ```python

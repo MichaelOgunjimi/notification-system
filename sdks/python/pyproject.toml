@@ -14,8 +14,9 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://beaco.michaelogunjimi.com"
-Documentation = "https://docs.beaco.michaelogunjimi.com"
+Documentation = "https://beaco-docs.michaelogunjimi.com/sdk-python"
 Repository = "https://github.com/MichaelOgunjimi/notification-system"
+Issues = "https://github.com/MichaelOgunjimi/notification-system/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

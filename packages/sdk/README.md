@@ -2,6 +2,10 @@
 
 Official server-side TypeScript and JavaScript SDK for Beaco.
 
+- [SDK guide](https://beaco-docs.michaelogunjimi.com/sdk): every method, with examples
+- [API reference](https://beaco-docs.michaelogunjimi.com/api-reference) and [events](https://beaco-docs.michaelogunjimi.com/events)
+- [Source](https://github.com/MichaelOgunjimi/notification-system/tree/main/packages/sdk) and [issues](https://github.com/MichaelOgunjimi/notification-system/issues)
+
 ```bash
 npm install @beaco/sdk
 ```
@@ -19,9 +23,9 @@ await beaco.events.publish({
 ```
 
 Pick the sender of an email with `fromLocal`, `fromName`, and `replyTo` on `inline` or a template.
+The domain always stays the server's verified domain.
 
 Attach files with `attachments: [{ filename, url, sizeBytes }]` on `events.publish`. Beaco does not store them; the email provider downloads each `url` at send time, so keep it reachable through retries. Up to 10 files, 30 MB declared in total.
-The domain always stays the server's verified domain.
 
 Use `templates.upsertByName()` to sync templates on deploy and `templates.importHtml()` to turn
 sample values in existing HTML into template variables.

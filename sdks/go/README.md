@@ -2,6 +2,10 @@
 
 Official standard-library Go SDK for events, templates, notifications, scheduled events, and suppressions.
 
+- [SDK guide](https://beaco-docs.michaelogunjimi.com/sdk-go): every method, with examples
+- [API reference](https://beaco-docs.michaelogunjimi.com/api-reference) and [events](https://beaco-docs.michaelogunjimi.com/events)
+- [Source](https://github.com/MichaelOgunjimi/notification-system/tree/main/sdks/go) and [issues](https://github.com/MichaelOgunjimi/notification-system/issues)
+
 ```bash
 go get github.com/MichaelOgunjimi/notification-system/sdks/go
 ```

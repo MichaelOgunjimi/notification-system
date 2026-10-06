@@ -31,7 +31,7 @@ npm install @beaco/sdk
 Python:
 
 ```bash
-uv add "beaco @ git+https://github.com/MichaelOgunjimi/notification-system.git@main#subdirectory=sdks/python"
+pip install beaco   # or: uv add beaco
 ```
 
 Go:
