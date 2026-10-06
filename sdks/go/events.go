@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 // Recipient identifies one notification recipient and its delivery channels.
@@ -31,14 +33,61 @@ type InlineEmail struct {
 	ReplyTo string `json:"reply_to,omitempty"`
 }
 
+const (
+	maxAttachments = 10
+	// maxAttachmentBytes is Resend's 40 MB email limit after Base64 encoding.
+	maxAttachmentBytes = 30_000_000
+)
+
+// Attachment is an email attachment Beaco never stores: the email provider downloads URL
+// when the email is sent. It applies to email delivery and needs the Resend provider.
+type Attachment struct {
+	// Filename is shown to the recipient. It must not contain slashes or control characters.
+	Filename string `json:"filename"`
+	// URL is the http(s) location of the file. It must stay reachable until delivery
+	// succeeds, including retries.
+	URL string `json:"url"`
+	// SizeBytes is the declared file size, used to reject oversized emails early. It is
+	// not verified.
+	SizeBytes int64 `json:"size_bytes"`
+}
+
+// validateAttachments mirrors the API limits: 10 files, positive sizes, 30 MB declared in total.
+func validateAttachments(attachments []Attachment) error {
+	if len(attachments) > maxAttachments {
+		return errors.New("beaco: attachments must contain at most 10 files")
+	}
+	var total int64
+	for _, a := range attachments {
+		u, err := url.Parse(a.URL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return errors.New("beaco: attachment URL must be an http or https URL")
+		}
+		if a.Filename == "" || len(a.Filename) > 255 || strings.ContainsAny(a.Filename, "/\\") ||
+			strings.IndexFunc(a.Filename, unicode.IsControl) >= 0 {
+			return errors.New("beaco: attachment filename must be 1 to 255 characters without slashes or control characters")
+		}
+		if a.SizeBytes <= 0 {
+			return errors.New("beaco: attachment size must be positive")
+		}
+		total += a.SizeBytes
+	}
+	if total > maxAttachmentBytes {
+		return errors.New("beaco: attachments exceed 30000000 bytes in total")
+	}
+	return nil
+}
+
 // PublishEventInput contains an event and its delivery controls.
 type PublishEventInput struct {
-	EventType      string         `json:"event_type"`
-	Recipients     []Recipient    `json:"recipients"`
-	Priority       string         `json:"priority,omitempty"`
-	TemplateID     string         `json:"template_id,omitempty"`
-	TemplateName   string         `json:"template_name,omitempty"`
-	Inline         *InlineEmail   `json:"inline,omitempty"`
+	EventType    string       `json:"event_type"`
+	Recipients   []Recipient  `json:"recipients"`
+	Priority     string       `json:"priority,omitempty"`
+	TemplateID   string       `json:"template_id,omitempty"`
+	TemplateName string       `json:"template_name,omitempty"`
+	Inline       *InlineEmail `json:"inline,omitempty"`
+	// Attachments are files attached to email notifications. See Attachment.
+	Attachments    []Attachment   `json:"attachments,omitempty"`
 	Payload        map[string]any `json:"payload,omitempty"`
 	Metadata       map[string]any `json:"metadata,omitempty"`
 	IdempotencyKey string         `json:"idempotency_key,omitempty"`
@@ -110,7 +159,7 @@ func validateEvent(input PublishEventInput) error {
 	if sources != 1 {
 		return errors.New("beaco: exactly one of template ID, template name, or inline is required")
 	}
-	return nil
+	return validateAttachments(input.Attachments)
 }
 
 // Publish creates one event and requests immediate notification fan-out.

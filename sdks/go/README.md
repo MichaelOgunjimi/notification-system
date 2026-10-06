@@ -30,6 +30,8 @@ func main() {
 		}},
 		Inline: &beaco.InlineEmail{Subject: "Welcome", HTML: "<h1>Welcome, Alice</h1>"},
 		// Optional sender: FromLocal: "orders", FromName: "Winwell Orders", ReplyTo: "support@example.com"
+		// Optional files (never stored; the email provider downloads each URL when sending):
+		// Attachments: []beaco.Attachment{{Filename: "invoice.pdf", URL: "https://files.example.com/a.pdf", SizeBytes: 48213}}
 	})
 	if err != nil {
 		panic(err)

@@ -180,3 +180,56 @@ func TestInlineEmailAndTemplateCarrySenderFields(t *testing.T) {
 		t.Fatalf("unexpected template: %#v", template)
 	}
 }
+
+func TestPublishAttachments(t *testing.T) {
+	var body map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"id":"x"}`))
+	}))
+	defer server.Close()
+
+	client, err := New("secret", &Options{BaseURL: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := func(a ...Attachment) PublishEventInput {
+		return PublishEventInput{
+			EventType:   "order.confirmed",
+			Recipients:  []Recipient{{Channels: []string{"email"}, Email: "user@example.com"}},
+			Inline:      &InlineEmail{HTML: "<p>Thanks</p>"},
+			Attachments: a,
+		}
+	}
+	file := Attachment{Filename: "invoice.pdf", URL: "https://files.example.com/a.pdf", SizeBytes: 1000}
+
+	if _, err := client.Events.Publish(context.Background(), input(file)); err != nil {
+		t.Fatal(err)
+	}
+	sent, _ := body["attachments"].([]any)
+	first, _ := sent[0].(map[string]any)
+	if first["filename"] != "invoice.pdf" || first["url"] != file.URL || first["size_bytes"] != float64(1000) {
+		t.Fatalf("attachment not sent as snake_case: %#v", body["attachments"])
+	}
+
+	bad := map[string][]Attachment{
+		"ftp url":      {{Filename: "a.pdf", URL: "ftp://files.example.com/a.pdf", SizeBytes: 1}},
+		"path in name": {{Filename: "../a.pdf", URL: file.URL, SizeBytes: 1}},
+		"zero size":    {{Filename: "a.pdf", URL: file.URL, SizeBytes: 0}},
+		"over total":   {{Filename: "a.pdf", URL: file.URL, SizeBytes: 20_000_000}, {Filename: "b.pdf", URL: file.URL, SizeBytes: 20_000_000}},
+		"too many":     make([]Attachment, 11),
+	}
+	for name, attachments := range bad {
+		body = nil
+		if _, err := client.Events.Publish(context.Background(), input(attachments...)); err == nil {
+			t.Fatalf("%s: expected a validation error", name)
+		}
+		if body != nil {
+			t.Fatalf("%s: request must not be sent", name)
+		}
+	}
+}
