@@ -16,6 +16,11 @@ from resend.exceptions import (
 )
 
 from app.core.config import settings
+from app.modules.delivery.adapters.attachments import (
+    AttachmentError,
+    FetchedAttachment,
+    fetch_attachments,
+)
 from app.modules.delivery.adapters.base import BaseAdapter, DeliveryResult
 from app.modules.delivery.sender import compose_from
 
@@ -51,6 +56,7 @@ class EmailAdapter(BaseAdapter):
         plain_text: str | None = None,
         from_address: str | None = None,
         reply_to: str | None = None,
+        attachments: list[FetchedAttachment] | None = None,
     ) -> DeliveryResult:
         message = EmailMessage()
         message["From"] = from_address or self.from_address
@@ -62,6 +68,11 @@ class EmailAdapter(BaseAdapter):
             plain_text or "This message contains HTML. View it in an HTML-capable client."
         )
         message.add_alternative(body, subtype="html")
+        for file in attachments or []:
+            maintype, _, subtype = file.content_type.partition("/")
+            message.add_attachment(
+                file.content, maintype=maintype, subtype=subtype, filename=file.filename
+            )
 
         try:
             with smtplib.SMTP(
@@ -109,16 +120,21 @@ class EmailAdapter(BaseAdapter):
                 success=True,
                 provider_response={"mock": True, "to": recipient},
             )
-        if attachments and provider == "smtp":
-            # Attachments are URLs that only Resend fetches; fetching them here would
-            # mean the worker requesting tenant-supplied URLs (SSRF).
-            return DeliveryResult(
-                success=False,
-                error_message="Attachments require the Resend email provider",
-                error_type="permanent_failure",
-            )
         if provider == "smtp":
-            return self._send_smtp(recipient, subject, body, plain_text, from_address, reply_to)
+            try:
+                files = (
+                    fetch_attachments(attachments, settings.EMAIL_MAX_ATTACHMENT_BYTES)
+                    if attachments
+                    else []
+                )
+            except AttachmentError as exc:
+                logger.error("Attachment download failed for %s: %s", recipient, exc)
+                return DeliveryResult(
+                    success=False, error_message=str(exc), error_type=exc.error_type
+                )
+            return self._send_smtp(
+                recipient, subject, body, plain_text, from_address, reply_to, files
+            )
         if provider != "resend":
             return DeliveryResult(
                 success=False,

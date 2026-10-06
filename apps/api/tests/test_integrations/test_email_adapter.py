@@ -13,6 +13,7 @@ from resend.exceptions import (
     ValidationError,
 )
 
+from app.modules.delivery.adapters.attachments import AttachmentError, FetchedAttachment
 from app.modules.delivery.adapters.email import EmailAdapter
 
 
@@ -248,8 +249,26 @@ class TestAttachments:
             {"filename": "invoice.pdf", "path": "https://files.example.com/invoice.pdf"}
         ]
 
-    def test_smtp_rejects_attachments_without_fetching(self, adapter):
+    @patch("app.modules.delivery.adapters.email.smtplib.SMTP")
+    @patch("app.modules.delivery.adapters.email.fetch_attachments")
+    def test_smtp_sends_downloaded_attachments(self, mock_fetch, mock_smtp, adapter):
         adapter.provider = "smtp"
+        mock_fetch.return_value = [FetchedAttachment("invoice.pdf", b"%PDF-1.4", "application/pdf")]
+        result = adapter.send("user@test.com", "Hi", "<p>Hi</p>", attachments=self.ATTACHMENTS)
+        assert result.success is True
+        message = mock_smtp.return_value.__enter__.return_value.send_message.call_args.args[0]
+        assert message.get_content_type() == "multipart/mixed"
+        attachment = next(message.iter_attachments())
+        assert attachment.get_filename() == "invoice.pdf"
+        assert attachment.get_content_type() == "application/pdf"
+        assert attachment.get_payload(decode=True) == b"%PDF-1.4"
+
+    @patch("app.modules.delivery.adapters.email.smtplib.SMTP")
+    @patch("app.modules.delivery.adapters.email.fetch_attachments")
+    def test_smtp_fails_without_sending_when_download_fails(self, mock_fetch, mock_smtp, adapter):
+        adapter.provider = "smtp"
+        mock_fetch.side_effect = AttachmentError("blocked", "permanent_failure")
         result = adapter.send("user@test.com", "Hi", "<p>Hi</p>", attachments=self.ATTACHMENTS)
         assert result.success is False
         assert result.error_type == "permanent_failure"
+        mock_smtp.assert_not_called()
