@@ -61,6 +61,41 @@ class BeacoTest(unittest.TestCase):
 
         self.assertEqual(json.loads(mocked.call_args.args[0].data)["inline"], inline)
 
+    def test_attachments_are_sent_and_validated_locally(self):
+        file = {
+            "filename": "invoice.pdf",
+            "url": "https://files.example.com/a.pdf",
+            "size_bytes": 1000,
+        }
+        recipients = [{"channels": ["email"], "email": "user@example.com"}]
+        inline = {"html": "<p>Thanks</p>"}
+        with patch("beaco._http.urlopen", return_value=Response()) as mocked:
+            client = Beaco("secret", base_url="http://localhost:8000/api/v1")
+            client.events.publish(
+                "order.confirmed", recipients, inline=inline, attachments=[file]
+            )
+            self.assertEqual(
+                json.loads(mocked.call_args.args[0].data)["attachments"], [file]
+            )
+
+            mocked.reset_mock()
+            bad = [
+                [{**file, "url": "ftp://files.example.com/a.pdf"}],
+                [{**file, "filename": "../a.pdf"}],
+                [{**file, "size_bytes": 0}],
+                [{**file, "size_bytes": 20_000_000}] * 2,
+                [file] * 11,
+            ]
+            for attachments in bad:
+                with self.assertRaises(ValueError):
+                    client.events.publish(
+                        "order.confirmed",
+                        recipients,
+                        inline=inline,
+                        attachments=attachments,
+                    )
+            mocked.assert_not_called()
+
     def test_template_sender_fields_are_sent_and_clearable(self):
         client = Beaco("secret", base_url="http://localhost:8000/api/v1")
         with patch("beaco._http.urlopen", return_value=Response()) as mocked:

@@ -19,6 +19,9 @@ event = beaco.events.publish(
 )
 # Optional sender: inline={..., "from_local": "orders", "from_name": "Winwell Orders",
 #                          "reply_to": "support@example.com"}
+# Optional files (never stored; the email provider downloads each url when sending):
+#   attachments=[{"filename": "invoice.pdf", "url": "https://files.example.com/a.pdf",
+#                 "size_bytes": 48213}]
 
 template = beaco.templates.create("welcome", "email", "Hi {{ name }}")
 beaco.templates.upsert_by_name("welcome", "<h1>Hi {{ name }}</h1>")

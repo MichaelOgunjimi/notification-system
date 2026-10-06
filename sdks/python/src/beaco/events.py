@@ -1,6 +1,7 @@
 """Event publication and lookup operations."""
 
 from typing import Any
+from urllib.parse import urlparse
 
 from ._http import Transport
 
@@ -18,6 +19,11 @@ def event_body(
             ``idempotency_key``. Values set to ``None`` are omitted. ``inline`` is
             ``{"html": ..., "subject": ..., "text": ..., "from_local": ...,
             "from_name": ..., "reply_to": ...}``; the sender fields are optional.
+            ``attachments`` is a list of up to 10 ``{"filename": ..., "url": ...,
+            "size_bytes": ...}`` files for email. Beaco does not store them: the
+            email provider downloads each ``url`` when sending, so it must stay
+            reachable until delivery succeeds. ``size_bytes`` is declared, not
+            verified, and the declared total may not exceed 30 MB.
 
     Returns:
         A JSON-serializable event request body.
@@ -38,7 +44,42 @@ def event_body(
     }
 
 
+MAX_ATTACHMENTS = 10
+# Resend's 40 MB email limit after Base64 encoding.
+MAX_ATTACHMENT_BYTES = 30_000_000
+
+
+def _validate_attachments(attachments: list[dict[str, Any]] | None) -> None:
+    """Mirror the API's attachment limits so bad input fails before any request."""
+    if not attachments:
+        return
+    if len(attachments) > MAX_ATTACHMENTS:
+        raise ValueError(f"attachments must contain at most {MAX_ATTACHMENTS} files.")
+    total = 0
+    for item in attachments:
+        if urlparse(str(item.get("url", ""))).scheme not in ("http", "https"):
+            raise ValueError("attachment url must be an http or https URL.")
+        filename = str(item.get("filename", ""))
+        if (
+            not 1 <= len(filename) <= 255
+            or "/" in filename
+            or "\\" in filename
+            or any(ord(c) < 32 or ord(c) == 127 for c in filename)
+        ):
+            raise ValueError(
+                "attachment filename must be 1 to 255 characters without slashes "
+                "or control characters."
+            )
+        size = item.get("size_bytes")
+        if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+            raise ValueError("attachment size_bytes must be a positive integer.")
+        total += size
+    if total > MAX_ATTACHMENT_BYTES:
+        raise ValueError(f"attachments exceed {MAX_ATTACHMENT_BYTES} bytes in total.")
+
+
 def _validate_content_source(options: dict[str, Any]) -> None:
+    _validate_attachments(options.get("attachments"))
     sources = [options.get(name) for name in ("template_id", "template_name", "inline")]
     if sum(value is not None for value in sources) != 1:
         raise ValueError(
@@ -63,8 +104,8 @@ class Events:
             recipients: Recipient dictionaries. Each recipient must contain a non-empty
                 ``channels`` list and the address required by each selected channel.
             **options: Optional API fields: ``priority``, ``template_id``,
-                ``template_name``, ``inline``, ``payload``, ``metadata``, and
-                ``idempotency_key``.
+                ``template_name``, ``inline``, ``attachments``, ``payload``,
+                ``metadata``, and ``idempotency_key``.
 
         Returns:
             The accepted event summary returned by Beaco.
