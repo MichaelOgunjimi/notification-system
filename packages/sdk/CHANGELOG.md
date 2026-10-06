@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.1
+
+### Patch Changes
+
+- Link the README to the SDK guide, API reference and source on the docs site.
+
 ## 1.1.0
 
 ### Minor Changes
