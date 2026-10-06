@@ -44,6 +44,19 @@ export interface InlineEmail {
   replyTo?: string;
 }
 
+/**
+ * An email attachment Beaco never stores: the email provider downloads `url` when the
+ * email is sent. Email delivery only; requires the Resend provider.
+ */
+export interface Attachment {
+  /** File name shown to the recipient. No slashes or control characters. */
+  filename: string;
+  /** http(s) URL of the file. Must stay reachable until delivery succeeds, including retries. */
+  url: string;
+  /** Declared file size in bytes, used to reject oversized emails early. Not verified. */
+  sizeBytes: number;
+}
+
 /** Input for publishing an event immediately. */
 export interface PublishEventInput {
   eventType: string;
@@ -52,6 +65,8 @@ export interface PublishEventInput {
   templateId?: string;
   templateName?: string;
   inline?: InlineEmail;
+  /** Up to 10 files attached to email notifications; their declared sizes total at most 30 MB. */
+  attachments?: Attachment[];
   payload?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   idempotencyKey?: string;

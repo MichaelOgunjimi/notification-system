@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.0
+
+### Minor Changes
+
+- Add optional `attachments` (`{ filename, url, sizeBytes }`) to `events.publish`. Beaco does not store the files: the email provider downloads each `url` when the email is sent, so the URL must stay reachable until delivery succeeds. Up to 10 attachments, 30 MB declared in total; requires the Resend email provider.
+
 ## 1.0.4
 
 ### Patch Changes
