@@ -41,16 +41,21 @@ X-API-Key: <project API key>
 
 ### Request Fields
 
-| Field             | Type   | Required     | Description                                        |
-| ----------------- | ------ | ------------ | -------------------------------------------------- |
-| `event_type`      | string | yes          | Logical event name, e.g. `user.welcome`            |
-| `recipients`      | array  | yes          | One or more recipient definitions                  |
-| `payload`         | object | yes          | Data for template rendering and downstream context |
-| `priority`        | enum   | no           | `high`, `medium`, `low` (default: `medium`)        |
-| `template_id`     | string | one of three | Template UUID for content rendering                |
-| `template_name`   | string | one of three | Project template name for content rendering        |
-| `inline`          | object | one of three | Already-rendered `{subject, html, text}` email     |
-| `idempotency_key` | string | no           | Duplicate-prevention key for safe retries          |
+| Field             | Type   | Required     | Description                                           |
+| ----------------- | ------ | ------------ | ----------------------------------------------------- |
+| `event_type`      | string | yes          | Logical event name, e.g. `user.welcome`               |
+| `recipients`      | array  | yes          | One or more recipient definitions                     |
+| `payload`         | object | yes          | Data for template rendering and downstream context    |
+| `priority`        | enum   | no           | `high`, `medium`, `low` (default: `medium`)           |
+| `template_id`     | string | one of three | Template UUID for content rendering                   |
+| `template_name`   | string | one of three | Project template name for content rendering           |
+| `inline`          | object | one of three | Already-rendered `{subject, html, text}` email        |
+| `attachments`     | array  | no           | Up to 10 email files as `{filename, url, size_bytes}` |
+| `idempotency_key` | string | no           | Duplicate-prevention key for safe retries             |
+
+Attachments are referenced by URL and never stored by Beaco: the email provider downloads each
+`url` when sending, so keep it reachable until delivery succeeds. The declared `size_bytes` of all
+files may total at most 30 MB. See the [API reference](/api-reference) for the full contract.
 
 ### Example: Single Event
 

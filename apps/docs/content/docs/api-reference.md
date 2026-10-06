@@ -44,6 +44,7 @@ Create an event and enqueue notification fan-out.
 | `template_id`     | UUID   | One of three | Template to render               |
 | `template_name`   | string | One of three | Template name to render          |
 | `inline`          | object | One of three | Rendered email, see below        |
+| `attachments`     | array  | No           | Email attachments, see below     |
 | `idempotency_key` | string | No           | Deduplication key                |
 | `metadata`        | object | No           | Optional metadata                |
 
@@ -66,6 +67,22 @@ The sender domain always comes from the server's configured address, so `from_lo
 used. Example: `"inline": {"subject": "Order confirmed", "html": "<p>Thanks</p>", "from_local":
 "orders", "from_name": "Winwell Orders", "reply_to": "support@winwell.example"}` sends as
 `Winwell Orders <orders@your-verified-domain>`.
+
+`attachments[]` object (email only, up to 10 per event):
+
+| Field        | Type    | Required | Description                                                      |
+| ------------ | ------- | -------- | ---------------------------------------------------------------- |
+| `filename`   | string  | Yes      | Name shown to the recipient, 1-255 chars, no slashes or controls |
+| `url`        | string  | Yes      | `http(s)` URL of the file, max 2048                              |
+| `size_bytes` | integer | Yes      | Declared size in bytes; the declared total may not exceed 30 MB  |
+
+Beaco does not store attachments. The email provider downloads each `url` when the email is sent,
+so the URL must stay reachable until delivery succeeds, including retries; a short-lived signed URL
+can expire mid-retry. `size_bytes` is declared by the caller and used only to reject oversized
+emails early (Resend allows 40 MB per email after Base64 encoding, so 30 MB of files). Beaco never
+fetches the URL to verify it, and the provider still enforces the real limit. Attachments need the
+Resend provider: with SMTP, delivery fails permanently with `Attachments require the Resend email
+provider`. Scheduled events do not support attachments.
 
 `recipients[]` object:
 

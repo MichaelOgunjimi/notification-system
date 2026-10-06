@@ -104,6 +104,22 @@ beaco.events.publish(
 )
 ```
 
+Attach files with `attachments=[{"filename": ..., "url": ..., "size_bytes": ...}]` on
+`events.publish()`: up to 10, 30 MB declared in total. Beaco never stores them: the email provider
+downloads each `url` when sending, so it must stay reachable until delivery succeeds, including
+retries. Invalid attachments raise `ValueError` before any request is made.
+
+```python
+beaco.events.publish(
+    "order.confirmed",
+    [{"channels": ["email"], "email": "chidi@example.com"}],
+    inline={"subject": "Your invoice", "html": "<p>Attached.</p>"},
+    attachments=[
+        {"filename": "invoice.pdf", "url": "https://files.example.com/a.pdf", "size_bytes": 48213}
+    ],
+)
+```
+
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 
 ### Notifications
