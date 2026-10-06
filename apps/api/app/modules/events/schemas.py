@@ -18,6 +18,7 @@ from app.modules.notifications.schemas import NotificationResponse
 _PHONE_RE = re.compile(r"^\+[1-9]\d{6,14}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _HTTP_URL_ADAPTER = TypeAdapter(HttpUrl)
+MAX_ATTACHMENTS = 10
 
 
 class RecipientCreate(BaseModel):
@@ -97,6 +98,27 @@ class InlineEmail(BaseModel):
         return self
 
 
+class Attachment(BaseModel):
+    """Email attachment referenced by URL; the file is never stored here.
+
+    Resend fetches ``url`` at send time, so it must stay reachable through any
+    retries (use a long-lived or signed URL). ``size_bytes`` is the caller's
+    declaration, used only to reject oversized emails early; the server never
+    fetches the URL to verify it, and Resend enforces the real limit.
+    """
+
+    filename: str = Field(min_length=1, max_length=255, pattern=r"^[^/\\\x00-\x1f]+$")
+    url: str = Field(max_length=2048)
+    size_bytes: int = Field(gt=0)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if urlparse(v).scheme not in ("http", "https"):
+            raise ValueError("Attachment URL must use http:// or https://")
+        return str(_HTTP_URL_ADAPTER.validate_python(v))
+
+
 class EventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=255)
     recipients: list[RecipientCreate]
@@ -104,6 +126,7 @@ class EventCreate(BaseModel):
     template_id: uuid.UUID | None = None
     template_name: str | None = Field(default=None, min_length=1, max_length=255)
     inline: InlineEmail | None = None
+    attachments: list[Attachment] = Field(default_factory=list, max_length=MAX_ATTACHMENTS)
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
@@ -126,6 +149,17 @@ class EventCreate(BaseModel):
         sources = (self.template_id, self.template_name, self.inline)
         if sum(value is not None for value in sources) != 1:
             raise ValueError("exactly one of template_id, template_name, or inline is required")
+        return self
+
+    @model_validator(mode="after")
+    def validate_attachment_size(self) -> "EventCreate":
+        """Reject attachments whose declared total exceeds the provider's email limit."""
+        total = sum(a.size_bytes for a in self.attachments)
+        if total > app_settings.EMAIL_MAX_ATTACHMENT_BYTES:
+            raise ValueError(
+                f"attachments exceed maximum total size of "
+                f"{app_settings.EMAIL_MAX_ATTACHMENT_BYTES} bytes (declared {total} bytes)"
+            )
         return self
 
     @field_validator("payload")

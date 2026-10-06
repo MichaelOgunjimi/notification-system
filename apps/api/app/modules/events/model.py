@@ -38,6 +38,9 @@ class Event(SQLModel, table=True):
     inline_content: dict[str, str | None] | None = Field(
         default=None, sa_column=Column(JSONB, nullable=True)
     )
+    attachments: list[dict[str, str | int]] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
     payload: dict[str, Any] = Field(sa_column=Column(JSONB, nullable=False))
     metadata_: dict[str, Any] | None = Field(
         default=None, sa_column=Column("metadata", JSONB, nullable=True)

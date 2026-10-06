@@ -96,6 +96,8 @@ class EmailAdapter(BaseAdapter):
         provider = self._resolved_provider()
         plain_text = _str_kwarg(kwargs, "plain_text")
         reply_to = _str_kwarg(kwargs, "reply_to")
+        raw_attachments = kwargs.get("attachments")
+        attachments = raw_attachments if isinstance(raw_attachments, list) else None
         from_address = compose_from(
             _str_kwarg(kwargs, "from_local"),
             _str_kwarg(kwargs, "from_name"),
@@ -106,6 +108,14 @@ class EmailAdapter(BaseAdapter):
             return DeliveryResult(
                 success=True,
                 provider_response={"mock": True, "to": recipient},
+            )
+        if attachments and provider == "smtp":
+            # Attachments are URLs that only Resend fetches; fetching them here would
+            # mean the worker requesting tenant-supplied URLs (SSRF).
+            return DeliveryResult(
+                success=False,
+                error_message="Attachments require the Resend email provider",
+                error_type="permanent_failure",
             )
         if provider == "smtp":
             return self._send_smtp(recipient, subject, body, plain_text, from_address, reply_to)
@@ -133,6 +143,10 @@ class EmailAdapter(BaseAdapter):
                 payload["text"] = plain_text
             if reply_to:
                 payload["reply_to"] = reply_to
+            if attachments:
+                payload["attachments"] = [
+                    {"filename": a["filename"], "path": a["url"]} for a in attachments
+                ]
             response = resend.Emails.send(payload)
             return DeliveryResult(
                 success=True,

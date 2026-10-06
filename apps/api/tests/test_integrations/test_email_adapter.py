@@ -228,3 +228,28 @@ class TestSenderFields:
         message = smtp.send_message.call_args.args[0]
         assert message["From"] == "no-reply@verified.example"
         assert message["Reply-To"] is None
+
+
+class TestAttachments:
+    ATTACHMENTS = [
+        {
+            "filename": "invoice.pdf",
+            "url": "https://files.example.com/invoice.pdf",
+            "size_bytes": 1000,
+        }
+    ]
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_resend_receives_remote_attachments(self, mock_send, adapter):
+        mock_send.return_value = {"id": "email_123"}
+        result = adapter.send("user@test.com", "Hi", "<p>Hi</p>", attachments=self.ATTACHMENTS)
+        assert result.success is True
+        assert mock_send.call_args.args[0]["attachments"] == [
+            {"filename": "invoice.pdf", "path": "https://files.example.com/invoice.pdf"}
+        ]
+
+    def test_smtp_rejects_attachments_without_fetching(self, adapter):
+        adapter.provider = "smtp"
+        result = adapter.send("user@test.com", "Hi", "<p>Hi</p>", attachments=self.ATTACHMENTS)
+        assert result.success is False
+        assert result.error_type == "permanent_failure"

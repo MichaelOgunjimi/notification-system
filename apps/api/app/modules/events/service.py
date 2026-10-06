@@ -104,6 +104,7 @@ async def create_event(
         status=EventStatus.ACCEPTED,
         template_id=resolved_template_id,
         inline_content=event_data.inline.model_dump() if event_data.inline else None,
+        attachments=[a.model_dump() for a in event_data.attachments] or None,
         payload=event_data.payload,
         metadata_=event_data.metadata,
         api_key_id=api_key_id,
