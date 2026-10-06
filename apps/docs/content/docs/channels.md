@@ -86,8 +86,9 @@ on templates; see [Templates](/templates#sender-and-reply-to).
 
 Add `attachments: [{ "filename": "invoice.pdf", "url": "https://files.example.com/a.pdf",
 "size_bytes": 48213 }]` to an event to attach files to its emails (up to 10, 30 MB declared in
-total). Beaco does not store the files: the email provider downloads each `url` at send time, so the
-URL must stay reachable through retries. Attachments require the Resend provider.
+total). Beaco does not store the files: each `url` is downloaded at send time, by Resend or by
+Beaco's worker when SMTP is the provider, so it must be publicly reachable and stay reachable
+through retries.
 
 Subject behavior:
 

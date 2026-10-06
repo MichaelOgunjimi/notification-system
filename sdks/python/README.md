@@ -52,7 +52,7 @@ beaco.events.publish(
 )
 ```
 
-Invalid attachments raise `ValueError` before any request is made. Attachments need the Resend
-email provider.
+Invalid attachments raise `ValueError` before any request is made. URLs must be publicly
+reachable: private and internal addresses are refused.
 
 Requires Python 3.9 or newer. This package is server-only: never expose a project API key in browser code.

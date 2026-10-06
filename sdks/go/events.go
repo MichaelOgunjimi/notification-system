@@ -39,13 +39,14 @@ const (
 	maxAttachmentBytes = 30_000_000
 )
 
-// Attachment is an email attachment Beaco never stores: the email provider downloads URL
-// when the email is sent. It applies to email delivery and needs the Resend provider.
+// Attachment is an email attachment Beaco never stores: URL is downloaded each time the
+// email is sent. It applies to email delivery only. The URL must be publicly reachable;
+// private and internal addresses are refused.
 type Attachment struct {
 	// Filename is shown to the recipient. It must not contain slashes or control characters.
 	Filename string `json:"filename"`
-	// URL is the http(s) location of the file. It must stay reachable until delivery
-	// succeeds, including retries.
+	// URL is the public http(s) location of the file. It must stay reachable until
+	// delivery succeeds, including retries.
 	URL string `json:"url"`
 	// SizeBytes is the declared file size, used to reject oversized emails early. It is
 	// not verified.

@@ -76,15 +76,16 @@ used. Example: `"inline": {"subject": "Order confirmed", "html": "<p>Thanks</p>"
 | `url`        | string  | Yes      | `http(s)` URL of the file, max 2048                              |
 | `size_bytes` | integer | Yes      | Declared size in bytes; the declared total may not exceed 30 MB  |
 
-Beaco does not store attachments. The email provider downloads each `url` when the email is sent,
-so the URL must stay reachable until delivery succeeds, including retries; a short-lived signed URL
-can expire mid-retry. `size_bytes` is declared by the caller and used only to reject oversized
-emails early (Resend allows 40 MB per email after Base64 encoding, so 30 MB of files). Beaco never
-fetches the URL to verify it, and the provider still enforces the real limit. Attachments need the
-Resend provider, which production uses. The SMTP provider used by the local Mailpit stack fails
-delivery permanently with `Attachments require the Resend email provider`, because Beaco does not
-download caller-supplied URLs from its own servers. `POST /scheduled-events` does not accept
-`attachments`; the field is ignored there.
+Beaco does not store attachments. The file is downloaded from your `url` each time the email is
+sent: by Resend, or by Beaco's worker when SMTP is the provider. The URL must therefore stay
+reachable until delivery succeeds, including retries; a short-lived signed URL can expire
+mid-retry. Beaco's own download only connects to publicly routable addresses, so URLs on private or
+internal networks (`localhost`, `10.x`, `192.168.x`, link-local) are refused, redirects are not
+followed, and a 4xx response fails the delivery permanently. `size_bytes` is declared by the caller
+and used only to reject oversized emails early (Resend allows 40 MB per email after Base64
+encoding, so 30 MB of files); Beaco never fetches the URL when you publish, and the real size is
+enforced at send time. `POST /scheduled-events` does not accept `attachments`; the field is ignored
+there.
 
 `recipients[]` object:
 

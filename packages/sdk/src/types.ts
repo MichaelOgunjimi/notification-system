@@ -45,13 +45,14 @@ export interface InlineEmail {
 }
 
 /**
- * An email attachment Beaco never stores: the email provider downloads `url` when the
- * email is sent. Email delivery only; requires the Resend provider.
+ * An email attachment Beaco never stores: `url` is downloaded each time the email is sent.
+ * Email delivery only. The URL must be publicly reachable; private and internal addresses
+ * are refused.
  */
 export interface Attachment {
   /** File name shown to the recipient. No slashes or control characters. */
   filename: string;
-  /** http(s) URL of the file. Must stay reachable until delivery succeeds, including retries. */
+  /** Public http(s) URL of the file. Must stay reachable until delivery succeeds, including retries. */
   url: string;
   /** Declared file size in bytes, used to reject oversized emails early. Not verified. */
   sizeBytes: number;

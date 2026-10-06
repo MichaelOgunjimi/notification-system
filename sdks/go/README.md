@@ -69,7 +69,7 @@ _, err := client.Events.Publish(ctx, beaco.PublishEventInput{
 })
 ```
 
-Invalid attachments return an error before any request is made. Attachments need the Resend email
-provider.
+Invalid attachments return an error before any request is made. URLs must be publicly reachable:
+private and internal addresses are refused.
 
 Requires Go 1.22 or newer. Keep project API keys in trusted server applications.

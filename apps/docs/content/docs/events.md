@@ -53,8 +53,8 @@ X-API-Key: <project API key>
 | `attachments`     | array  | no           | Up to 10 email files as `{filename, url, size_bytes}` |
 | `idempotency_key` | string | no           | Duplicate-prevention key for safe retries             |
 
-Attachments are referenced by URL and never stored by Beaco: the email provider downloads each
-`url` when sending, so keep it reachable until delivery succeeds. The declared `size_bytes` of all
+Attachments are referenced by URL and never stored by Beaco: each `url` is downloaded when
+sending, so it must be publicly reachable and stay reachable until delivery succeeds. The declared `size_bytes` of all
 files may total at most 30 MB. See the [API reference](/api-reference) for the full contract.
 
 ### Example: Single Event

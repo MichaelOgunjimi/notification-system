@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.2
+
+### Patch Changes
+
+- Document that attachment URLs are downloaded at send time and must be publicly reachable; private and internal addresses are refused.
+
 ## 1.1.1
 
 ### Patch Changes
