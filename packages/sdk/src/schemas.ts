@@ -28,6 +28,22 @@ export const InlineEmailSchema = z
   })
   .strict();
 
+/** Largest total of declared attachment sizes: Resend's 40 MB email limit after Base64 encoding. */
+export const MAX_ATTACHMENT_BYTES = 30_000_000;
+
+/** Runtime schema for an email attachment referenced by URL. */
+export const AttachmentSchema = z
+  .object({
+    filename: z
+      .string()
+      .min(1)
+      .max(255)
+      .regex(/^[^/\\\u0000-\u001f]+$/, "filename must not contain slashes or control characters"),
+    url: z.url({ protocol: /^https?$/ }).max(2048),
+    sizeBytes: z.number().int().positive(),
+  })
+  .strict();
+
 /** Runtime schema for an event recipient. */
 export const RecipientSchema = z
   .object({
@@ -51,6 +67,7 @@ export const PublishEventInputSchema = z
     templateId: z.string().optional(),
     templateName: z.string().min(1).max(255).optional(),
     inline: InlineEmailSchema.optional(),
+    attachments: z.array(AttachmentSchema).max(10).optional(),
     payload: z.record(z.string(), z.unknown()).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
     idempotencyKey: z.string().min(1).max(255).optional(),
@@ -60,6 +77,12 @@ export const PublishEventInputSchema = z
     ({ templateId, templateName, inline }) =>
       [templateId, templateName, inline].filter((value) => value !== undefined).length === 1,
     { message: "Exactly one of templateId, templateName, or inline is required" },
+  )
+  .refine(
+    ({ attachments }) =>
+      (attachments ?? []).reduce((total, { sizeBytes }) => total + sizeBytes, 0) <=
+      MAX_ATTACHMENT_BYTES,
+    { message: `attachments exceed ${MAX_ATTACHMENT_BYTES} bytes in total` },
   );
 
 /** Runtime schema for a template creation request. */

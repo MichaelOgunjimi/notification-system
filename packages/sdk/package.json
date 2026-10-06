@@ -1,6 +1,6 @@
 {
   "name": "@beaco/sdk",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Official server-side TypeScript and JavaScript SDK for Beaco",
   "license": "MIT",
   "type": "module",

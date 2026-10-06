@@ -2,6 +2,7 @@ import { type ApiPage, HttpClient, mapPage, query } from "./http";
 import { mapNotification, type ApiNotification } from "./notifications";
 import { PublishEventInputSchema } from "./schemas";
 import type {
+  Attachment,
   Event,
   EventDetail,
   EventListOptions,
@@ -57,6 +58,11 @@ function mapInline(value: InlineEmail) {
   };
 }
 
+/** @internal Converts one attachment to the REST representation. */
+function mapAttachment(value: Attachment) {
+  return { filename: value.filename, url: value.url, size_bytes: value.sizeBytes };
+}
+
 /** @internal Converts one SDK event input to the REST representation. */
 export function mapEventInput(value: PublishEventInput) {
   return {
@@ -66,6 +72,7 @@ export function mapEventInput(value: PublishEventInput) {
     template_id: value.templateId,
     template_name: value.templateName,
     inline: value.inline && mapInline(value.inline),
+    attachments: value.attachments?.map(mapAttachment),
     payload: value.payload,
     metadata: value.metadata,
     idempotency_key: value.idempotencyKey,

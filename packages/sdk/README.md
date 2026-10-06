@@ -19,6 +19,8 @@ await beaco.events.publish({
 ```
 
 Pick the sender of an email with `fromLocal`, `fromName`, and `replyTo` on `inline` or a template.
+
+Attach files with `attachments: [{ filename, url, sizeBytes }]` on `events.publish`. Beaco does not store them; the email provider downloads each `url` at send time, so keep it reachable through retries. Up to 10 files, 30 MB declared in total.
 The domain always stays the server's verified domain.
 
 Use `templates.upsertByName()` to sync templates on deploy and `templates.importHtml()` to turn

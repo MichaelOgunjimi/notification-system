@@ -1,6 +1,7 @@
 export { Beaco } from "./client";
 export { BeacoError, type BeacoValidationIssue } from "./error";
 export {
+  AttachmentSchema,
   CreateScheduledEventInputSchema,
   CreateSuppressionInputSchema,
   CreateTemplateInputSchema,
@@ -12,6 +13,7 @@ export {
   UpsertTemplateInputSchema,
 } from "./schemas";
 export type {
+  Attachment,
   BeacoOptions,
   CreateScheduledEventInput,
   CreateSuppressionInput,
