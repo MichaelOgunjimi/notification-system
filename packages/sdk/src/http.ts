@@ -1,8 +1,11 @@
+import { version } from "../package.json";
 import { BeacoError, type BeacoValidationIssue } from "./error";
 import type { BeacoOptions, Page } from "./types";
 
 const DEFAULT_BASE_URL = "https://beaco.michaelogunjimi.com/api/v1";
 const DEFAULT_TIMEOUT_MS = 10_000;
+/** Identifies the SDK; Cloudflare in front of the API blocks anonymous script user agents. */
+const USER_AGENT = `beaco-js/${version}`;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 /** @internal Rejects a baseUrl that would send the API key over cleartext HTTP. */
@@ -110,6 +113,7 @@ export class HttpClient {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          "User-Agent": USER_AGENT,
           "X-API-Key": this.apiKey,
         },
         body,

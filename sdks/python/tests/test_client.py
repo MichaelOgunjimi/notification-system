@@ -34,6 +34,7 @@ class BeacoTest(unittest.TestCase):
         request = mocked.call_args.args[0]
         self.assertEqual(event["id"], "evt_123")
         self.assertEqual(request.get_header("X-api-key"), "secret")
+        self.assertRegex(request.get_header("User-agent"), r"^beaco-python/\S+$")
         self.assertEqual(
             json.loads(request.data),
             {

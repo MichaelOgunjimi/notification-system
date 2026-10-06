@@ -10,12 +10,29 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const defaultBaseURL = "https://beaco.michaelogunjimi.com/api/v1"
+const (
+	defaultBaseURL = "https://beaco.michaelogunjimi.com/api/v1"
+	modulePath     = "github.com/MichaelOgunjimi/notification-system/sdks/go"
+)
+
+// userAgent identifies the SDK; Cloudflare in front of the API blocks Go's default agent.
+// The version is read from the importing program's build info, so it always matches the tag.
+var userAgent = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == modulePath {
+				return "beaco-go/" + dep.Version
+			}
+		}
+	}
+	return "beaco-go/dev"
+}()
 
 // Options configures a Beaco client.
 type Options struct {
@@ -144,6 +161,7 @@ func (c *Client) request(ctx context.Context, method, path string, body, result 
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("X-API-Key", c.apiKey)
 
 	response, err := c.http.Do(req)

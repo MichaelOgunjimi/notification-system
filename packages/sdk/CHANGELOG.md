@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.3
+
+### Patch Changes
+
+- Send a `beaco-js/<version>` User-Agent so requests are not blocked by Cloudflare bot protection in front of the Beaco API.
+
 ## 1.1.2
 
 ### Patch Changes

@@ -2,6 +2,7 @@
 
 import json
 import socket
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
@@ -9,6 +10,17 @@ from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "https://beaco.michaelogunjimi.com/api/v1"
 LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _user_agent() -> str:
+    """Identify the SDK; Cloudflare in front of the API blocks urllib's default agent."""
+    try:
+        return f"beaco-python/{version('beaco')}"
+    except PackageNotFoundError:
+        return "beaco-python/dev"
+
+
+USER_AGENT = _user_agent()
 
 
 class BeacoError(Exception):
@@ -119,6 +131,7 @@ class Transport:
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/json",
+                "User-Agent": USER_AGENT,
                 "X-API-Key": self.api_key,
             },
         )
