@@ -111,6 +111,22 @@ _, err := client.Events.Publish(ctx, beaco.PublishEventInput{
 })
 ```
 
+Attach files with `Attachments []beaco.Attachment` (`Filename`, `URL`, `SizeBytes`) on
+`PublishEventInput`: up to 10, 30 MB declared in total. Beaco never stores them: the email provider
+downloads each `URL` when sending, so it must stay reachable until delivery succeeds, including
+retries. Invalid attachments return an error before any request is made.
+
+```go
+_, err := client.Events.Publish(ctx, beaco.PublishEventInput{
+	EventType:  "order.confirmed",
+	Recipients: []beaco.Recipient{{Channels: []string{"email"}, Email: "chidi@example.com"}},
+	Inline:     &beaco.InlineEmail{Subject: "Your invoice", HTML: "<p>Attached.</p>"},
+	Attachments: []beaco.Attachment{
+		{Filename: "invoice.pdf", URL: "https://files.example.com/a.pdf", SizeBytes: 48213},
+	},
+})
+```
+
 Scopes: `templates:write` for mutations and `templates:read` for retrieval, listing, and previews.
 
 ### Notifications

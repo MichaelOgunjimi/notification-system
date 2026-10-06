@@ -82,6 +82,13 @@ This sends as `Winwell Orders <orders@your-verified-domain>` with replies going 
 `support@winwell.example`. When no field is set, the default sender is used. The same fields work
 on templates; see [Templates](/templates#sender-and-reply-to).
 
+### Attachments
+
+Add `attachments: [{ "filename": "invoice.pdf", "url": "https://files.example.com/a.pdf",
+"size_bytes": 48213 }]` to an event to attach files to its emails (up to 10, 30 MB declared in
+total). Beaco does not store the files: the email provider downloads each `url` at send time, so the
+URL must stay reachable through retries. Attachments require the Resend provider.
+
 Subject behavior:
 
 - Uses template subject when available.
