@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_BYTES: int = 10_485_760
     # 64 KB per-field limit on payload and metadata dicts (serialized JSON).
     MAX_PAYLOAD_BYTES: int = 65_536
+    # Resend caps an email at 40 MB after Base64 encoding (x4/3), so 30 MB of raw attachments.
+    EMAIL_MAX_ATTACHMENT_BYTES: int = 30_000_000
 
     # Idempotency
     IDEMPOTENCY_TTL_SECONDS: int = 86400

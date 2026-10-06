@@ -337,6 +337,7 @@ def process_notification(
             webhook_secret=notification.webhook_secret,
             event_type=event.event_type,
             notification_id=str(notification.id),
+            attachments=event.attachments if channel == "email" else None,
             **sender,
         )
 
