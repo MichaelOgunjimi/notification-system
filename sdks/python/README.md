@@ -23,9 +23,6 @@ event = beaco.events.publish(
 )
 # Optional sender: inline={..., "from_local": "orders", "from_name": "Winwell Orders",
 #                          "reply_to": "support@example.com"}
-# Optional files (never stored; the email provider downloads each url when sending):
-#   attachments=[{"filename": "invoice.pdf", "url": "https://files.example.com/a.pdf",
-#                 "size_bytes": 48213}]
 
 template = beaco.templates.create("welcome", "email", "Hi {{ name }}")
 beaco.templates.upsert_by_name("welcome", "<h1>Hi {{ name }}</h1>")
@@ -37,5 +34,25 @@ scheduled = beaco.scheduled_events.create(
 )
 suppression = beaco.suppressions.create("email", "blocked@example.com")
 ```
+
+## Attachments
+
+Attach files to an email event with `attachments`. Beaco never stores them: the email provider
+downloads each `url` when sending, so the URL must stay reachable until delivery succeeds,
+including retries. `size_bytes` is the size you declare; up to 10 files and 30 MB in total.
+
+```python
+beaco.events.publish(
+    "invoice.issued",
+    [{"channels": ["email"], "email": "user@example.com"}],
+    inline={"subject": "Your invoice", "html": "<p>Invoice attached.</p>"},
+    attachments=[
+        {"filename": "invoice.pdf", "url": "https://files.example.com/a.pdf", "size_bytes": 48213}
+    ],
+)
+```
+
+Invalid attachments raise `ValueError` before any request is made. Attachments need the Resend
+email provider.
 
 Requires Python 3.9 or newer. This package is server-only: never expose a project API key in browser code.

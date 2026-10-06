@@ -81,8 +81,10 @@ so the URL must stay reachable until delivery succeeds, including retries; a sho
 can expire mid-retry. `size_bytes` is declared by the caller and used only to reject oversized
 emails early (Resend allows 40 MB per email after Base64 encoding, so 30 MB of files). Beaco never
 fetches the URL to verify it, and the provider still enforces the real limit. Attachments need the
-Resend provider: with SMTP, delivery fails permanently with `Attachments require the Resend email
-provider`. Scheduled events do not support attachments.
+Resend provider, which production uses. The SMTP provider used by the local Mailpit stack fails
+delivery permanently with `Attachments require the Resend email provider`, because Beaco does not
+download caller-supplied URLs from its own servers. `POST /scheduled-events` does not accept
+`attachments`; the field is ignored there.
 
 `recipients[]` object:
 
@@ -127,6 +129,30 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
   "updated_at": "2026-04-17T12:15:32Z"
 }
 ```
+
+Example with attachments (email delivery only):
+
+```bash
+curl -X POST https://beaco.michaelogunjimi.com/api/v1/events \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: PROJECT_KEY" \
+  -d '{
+    "event_type": "invoice.issued",
+    "recipients": [{"channels": ["email"], "email": "alex@example.com"}],
+    "inline": {"subject": "Your invoice", "html": "<p>Invoice attached.</p>"},
+    "attachments": [
+      {
+        "filename": "invoice-1042.pdf",
+        "url": "https://files.example.com/invoices/1042.pdf",
+        "size_bytes": 48213
+      }
+    ]
+  }'
+```
+
+A request is rejected with `422` when there are more than 10 attachments, a `url` is not `http(s)`,
+a `filename` contains a slash or control character, `size_bytes` is not positive, or the declared
+sizes total more than 30 MB.
 
 ### `POST /events/batch`
 
