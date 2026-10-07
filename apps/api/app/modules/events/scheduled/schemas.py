@@ -37,6 +37,7 @@ class ScheduledEventResponse(BaseModel):
     priority: EventPriority
     status: ScheduledEventStatus
     event_id: uuid.UUID | None
+    failure_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, Index
+from sqlalchemy import Column, Index, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -28,5 +28,6 @@ class ScheduledEvent(SQLModel, table=True):
     priority: EventPriority = Field(default=EventPriority.MEDIUM)
     status: ScheduledEventStatus = Field(default=ScheduledEventStatus.PENDING)
     event_id: uuid.UUID | None = Field(default=None, foreign_key="events.id")
+    failure_reason: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now, sa_column_kwargs={"onupdate": utc_now})

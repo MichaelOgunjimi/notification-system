@@ -36,6 +36,7 @@ async def test_create_stores_inline_content_and_attachments(
     body = resp.json()
     assert body["status"] == "pending"
     assert body["priority"] == "high"
+    assert body["failure_reason"] is None
     assert "attachments" not in body
     stored = await db.get(ScheduledEvent, body["id"])
     assert stored is not None

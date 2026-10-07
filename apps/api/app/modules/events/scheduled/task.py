@@ -122,6 +122,10 @@ async def _dispatch_one(
                 scheduled.scheduled_for,
             )
             scheduled.status = ScheduledEventStatus.EXPIRED
+            scheduled.failure_reason = (
+                f"Not dispatched within {int(GRACE_PERIOD.total_seconds() // 60)} minutes "
+                "of scheduled_for"
+            )
             scheduled.updated_at = utc_now()
             await db.commit()
             return "expired"
@@ -143,7 +147,7 @@ async def _dispatch_one(
             # scheduling, bad recipient). Retrying would only fail again.
             await db.rollback()
             logger.error("Scheduled event %s cannot be dispatched: %s", scheduled_id, exc)
-            await _mark_failed(db, scheduled_id)
+            await _mark_failed(db, scheduled_id, _describe(exc))
             return "failed"
         except Exception:
             # Transient (database, etc.): leave PENDING so the next sweep retries,
@@ -174,12 +178,25 @@ async def _dispatch_one(
     return "dispatched"
 
 
-async def _mark_failed(db: AsyncSession, scheduled_id: uuid.UUID) -> None:
+def _describe(exc: ValueError | ValidationError) -> str:
+    """One readable line for the row; pydantic's multi-line report is trimmed to field: message."""
+    if isinstance(exc, ValidationError):
+        text = "; ".join(
+            f"{'.'.join(str(part) for part in err['loc']) or 'payload'}: {err['msg']}"
+            for err in exc.errors()
+        )
+    else:
+        text = str(exc)
+    return text[:500]
+
+
+async def _mark_failed(db: AsyncSession, scheduled_id: uuid.UUID, reason: str) -> None:
     from app.modules.events.scheduled.model import ScheduledEvent
 
     scheduled = await db.get(ScheduledEvent, scheduled_id, with_for_update=True)
     if scheduled is not None and scheduled.status == ScheduledEventStatus.PENDING:
         scheduled.status = ScheduledEventStatus.FAILED
+        scheduled.failure_reason = reason
         scheduled.updated_at = utc_now()
     await db.commit()
 
