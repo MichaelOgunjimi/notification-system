@@ -2,7 +2,7 @@
 
 from typing import Any
 from ._http import Transport, required
-from .events import event_body
+from .events import _validate_content_source, event_body
 
 
 class ScheduledEvents:
@@ -25,20 +25,25 @@ class ScheduledEvents:
             event_type: Application-defined event name, between 1 and 255 characters.
             recipients: Recipient dictionaries containing at least one channel each.
             scheduled_for: Future ISO 8601 timestamp, including a timezone offset.
-            **options: Optional ``priority``, ``template_id``, ``payload``, and
-                ``metadata`` fields.
+            **options: The same content fields as ``events.publish`` except
+                ``idempotency_key``: exactly one of ``template_id``, ``template_name``
+                or ``inline`` is required; ``attachments``, ``priority``, ``payload``
+                and ``metadata`` are optional.
 
         Returns:
             The created scheduled-event record.
 
         Raises:
-            ValueError: If required event data or ``scheduled_for`` is empty.
+            ValueError: If required event data or ``scheduled_for`` is empty, or the
+                content source or attachments are invalid.
             BeacoError: If the API rejects the request or cannot be reached.
 
         Note:
             This call stores a deferred event. Delivery is not attempted until the
-            configured time.
+            configured time, and an event more than an hour overdue is expired
+            rather than sent.
         """
+        _validate_content_source(options)
         body = event_body(
             event_type,
             recipients,

@@ -99,6 +99,7 @@ func TestAllResourceGroupsUseExpectedRoutes(t *testing.T) {
 	}
 	if _, err = client.ScheduledEvents.Create(ctx, CreateScheduledEventInput{
 		EventType: "renewal.reminder", ScheduledFor: time.Now().Add(time.Hour),
+		Inline:     &InlineEmail{HTML: "<p>Hi</p>"},
 		Recipients: []Recipient{{Channels: []string{"email"}, Email: "user@example.com"}},
 	}); err != nil {
 		t.Fatal(err)
@@ -235,5 +236,25 @@ func TestPublishAttachments(t *testing.T) {
 		if body != nil {
 			t.Fatalf("%s: request must not be sent", name)
 		}
+	}
+}
+
+func TestScheduledEventsRequireOneContentSource(t *testing.T) {
+	client, err := New("secret", &Options{BaseURL: "https://api.example.com/v1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := CreateScheduledEventInput{
+		EventType: "renewal.reminder", ScheduledFor: time.Now().Add(time.Hour),
+		Recipients: []Recipient{{Channels: []string{"email"}, Email: "user@example.com"}},
+	}
+	if _, err = client.ScheduledEvents.Create(context.Background(), base); err == nil {
+		t.Fatal("expected an error without a content source")
+	}
+	both := base
+	both.TemplateName = "welcome"
+	both.Inline = &InlineEmail{HTML: "<p>Hi</p>"}
+	if _, err = client.ScheduledEvents.Create(context.Background(), both); err == nil {
+		t.Fatal("expected an error with two content sources")
 	}
 }

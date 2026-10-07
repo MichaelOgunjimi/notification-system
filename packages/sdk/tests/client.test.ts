@@ -176,6 +176,7 @@ describe("Beaco", () => {
     const scheduled = await client.scheduledEvents.create({
       eventType: "report.ready",
       scheduledFor: new Date("2026-10-01T09:00:00Z"),
+      inline: { html: "<p>Your report is ready</p>" },
       recipients: [{ channels: ["email"], email: "user@example.com" }],
     });
     await client.scheduledEvents.cancel(scheduled.id);

@@ -260,6 +260,58 @@ describe("SuppressionsResource", () => {
 });
 
 describe("ScheduledEventsResource", () => {
+  const scheduled = {
+    eventType: "renewal.reminder",
+    recipients: [{ channels: ["email" as const], email: "a@example.com" }],
+    scheduledFor: new Date("2026-10-20T09:00:00Z"),
+  };
+  const apiScheduled = {
+    id: "sch-1",
+    api_key_id: "key-1",
+    event_type: "renewal.reminder",
+    scheduled_for: "2026-10-20T09:00:00Z",
+    priority: "medium",
+    status: "pending",
+    event_id: null,
+    created_at: "2026-10-06T10:00:00Z",
+    updated_at: "2026-10-06T10:00:00Z",
+  };
+
+  it("sends the content source and attachments with the delivery time", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json(apiScheduled));
+    const client = new Beaco({ apiKey: "secret", baseUrl: "https://example.test/v1", fetch });
+    const file = { filename: "a.pdf", url: "https://files.example.com/a.pdf", sizeBytes: 10 };
+
+    await client.scheduledEvents.create({
+      ...scheduled,
+      templateName: "renewal",
+      attachments: [file],
+    });
+
+    const body = JSON.parse(fetch.mock.calls[0]![1]!.body as string) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      template_name: "renewal",
+      scheduled_for: "2026-10-20T09:00:00.000Z",
+      attachments: [{ filename: "a.pdf", url: file.url, size_bytes: 10 }],
+    });
+    expect(body).not.toHaveProperty("idempotency_key");
+  });
+
+  it("requires exactly one content source", async () => {
+    const fetch = fetcher(Response.json(apiScheduled));
+    const client = new Beaco({ apiKey: "secret", baseUrl: "https://example.test/v1", fetch });
+
+    await expect(client.scheduledEvents.create(scheduled)).rejects.toThrow();
+    await expect(
+      client.scheduledEvents.create({
+        ...scheduled,
+        templateName: "renewal",
+        inline: { html: "<p>Hi</p>" },
+      }),
+    ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("lists scheduled events", async () => {
     const fetch = fetcher(Response.json(emptyPage));
     const client = new Beaco({ apiKey: "secret", baseUrl: "https://example.test/v1", fetch });

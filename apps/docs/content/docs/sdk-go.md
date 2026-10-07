@@ -151,12 +151,18 @@ scheduled, err := client.ScheduledEvents.Create(ctx, beaco.CreateScheduledEventI
         Channels: []string{"email"},
         Email:    "user@example.com",
     }},
-    Payload: map[string]any{"renewal_date": "2026-10-03"},
+    TemplateName: "renewal-reminder", // or TemplateID / Inline, same as Publish
+    Payload:      map[string]any{"renewal_date": "2026-10-03"},
 })
 
 client.ScheduledEvents.List(ctx, beaco.ScheduledEventListOptions{Status: "pending"})
 client.ScheduledEvents.Cancel(ctx, scheduled.ID)
 ```
+
+Scheduled events accept the same content fields as `Publish` (exactly one of `TemplateID`,
+`TemplateName` or `Inline`, plus optional `Attachments`; no `IdempotencyKey`). Once the time arrives
+the event is dispatched and its `EventID` is set; an event more than an hour overdue is expired
+instead of sent. Cancelling is only possible while `Status` is `pending`.
 
 Scopes: `scheduled_events:write` for creation and cancellation, and `scheduled_events:read` for listing.
 

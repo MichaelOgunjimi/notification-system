@@ -185,12 +185,18 @@ const scheduled = await beaco.scheduledEvents.create({
   eventType: "renewal.reminder",
   scheduledFor: new Date("2026-10-01T09:00:00Z"),
   recipients: [{ channels: ["email"], email: "user@example.com" }],
+  templateName: "renewal-reminder", // or templateId / inline, same as events.publish
   payload: { renewalDate: "2026-10-02" },
 });
 
 await beaco.scheduledEvents.list({ status: "pending" });
 await beaco.scheduledEvents.cancel(scheduled.id);
 ```
+
+Scheduled events accept the same content fields as `events.publish` (exactly one of `templateId`,
+`templateName` or `inline`, plus optional `attachments`; no `idempotencyKey`). Once `scheduledFor`
+arrives the event is dispatched and its `eventId` is set; an event more than an hour overdue is
+expired instead of sent. Cancelling is only possible while `status` is `pending`.
 
 Scopes: `scheduled_events:write` for creation and cancellation, and `scheduled_events:read` for listing.
 

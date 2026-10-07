@@ -58,32 +58,48 @@ export const RecipientSchema = z
   })
   .strict();
 
+/** Event fields shared by immediate and scheduled publication. */
+const eventContentShape = {
+  eventType: z.string().min(1).max(255),
+  recipients: z.array(RecipientSchema).min(1),
+  priority: priority.optional(),
+  templateId: z.string().optional(),
+  templateName: z.string().min(1).max(255).optional(),
+  inline: InlineEmailSchema.optional(),
+  attachments: z.array(AttachmentSchema).max(10).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+};
+
+/** @internal Rejects events without exactly one content source. */
+const hasOneContentSource = ({
+  templateId,
+  templateName,
+  inline,
+}: {
+  templateId?: string;
+  templateName?: string;
+  inline?: unknown;
+}) => [templateId, templateName, inline].filter((value) => value !== undefined).length === 1;
+
+/** @internal Rejects attachments whose declared sizes exceed the email limit. */
+const attachmentsWithinLimit = ({ attachments }: { attachments?: { sizeBytes: number }[] }) =>
+  (attachments ?? []).reduce((total, { sizeBytes }) => total + sizeBytes, 0) <=
+  MAX_ATTACHMENT_BYTES;
+
+const contentSourceMessage = {
+  message: "Exactly one of templateId, templateName, or inline is required",
+};
+const attachmentLimitMessage = {
+  message: `attachments exceed ${MAX_ATTACHMENT_BYTES} bytes in total`,
+};
+
 /** Runtime schema for an immediate event publication request. */
 export const PublishEventInputSchema = z
-  .object({
-    eventType: z.string().min(1).max(255),
-    recipients: z.array(RecipientSchema).min(1),
-    priority: priority.optional(),
-    templateId: z.string().optional(),
-    templateName: z.string().min(1).max(255).optional(),
-    inline: InlineEmailSchema.optional(),
-    attachments: z.array(AttachmentSchema).max(10).optional(),
-    payload: z.record(z.string(), z.unknown()).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-    idempotencyKey: z.string().min(1).max(255).optional(),
-  })
+  .object({ ...eventContentShape, idempotencyKey: z.string().min(1).max(255).optional() })
   .strict()
-  .refine(
-    ({ templateId, templateName, inline }) =>
-      [templateId, templateName, inline].filter((value) => value !== undefined).length === 1,
-    { message: "Exactly one of templateId, templateName, or inline is required" },
-  )
-  .refine(
-    ({ attachments }) =>
-      (attachments ?? []).reduce((total, { sizeBytes }) => total + sizeBytes, 0) <=
-      MAX_ATTACHMENT_BYTES,
-    { message: `attachments exceed ${MAX_ATTACHMENT_BYTES} bytes in total` },
-  );
+  .refine(hasOneContentSource, contentSourceMessage)
+  .refine(attachmentsWithinLimit, attachmentLimitMessage);
 
 /** Runtime schema for a template creation request. */
 export const CreateTemplateInputSchema = z
@@ -135,16 +151,10 @@ export const ImportTemplateInputSchema = z
 
 /** Runtime schema for a scheduled event creation request. */
 export const CreateScheduledEventInputSchema = z
-  .object({
-    eventType: z.string().min(1).max(255),
-    recipients: z.array(RecipientSchema).min(1),
-    scheduledFor: z.union([z.string().min(1), z.date()]),
-    priority: priority.optional(),
-    templateId: z.string().optional(),
-    payload: z.record(z.string(), z.unknown()).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+  .object({ ...eventContentShape, scheduledFor: z.union([z.string().min(1), z.date()]) })
+  .strict()
+  .refine(hasOneContentSource, contentSourceMessage)
+  .refine(attachmentsWithinLimit, attachmentLimitMessage);
 
 /** Runtime schema for a suppression creation request. */
 export const CreateSuppressionInputSchema = z

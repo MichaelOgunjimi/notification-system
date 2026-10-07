@@ -31,6 +31,7 @@ scheduled = beaco.scheduled_events.create(
     "renewal.reminder",
     [{"channels": ["email"], "email": "user@example.com"}],
     "2026-10-02T09:00:00Z",
+    template_name="renewal-reminder",
 )
 suppression = beaco.suppressions.create("email", "blocked@example.com")
 ```

@@ -143,6 +143,7 @@ class BeacoTest(unittest.TestCase):
                 "user.welcome",
                 [{"channels": ["email"], "email": "ada@example.com"}],
                 "2026-10-02T09:00:00Z",
+                inline={"html": "<p>Hi</p>"},
             )
             client.suppressions.create("email", "ada@example.com")
             client.suppressions.delete("sup_1")
@@ -164,6 +165,44 @@ class BeacoTest(unittest.TestCase):
                 ("DELETE", "http://localhost:8000/api/v1/suppressions/sup_1"),
             ],
         )
+
+    def test_scheduled_events_require_one_content_source(self) -> None:
+        recipients = [{"channels": ["email"], "email": "ada@example.com"}]
+        client = Beaco("secret", base_url="http://localhost:8000/api/v1")
+        with patch("beaco._http.urlopen") as mocked:
+            with self.assertRaises(ValueError):
+                client.scheduled_events.create("x", recipients, "2026-10-02T09:00:00Z")
+            with self.assertRaises(ValueError):
+                client.scheduled_events.create(
+                    "x",
+                    recipients,
+                    "2026-10-02T09:00:00Z",
+                    template_name="welcome",
+                    inline={"html": "<p>Hi</p>"},
+                )
+            mocked.assert_not_called()
+
+    def test_scheduled_events_send_content_and_attachments(self) -> None:
+        attachment = {
+            "filename": "a.pdf",
+            "url": "https://files.example.com/a.pdf",
+            "size_bytes": 10,
+        }
+        with patch(
+            "beaco._http.urlopen", return_value=Response({"id": "sch_1"})
+        ) as mocked:
+            Beaco(
+                "secret", base_url="http://localhost:8000/api/v1"
+            ).scheduled_events.create(
+                "x",
+                [{"channels": ["email"], "email": "ada@example.com"}],
+                "2026-10-02T09:00:00Z",
+                template_name="welcome",
+                attachments=[attachment],
+            )
+        body = json.loads(mocked.call_args.args[0].data)
+        self.assertEqual(body["template_name"], "welcome")
+        self.assertEqual(body["attachments"], [attachment])
 
 
 if __name__ == "__main__":

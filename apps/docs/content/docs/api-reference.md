@@ -533,35 +533,64 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/templates/799524b8-fdc7-4f
 
 ## Scheduled Events
 
+Scheduled events are stored now and turned into regular events when `scheduled_for` arrives. A
+scheduler checks every minute, so delivery starts within about a minute of the requested time. If
+the platform was unable to dispatch an event for more than an hour after `scheduled_for`, it
+becomes `expired` and is **not** sent.
+
+Lifecycle `status`: `pending` (waiting), `dispatched` (an event was created; `event_id` is set and
+you can follow it with `GET /events/{id}`), `cancelled`, `failed` (the content could not be
+delivered, for example the template was deleted after scheduling) and `expired`. `processing` is
+reserved and not currently used.
+
 ### `POST /scheduled-events`
 
 Schedule future event delivery.
 
-- **Auth required:** scoped project API key
+- **Auth required:** scoped project API key (`scheduled_events:write`)
+- **Response:** `201 Created`
 
 #### Request body
 
-| Field           | Type     | Required | Description             |
-| --------------- | -------- | -------- | ----------------------- |
-| `event_type`    | string   | Yes      | Event name              |
-| `recipients`    | array    | Yes      | Recipient array         |
-| `payload`       | object   | Yes      | Event payload           |
-| `scheduled_for` | datetime | Yes      | Future UTC datetime     |
-| `priority`      | string   | No       | `high`, `medium`, `low` |
-| `template_id`   | UUID     | No       | Optional template       |
+Takes the same fields as [`POST /events`](#post-events), except `idempotency_key`, plus
+`scheduled_for`. Exactly one of `template_id`, `template_name`, or `inline` is required, and
+`attachments` follow the same limits (up to 10 files, 30 MB declared in total).
+
+| Field           | Type     | Required     | Description                              |
+| --------------- | -------- | ------------ | ---------------------------------------- |
+| `event_type`    | string   | Yes          | Event name                               |
+| `recipients`    | array    | Yes          | Recipient array                          |
+| `scheduled_for` | datetime | Yes          | Future ISO 8601 datetime with a timezone |
+| `template_id`   | UUID     | One of three | Template to render                       |
+| `template_name` | string   | One of three | Template name to render                  |
+| `inline`        | object   | One of three | Already-rendered email content           |
+| `attachments`   | array    | No           | Email attachments, see `POST /events`    |
+| `payload`       | object   | No           | Event payload                            |
+| `metadata`      | object   | No           | Free-form metadata                       |
+| `priority`      | string   | No           | `high`, `medium` (default), `low`        |
+
+A request is rejected with `422` when it does not have exactly one content source, a recipient lacks
+the contact field for a requested channel, `template_name` does not exist, or the attachments break
+the limits. Templates are rendered at dispatch time, so edits made before `scheduled_for` apply.
 
 ```bash
 curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
   -H "Content-Type: application/json" \
   -H "X-API-Key: PROJECT_KEY" \
-  -d '{"event_type":"renewal.reminder","recipients":[{"channels":["email"],"email":"alex@example.com"}],"payload":{"renewal_date":"2026-04-20"},"scheduled_for":"2026-04-19T09:00:00Z"}'
+  -d '{"event_type":"renewal.reminder","recipients":[{"channels":["email"],"email":"alex@example.com"}],"template_name":"renewal-reminder","payload":{"renewal_date":"2026-04-20"},"scheduled_for":"2026-04-19T09:00:00Z"}'
 ```
 
 ```json
 {
   "id": "39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d",
-  "status": "scheduled",
-  "scheduled_for": "2026-04-19T09:00:00Z"
+  "api_key_id": "5d0c5f0e-52c1-4b34-9a8e-1f3f4c9e7a10",
+  "event_type": "renewal.reminder",
+  "scheduled_for": "2026-04-19T09:00:00Z",
+  "priority": "medium",
+  "status": "pending",
+  "event_id": null,
+  "created_at": "2026-04-18T12:00:00Z",
+  "updated_at": "2026-04-18T12:00:00Z"
 }
 ```
 
@@ -569,18 +598,18 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
 
 List scheduled events.
 
-- **Auth required:** scoped project API key
+- **Auth required:** scoped project API key (`scheduled_events:read`)
 
 #### Query parameters
 
-| Param      | Type    | Description                            |
-| ---------- | ------- | -------------------------------------- |
-| `page`     | integer | Page number                            |
-| `per_page` | integer | Page size                              |
-| `status`   | string  | `scheduled`, `dispatched`, `cancelled` |
+| Param      | Type    | Description                                                                |
+| ---------- | ------- | -------------------------------------------------------------------------- |
+| `page`     | integer | Page number                                                                |
+| `per_page` | integer | Page size                                                                  |
+| `status`   | string  | `pending`, `processing`, `dispatched`, `cancelled`, `failed`, or `expired` |
 
 ```bash
-curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=scheduled" \
+curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=pending" \
   -H "X-API-Key: PROJECT_KEY"
 ```
 
@@ -589,9 +618,14 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=sc
   "items": [
     {
       "id": "39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d",
+      "api_key_id": "5d0c5f0e-52c1-4b34-9a8e-1f3f4c9e7a10",
       "event_type": "renewal.reminder",
-      "status": "scheduled",
-      "scheduled_for": "2026-04-19T09:00:00Z"
+      "scheduled_for": "2026-04-19T09:00:00Z",
+      "priority": "medium",
+      "status": "pending",
+      "event_id": null,
+      "created_at": "2026-04-18T12:00:00Z",
+      "updated_at": "2026-04-18T12:00:00Z"
     }
   ],
   "total": 1,
@@ -605,8 +639,9 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=sc
 
 Cancel scheduled event.
 
-- **Auth required:** scoped project API key
-- **Response:** `204 No Content`
+- **Auth required:** scoped project API key (`scheduled_events:write`)
+- **Response:** `204 No Content`; cancelling an already cancelled event is a no-op
+- **Conflict:** `409` when the event is no longer `pending` (it was dispatched, failed or expired)
 
 ```bash
 curl -X DELETE https://beaco.michaelogunjimi.com/api/v1/scheduled-events/39ac7bf3-c4f6-4a1f-ab1a-996f1fcf2d5d \

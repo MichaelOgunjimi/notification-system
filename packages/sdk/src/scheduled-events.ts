@@ -1,4 +1,4 @@
-import { mapRecipient } from "./events";
+import { mapEventInput } from "./events";
 import { type ApiPage, HttpClient, mapPage, query } from "./http";
 import { CreateScheduledEventInputSchema } from "./schemas";
 import type {
@@ -44,7 +44,8 @@ export class ScheduledEventsResource {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * Schedules an event for future delivery.
+   * Schedules an event for future delivery. Takes the same content fields as `events.publish`
+   * (exactly one of `templateId`, `templateName` or `inline`, plus optional `attachments`).
    * This operation stores deferred work; delivery is not attempted before `scheduledFor`.
    *
    * @param input - Event content, recipients, template data, and future delivery time.
@@ -61,16 +62,11 @@ export class ScheduledEventsResource {
     const value = await this.http.request<ApiScheduledEvent>("/scheduled-events", {
       method: "POST",
       body: {
-        event_type: input.eventType,
-        recipients: input.recipients.map(mapRecipient),
+        ...mapEventInput(input),
         scheduled_for:
           input.scheduledFor instanceof Date
             ? input.scheduledFor.toISOString()
             : input.scheduledFor,
-        priority: input.priority,
-        template_id: input.templateId,
-        payload: input.payload,
-        metadata: input.metadata,
       },
       signal: options.signal,
     });

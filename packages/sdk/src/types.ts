@@ -251,14 +251,9 @@ export interface NotificationListOptions extends PageOptions {
 }
 
 /** Input for scheduling an event for future delivery. */
-export interface CreateScheduledEventInput {
-  eventType: string;
-  recipients: Recipient[];
+export interface CreateScheduledEventInput extends Omit<PublishEventInput, "idempotencyKey"> {
+  /** Future delivery time. Events more than an hour overdue are expired rather than sent. */
   scheduledFor: string | Date;
-  priority?: EventPriority;
-  templateId?: string;
-  payload?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
 }
 
 /** A deferred event and its current status. */

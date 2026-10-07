@@ -138,12 +138,18 @@ scheduled = beaco.scheduled_events.create(
     "renewal.reminder",
     [{"channels": ["email"], "email": "user@example.com"}],
     "2026-10-02T09:00:00Z",
+    template_name="renewal-reminder",  # or template_id / inline, same as events.publish
     payload={"renewal_date": "2026-10-03"},
 )
 
 beaco.scheduled_events.list(status="pending")
 beaco.scheduled_events.cancel(scheduled["id"])
 ```
+
+Scheduled events accept the same content fields as `events.publish` (exactly one of `template_id`,
+`template_name` or `inline`, plus optional `attachments`; no `idempotency_key`). Once the time
+arrives the event is dispatched and its `event_id` is set; an event more than an hour overdue is
+expired instead of sent. Cancelling is only possible while `status` is `pending`.
 
 Scopes: `scheduled_events:write` for creation and cancellation, and `scheduled_events:read` for listing.
 

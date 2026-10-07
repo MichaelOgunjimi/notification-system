@@ -10,13 +10,18 @@ import (
 
 // CreateScheduledEventInput contains an event and its future delivery time.
 type CreateScheduledEventInput struct {
-	EventType    string         `json:"event_type"`
-	Recipients   []Recipient    `json:"recipients"`
-	ScheduledFor time.Time      `json:"scheduled_for"`
-	Priority     string         `json:"priority,omitempty"`
-	TemplateID   string         `json:"template_id,omitempty"`
-	Payload      map[string]any `json:"payload,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
+	EventType    string      `json:"event_type"`
+	Recipients   []Recipient `json:"recipients"`
+	ScheduledFor time.Time   `json:"scheduled_for"`
+	Priority     string      `json:"priority,omitempty"`
+	// Exactly one of TemplateID, TemplateName or Inline is required, as for Publish.
+	TemplateID   string       `json:"template_id,omitempty"`
+	TemplateName string       `json:"template_name,omitempty"`
+	Inline       *InlineEmail `json:"inline,omitempty"`
+	// Attachments are files attached to email notifications. See Attachment.
+	Attachments []Attachment   `json:"attachments,omitempty"`
+	Payload     map[string]any `json:"payload,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // ScheduledEvent is a deferred event and its current status.
@@ -43,14 +48,20 @@ type ScheduledEventsService struct{ client *Client }
 
 // Create stores an event for delivery at Input.ScheduledFor.
 //
-// The event type and recipients follow Publish validation rules, and ScheduledFor must
-// be non-zero. The operation stores deferred work but does not attempt delivery before
-// the configured time. It returns the created scheduled-event record.
+// The event content (type, recipients, exactly one content source, attachments) follows
+// Publish validation rules, and ScheduledFor must be non-zero. The operation stores
+// deferred work but does not attempt delivery before the configured time; an event more
+// than an hour overdue is expired rather than sent. It returns the created
+// scheduled-event record.
 //
 // Create returns a local validation error, a context cancellation error, or *Error when
 // the API rejects or cannot service the request.
 func (s *ScheduledEventsService) Create(ctx context.Context, input CreateScheduledEventInput) (*ScheduledEvent, error) {
-	if err := validateEventBase(PublishEventInput{EventType: input.EventType, Recipients: input.Recipients}); err != nil {
+	if err := validateEvent(PublishEventInput{
+		EventType: input.EventType, Recipients: input.Recipients,
+		TemplateID: input.TemplateID, TemplateName: input.TemplateName,
+		Inline: input.Inline, Attachments: input.Attachments,
+	}); err != nil {
 		return nil, err
 	}
 	if input.ScheduledFor.IsZero() {
