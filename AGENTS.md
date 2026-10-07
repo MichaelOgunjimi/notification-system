@@ -18,9 +18,10 @@
 - Run `make new-worktree` immediately after creating or entering a linked worktree. Do not run it as part of normal primary-checkout setup. The command assigns linked worktrees an isolated project name derived from the branch (including the issue number when the branch is issue-prefixed, such as `feat/67-stop-all`) and a free three-digit port suffix, then writes the ignored root `.env` and `apps/web/.env.local` files. The script retains a safety guard that preserves canonical settings if it is accidentally run in the primary checkout.
 - Re-running `make new-worktree` preserves the worktree's existing Compose name and port suffix.
 - Use `make new-worktree name=<compose-name> suffix=<000-999>` when the project name or port suffix must be explicit.
-- Start worktree stacks with `docker compose up -d --build`; never reuse or tear down another worktree's Compose project.
-- Run `make docker-clean` from a linked worktree before removing it to delete that worktree's containers, volumes, networks, and built images.
-- `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Run `make docker-up-tunnel` in the checkout that should receive public traffic; it stops the existing Beaco connector before starting the current one. `make docker-stop-tunnel` stops the shared connector from any checkout.
+- `make new-worktree` also fills unset shared credentials (`SHARED_KEYS` in `scripts/setup-worktree.py`, e.g. `RESEND_API_KEY`) from the primary checkout's `.env`. Run `make inherit-env` (optionally `key="A B"`) later to refresh them; it never overwrites real values and never prints them.
+- Start worktree stacks with `make up` (builds, starts, and migrates); never reuse or tear down another worktree's Compose project.
+- Run `make clean` from a linked worktree before removing it to delete that worktree's containers, volumes, networks, and built images.
+- `cloudflared` is intentionally excluded from normal stacks because the shared tunnel would route public traffic to an arbitrary connector. Run `make up-tunnel` in the checkout that should receive public traffic; it stops the existing Beaco connector before starting the current one. `make stop-tunnel` stops the shared connector from any checkout.
 
 ## Agent skills
 

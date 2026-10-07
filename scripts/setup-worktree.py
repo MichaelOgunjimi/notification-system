@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure an isolated Docker Compose project for the current worktree."""
+"""Configure Docker Compose for the primary checkout or a linked worktree."""
 
 from __future__ import annotations
 
@@ -23,6 +23,19 @@ PORT_KEYS = (
     "FLOWER_PORT",
     "POSTGRES_HOST_PORT",
     "REDIS_HOST_PORT",
+)
+# Third-party credentials a worktree may inherit from the primary checkout. An
+# explicit list, not "everything": ports, URLs, database settings, and signing
+# secrets stay per-worktree, and EMAIL_PROVIDER stays on Mailpit so a worktree
+# never sends real mail unless it opts in. Add a key here to share it.
+SHARED_KEYS = (
+    "RESEND_API_KEY",
+    "EMAIL_FROM_ADDRESS",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_FROM_NUMBER",
 )
 PORT_PREFIXES = tuple(range(30, 38))
 PRIMARY_PROJECT_NAME = "notification-system"
@@ -74,21 +87,22 @@ def default_name() -> str:
     return project_name(worktree_name)
 
 
+def git_path(option: str) -> Path:
+    """Resolve one Git metadata path for this checkout."""
+    return Path(
+        subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", option],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    ).resolve()
+
+
 def is_primary_checkout() -> bool:
     """Return whether this checkout owns the repository's common Git directory."""
-    paths = [
-        Path(
-            subprocess.run(
-                ["git", "rev-parse", "--path-format=absolute", option],
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-        ).resolve()
-        for option in ("--git-dir", "--git-common-dir")
-    ]
-    return paths[0] == paths[1]
+    return git_path("--git-dir") == git_path("--git-common-dir")
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -177,16 +191,111 @@ def link_tunnel_credentials(source: Path, destination: Path) -> bool:
     return True
 
 
+def is_unset(value: str | None, placeholder: str | None) -> bool:
+    """Treat empty values and untouched `.env.example` placeholders as unset."""
+    return not value or value == placeholder
+
+
+def inheritable(
+    source: Path, destination: Path, keys: tuple[str, ...], example: Path
+) -> list[str]:
+    """Return the `keys` the primary has a real value for and `destination` lacks."""
+    primary, own, placeholders = (
+        read_env(source),
+        read_env(destination),
+        read_env(example),
+    )
+    return [
+        key
+        for key in keys
+        if not is_unset(primary.get(key), placeholders.get(key))
+        and is_unset(own.get(key), placeholders.get(key))
+    ]
+
+
+def inherit_env(
+    source: Path, destination: Path, keys: tuple[str, ...], example: Path
+) -> list[str]:
+    """Fill the listed `keys` that are unset in `destination` from `source`.
+
+    Existing real values are never overwritten, and only key names are returned —
+    values are never printed.
+    """
+    if not source.is_file() or not destination.is_file():
+        return []
+    filled = inheritable(source, destination, keys, example)
+    if not filled:
+        return []
+    primary = read_env(source)
+    lines = destination.read_text().splitlines()
+    present: set[str] = set()
+    for index, line in enumerate(lines):
+        key = line.partition("=")[0]
+        if key in filled:
+            lines[index] = f"{key}={primary[key]}"
+            present.add(key)
+    if appended := [key for key in filled if key not in present]:
+        lines.extend(["", "# Inherited from the primary checkout"])
+        lines.extend(f"{key}={primary[key]}" for key in appended)
+    destination.write_text("\n".join(lines) + "\n")
+    return filled
+
+
+def inherit_from_primary(primary: bool, dry_run: bool, only: tuple[str, ...]) -> int:
+    """Run the --inherit step; returns a process exit status."""
+    if primary:
+        print("This is the primary checkout — there is nothing to inherit from.")
+        return 0
+    source = git_path("--git-common-dir").parent / ".env"
+    example = ROOT / ".env.example"
+    keys = only or SHARED_KEYS
+    if not source.is_file():
+        print(f"skip    .env (no primary file at {source})")
+        return 1
+    if not ENV_FILE.is_file():
+        print("skip    .env (missing here — run `make new-worktree` first)")
+        return 1
+    if dry_run:
+        would = inheritable(source, ENV_FILE, keys, example)
+        print(f"would inherit .env: {', '.join(would) or 'nothing'}")
+        return 0
+    filled = inherit_env(source, ENV_FILE, keys, example)
+    for key in filled:
+        print(f"inherit .env {key} (from the primary checkout)")
+    if not filled:
+        print("ok      .env (already up to date)")
+    return 0
+
+
 def main() -> None:
     """Configure this worktree and print its local service URLs."""
     parser = argparse.ArgumentParser()
     parser.add_argument("name", nargs="?", help="optional Compose project name")
     parser.add_argument("--suffix", help="three-digit shared host-port suffix")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--inherit",
+        action="store_true",
+        help="only fill unset shared credentials in this worktree's .env from the "
+        "primary checkout's (ports and URLs are left alone)",
+    )
+    parser.add_argument(
+        "--key",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="with --inherit: inherit only this key (repeatable) instead of the "
+        "default shared-credentials list",
+    )
     args = parser.parse_args()
+    if args.key and not args.inherit:
+        parser.error("--key only applies with --inherit")
 
+    primary = is_primary_checkout()
+    if args.inherit:
+        raise SystemExit(inherit_from_primary(primary, args.dry_run, tuple(args.key)))
     existing = read_env(ENV_FILE)
-    if is_primary_checkout() and not args.name and not args.suffix:
+    if primary and not args.name and not args.suffix:
         name = PRIMARY_PROJECT_NAME
         suffix = None
         ports = PRIMARY_PORTS
@@ -230,18 +339,17 @@ def main() -> None:
                 "NEXT_PUBLIC_SITE_URL": f"http://localhost:{values['FRONTEND_PORT']}",
             },
         )
-        common_git_dir = Path(
-            subprocess.run(
-                ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-        )
-        shared_credentials = common_git_dir.parent / "cloudflared/credentials.json"
+        common_root = git_path("--git-common-dir").parent
+        shared_credentials = common_root / "cloudflared/credentials.json"
         linked_credentials = link_tunnel_credentials(
             shared_credentials, TUNNEL_CREDENTIALS
+        )
+        inherited = (
+            []
+            if primary
+            else inherit_env(
+                common_root / ".env", ENV_FILE, SHARED_KEYS, ROOT / ".env.example"
+            )
         )
 
     print(f"Compose project: {name}")
@@ -253,7 +361,9 @@ def main() -> None:
         print(f"Wrote: {WEB_ENV_FILE}")
         if linked_credentials:
             print(f"Linked: {TUNNEL_CREDENTIALS}")
-    print(f"\nStart: cd '{ROOT}' && docker compose up -d --build")
+        for key in inherited:
+            print(f"Inherited: {key} (from the primary checkout)")
+    print(f"\nStart: cd '{ROOT}' && make up")
 
 
 if __name__ == "__main__":

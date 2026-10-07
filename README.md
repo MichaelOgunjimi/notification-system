@@ -128,10 +128,18 @@ to that checkout and links the ignored tunnel credentials from the main checkout
 they are available. It also points host-run API processes at that worktree's Mailpit
 SMTP port; Docker services always reach Mailpit internally at `mailpit:1025`.
 
+A new worktree starts from `.env.example`, so it also inherits the shared third-party
+credentials (Resend, GitHub OAuth, Twilio; see `SHARED_KEYS` in
+`scripts/setup-worktree.py`) from the main checkout's `.env`. Only unset or placeholder
+values are filled, ports, URLs, and signing secrets stay per-worktree, and
+`EMAIL_PROVIDER` stays on Mailpit. Run `make inherit-env` to pick up credentials added
+to the main checkout later, or `make inherit-env key="RESEND_API_KEY"` for one key.
+Start the worktree stack with `make up`, which builds, starts, and migrates it.
+
 Normal `docker compose up` does not start Cloudflare. The tunnel is shared, so run
-`make docker-up-tunnel` in the checkout that should receive public traffic. It stops
+`make up-tunnel` in the checkout that should receive public traffic. It stops
 the current Beaco connector before starting that checkout's connector. Run
-`make docker-stop-tunnel` from any checkout to stop the shared tunnel.
+`make stop-tunnel` from any checkout to stop the shared tunnel.
 
 ### Interactive API Docs
 
