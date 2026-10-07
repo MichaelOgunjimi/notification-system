@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+import requests
 from resend.exceptions import (
     ApplicationError,
     InvalidApiKeyError,
@@ -113,7 +114,28 @@ class TestEmailErrorClassification:
         result = adapter.send("user@test.com", "Hello", "<p>Hi</p>")
         assert result.success is False
         assert result.error_type == "server_error"
-        assert "something unexpected" in result.error_message
+        assert "something unexpected" not in result.error_message
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_sdk_wrapped_dns_failure_is_connection_error(self, mock_send, adapter):
+        """The Resend SDK wraps requests errors in RuntimeError; DNS failures must say so."""
+        cause = requests.ConnectionError("Failed to resolve 'api.resend.com'")
+        error = RuntimeError("Request failed: HTTPSConnectionPool(host='api.resend.com')")
+        error.__cause__ = cause
+        mock_send.side_effect = error
+        result = adapter.send("user@test.com", "Hello", "<p>Hi</p>")
+        assert result.success is False
+        assert result.error_type == "connection_error"
+        assert "Could not reach the email provider" in result.error_message
+        assert "HTTPSConnectionPool" not in result.error_message
+
+    @patch("app.modules.delivery.adapters.email.resend.Emails.send")
+    def test_sdk_wrapped_timeout_is_timeout(self, mock_send, adapter):
+        error = RuntimeError("Request failed: read timed out")
+        error.__cause__ = requests.ReadTimeout("read timed out")
+        mock_send.side_effect = error
+        result = adapter.send("user@test.com", "Hello", "<p>Hi</p>")
+        assert result.error_type == "timeout"
 
     def test_mock_mode_when_no_api_key(self):
         """When RESEND_API_KEY is unset, adapter uses mock mode."""

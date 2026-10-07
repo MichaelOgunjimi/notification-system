@@ -5,6 +5,7 @@ import smtplib
 from email.message import EmailMessage
 
 import httpx
+import requests
 import resend
 from resend.exceptions import (
     ApplicationError,
@@ -30,6 +31,33 @@ logger = logging.getLogger(__name__)
 # thread-unsafe and causes unpredictable behaviour in tests.
 if settings.RESEND_API_KEY:
     resend.api_key = settings.RESEND_API_KEY
+
+
+def _transport_failure(exc: BaseException) -> tuple[str, str] | None:
+    """Classify a network-level failure as (error_type, user-facing message).
+
+    The Resend SDK re-raises transport errors as a bare ``RuntimeError("Request
+    failed: ...")`` with the real exception as ``__cause__``, so walk the chain.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, requests.Timeout | httpx.TimeoutException):
+            return (
+                "timeout",
+                "The email provider (Resend) took too long to respond. "
+                "The message was not sent; delivery will be retried.",
+            )
+        if isinstance(current, requests.ConnectionError | httpx.ConnectError):
+            return (
+                "connection_error",
+                "Could not reach the email provider (Resend). This is a network or DNS "
+                "problem on our side, not an issue with your API key or the recipient. "
+                "The message was not sent; delivery will be retried.",
+            )
+        current = current.__cause__ or current.__context__
+    return None
 
 
 def _str_kwarg(kwargs: dict[str, object], key: str) -> str | None:
@@ -211,9 +239,14 @@ class EmailAdapter(BaseAdapter):
                 error_type="connection_error",
             )
         except Exception as e:
+            transport = _transport_failure(e)
+            if transport is not None:
+                error_type, message = transport
+                logger.error("Resend %s for %s: %s", error_type, recipient, e)
+                return DeliveryResult(success=False, error_message=message, error_type=error_type)
             logger.error("Unexpected Resend error for %s: %s", recipient, e)
             return DeliveryResult(
                 success=False,
-                error_message=str(e),
+                error_message="Email delivery failed unexpectedly. Please try again shortly.",
                 error_type="server_error",
             )
