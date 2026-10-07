@@ -19,6 +19,7 @@ type ApiScheduledEvent = {
   priority: EventPriority;
   status: ScheduledEventStatus;
   event_id: string | null;
+  failure_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,6 +34,7 @@ function mapScheduledEvent(value: ApiScheduledEvent): ScheduledEvent {
     priority: value.priority,
     status: value.status,
     eventId: value.event_id,
+    failureReason: value.failure_reason ?? null,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
   };

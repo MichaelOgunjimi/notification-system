@@ -265,6 +265,8 @@ export interface ScheduledEvent {
   priority: EventPriority;
   status: ScheduledEventStatus;
   eventId: string | null;
+  /** Why the event is `failed` or `expired`; `null` otherwise. */
+  failureReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
