@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.4
+
+### Patch Changes
+
+- d4e4a51: Scheduled events now accept `templateName`, `inline` and `attachments` like `events.publish`, and require exactly one content source.
+
 ## 1.1.3
 
 ### Patch Changes
