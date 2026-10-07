@@ -244,6 +244,11 @@
   color: #e77d72;
   font-size: 11px;
 }
+.delivery-detail__controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
 .delivery-detail__tabs {
   display: flex;
   gap: 4px;

@@ -20,6 +20,8 @@ import {
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { EmailSchemeToggle } from "@/components/email/email-scheme-toggle";
+import { useEmailColorScheme } from "@/components/email/use-email-color-scheme";
 import { absoluteFormatter } from "@/lib/audit-log";
 import "./delivery-detail-page.css";
 
@@ -111,6 +113,7 @@ export function DeliveryDetailPage({
 }: DeliveryDetailPageProps) {
   const toast = useToast();
   const [previewMode, setPreviewMode] = useState<"preview" | "source">("preview");
+  const [colorScheme, setColorScheme] = useEmailColorScheme();
   const [recoveryAction, setRecoveryAction] = useState<"retry" | "discard" | null>(null);
   const query = useProjectNotification(project.id, notificationId);
   const retryNotification = useRetryProjectNotification();
@@ -296,23 +299,28 @@ export function DeliveryDetailPage({
             <p>Rendered output</p>
             <h2>Message body</h2>
           </div>
-          <div className="delivery-detail__tabs">
-            <button
-              type="button"
-              data-active={previewMode === "preview" || undefined}
-              onClick={() => setPreviewMode("preview")}
-            >
-              <Eye size={13} />
-              Preview
-            </button>
-            <button
-              type="button"
-              data-active={previewMode === "source" || undefined}
-              onClick={() => setPreviewMode("source")}
-            >
-              <Code size={13} />
-              Source
-            </button>
+          <div className="delivery-detail__controls">
+            <div className="delivery-detail__tabs">
+              <button
+                type="button"
+                data-active={previewMode === "preview" || undefined}
+                onClick={() => setPreviewMode("preview")}
+              >
+                <Eye size={13} />
+                Preview
+              </button>
+              <button
+                type="button"
+                data-active={previewMode === "source" || undefined}
+                onClick={() => setPreviewMode("source")}
+              >
+                <Code size={13} />
+                Source
+              </button>
+            </div>
+            {previewMode === "preview" && notification.channel === "email" ? (
+              <EmailSchemeToggle value={colorScheme} onChange={setColorScheme} />
+            ) : null}
           </div>
         </header>
         {previewMode === "preview" && notification.channel === "email" ? (
@@ -320,6 +328,7 @@ export function DeliveryDetailPage({
             title="Rendered notification preview"
             sandbox=""
             srcDoc={notification.renderedBody ?? ""}
+            style={{ colorScheme }}
           />
         ) : (
           <pre className="delivery-detail__body">
