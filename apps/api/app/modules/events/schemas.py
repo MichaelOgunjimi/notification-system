@@ -119,7 +119,9 @@ class Attachment(BaseModel):
         return str(_HTTP_URL_ADAPTER.validate_python(v))
 
 
-class EventCreate(BaseModel):
+class EventContent(BaseModel):
+    """Fields and validation shared by immediate and scheduled events."""
+
     event_type: str = Field(..., min_length=1, max_length=255)
     recipients: list[RecipientCreate]
     priority: EventPriority = EventPriority.MEDIUM
@@ -129,22 +131,9 @@ class EventCreate(BaseModel):
     attachments: list[Attachment] = Field(default_factory=list, max_length=MAX_ATTACHMENTS)
     payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] | None = None
-    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "event_type": "order.confirmed",
-                "recipients": [{"channels": ["email"], "email": "chidi@example.com"}],
-                "template_name": "order-confirmed",
-                "payload": {"customer_name": "Chidi", "order_number": "BEA-1042"},
-                "idempotency_key": "order-BEA-1042-confirmed",
-            }
-        }
-    }
 
     @model_validator(mode="after")
-    def require_one_content_source(self) -> "EventCreate":
+    def require_one_content_source(self) -> "EventContent":
         """Require exactly one template reference or inline email body."""
         sources = (self.template_id, self.template_name, self.inline)
         if sum(value is not None for value in sources) != 1:
@@ -152,7 +141,7 @@ class EventCreate(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_attachment_size(self) -> "EventCreate":
+    def validate_attachment_size(self) -> "EventContent":
         """Reject attachments whose declared total exceeds the provider's email limit."""
         total = sum(a.size_bytes for a in self.attachments)
         if total > app_settings.EMAIL_MAX_ATTACHMENT_BYTES:
@@ -189,6 +178,22 @@ class EventCreate(BaseModel):
                 f"(got {size} bytes)"
             )
         return v
+
+
+class EventCreate(EventContent):
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "event_type": "order.confirmed",
+                "recipients": [{"channels": ["email"], "email": "chidi@example.com"}],
+                "template_name": "order-confirmed",
+                "payload": {"customer_name": "Chidi", "order_number": "BEA-1042"},
+                "idempotency_key": "order-BEA-1042-confirmed",
+            }
+        }
+    }
 
 
 class EventBatchCreate(BaseModel):

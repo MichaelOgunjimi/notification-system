@@ -42,7 +42,10 @@ async def create_scheduled_event(
     api_key: ScheduledEventsWriteApiKeyDep,
 ) -> ScheduledEventResponse:
     """Schedule an event for deferred delivery at a future timestamp."""
-    event = await scheduled_event_service.create_scheduled_event(db, body, api_key.id)
+    try:
+        event = await scheduled_event_service.create_scheduled_event(db, body, api_key.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     return _to_response(event)
 
 
@@ -69,7 +72,11 @@ async def cancel_scheduled_event(
     db: SessionDep,
     api_key: ScheduledEventsWriteApiKeyDep,
 ) -> None:
-    """Cancel a pending scheduled event."""
+    """Cancel a pending scheduled event.
+
+    Only ``pending`` events can be cancelled. Once the dispatcher has claimed an
+    event (or it has been dispatched, failed or expired) the response is 409.
+    """
     api_key_filter = api_key_filter_id(api_key)
     event = await scheduled_event_service.cancel_scheduled_event(db, event_id, api_key_filter)
     if event is None:

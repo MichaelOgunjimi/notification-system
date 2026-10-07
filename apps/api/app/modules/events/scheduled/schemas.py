@@ -2,23 +2,22 @@
 
 import uuid
 from datetime import datetime
-from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from app.core.datetime import utc_now
 from app.modules.events.enums import EventPriority, ScheduledEventStatus
-from app.modules.events.schemas import RecipientCreate
+from app.modules.events.schemas import EventContent
 
 
-class ScheduledEventCreate(BaseModel):
-    event_type: str = Field(..., min_length=1, max_length=255)
-    recipients: list[RecipientCreate]
+class ScheduledEventCreate(EventContent):
+    """Same content fields as ``EventCreate`` plus the delivery time.
+
+    There is no ``idempotency_key``: the dispatcher derives one from the
+    scheduled event's id.
+    """
+
     scheduled_for: datetime
-    priority: EventPriority = EventPriority.MEDIUM
-    template_id: uuid.UUID | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
-    metadata: dict[str, Any] | None = None
 
     @field_validator("scheduled_for")
     @classmethod

@@ -10,6 +10,7 @@ from app.core.datetime import utc_now
 from app.modules.events.enums import ScheduledEventStatus
 from app.modules.events.scheduled.model import ScheduledEvent
 from app.modules.events.scheduled.schemas import ScheduledEventCreate
+from app.modules.events.service import resolve_content_template, validate_recipient_addresses
 
 
 async def create_scheduled_event(
@@ -17,15 +18,18 @@ async def create_scheduled_event(
     data: ScheduledEventCreate,
     api_key_id: uuid.UUID,
 ) -> ScheduledEvent:
+    """Store an event for later delivery.
+
+    Raises ValueError for problems the dispatcher would hit anyway (a recipient
+    missing the contact field for a channel, an unknown ``template_name``) so
+    the caller learns now rather than from a FAILED row later. The full
+    ``EventCreate`` shape is persisted so dispatch can replay it unchanged.
+    """
+    validate_recipient_addresses(data.recipients)
+    await resolve_content_template(db, data, api_key_id)
     event = ScheduledEvent(
         api_key_id=api_key_id,
-        payload={
-            "event_type": data.event_type,
-            "recipients": [r.model_dump() for r in data.recipients],
-            "payload": data.payload,
-            "metadata": data.metadata,
-            "template_id": str(data.template_id) if data.template_id else None,
-        },
+        payload=data.model_dump(mode="json", exclude={"scheduled_for", "priority"}),
         scheduled_for=data.scheduled_for,
         priority=data.priority,
     )

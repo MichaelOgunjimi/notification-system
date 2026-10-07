@@ -15,7 +15,7 @@ from app.modules.delivery.processing.queues import dispatcher_queue
 from app.modules.events import idempotency as idempotency_service
 from app.modules.events.enums import EventPriority, EventStatus
 from app.modules.events.model import Event
-from app.modules.events.schemas import EventCreate, RecipientCreate
+from app.modules.events.schemas import EventContent, EventCreate, RecipientCreate
 from app.modules.notifications.enums import NotificationStatus
 from app.modules.notifications.log_model import NotificationLog
 from app.modules.notifications.model import Notification
@@ -54,25 +54,23 @@ def _resolve_recipient_address(recipient: RecipientCreate, channel: str) -> str:
     raise ValueError(f"Unsupported channel: {channel}")
 
 
-async def create_event(
+def validate_recipient_addresses(recipients: list[RecipientCreate]) -> None:
+    """Raise ValueError when a recipient lacks the contact field for a requested channel."""
+    for recipient in recipients:
+        for channel in recipient.channels:
+            _resolve_recipient_address(recipient, channel)
+
+
+async def resolve_content_template(
     db: AsyncSession,
-    event_data: EventCreate,
+    event_data: EventContent,
     api_key_id: uuid.UUID,
-    *,
-    batch_id: uuid.UUID | None = None,
-    auto_commit: bool = True,
-) -> tuple[Event, list[uuid.UUID], bool]:
-    """Create an Event and fan out Notification records for each recipient+channel.
+) -> uuid.UUID | None:
+    """Resolve the event's template reference to an id, or None for inline content.
 
-    Returns ``(event, notification_ids, is_duplicate)``.  When ``is_duplicate``
-    is True the event already existed and was not re-created — callers should
-    return HTTP 200 instead of 202.
-
-    When ``auto_commit`` is False the caller is responsible for committing
-    (or rolling back) the transaction — used by the batch endpoint so that
-    all events in a batch are atomic.
+    ``template_name`` is looked up within the key's project (falling back to
+    global templates). Raises ValueError when the named template is missing.
     """
-    # --- Resolve template_name → template_id within this key's project. ---
     resolved_template_id = event_data.template_id
     if resolved_template_id is None and event_data.template_name:
         project_id = (
@@ -91,6 +89,28 @@ async def create_event(
         resolved_template_id = tpl.id if tpl is not None else None
         if resolved_template_id is None:
             raise ValueError(f"Template with name '{event_data.template_name}' not found")
+    return resolved_template_id
+
+
+async def create_event(
+    db: AsyncSession,
+    event_data: EventCreate,
+    api_key_id: uuid.UUID,
+    *,
+    batch_id: uuid.UUID | None = None,
+    auto_commit: bool = True,
+) -> tuple[Event, list[uuid.UUID], bool]:
+    """Create an Event and fan out Notification records for each recipient+channel.
+
+    Returns ``(event, notification_ids, is_duplicate)``.  When ``is_duplicate``
+    is True the event already existed and was not re-created — callers should
+    return HTTP 200 instead of 202.
+
+    When ``auto_commit`` is False the caller is responsible for committing
+    (or rolling back) the transaction — used by the batch endpoint so that
+    all events in a batch are atomic.
+    """
+    resolved_template_id = await resolve_content_template(db, event_data, api_key_id)
 
     # --- Idempotency check ---
     if event_data.idempotency_key:
