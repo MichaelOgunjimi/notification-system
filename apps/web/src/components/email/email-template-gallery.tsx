@@ -11,7 +11,8 @@ import {
   Sun,
 } from "@phosphor-icons/react";
 import { emailTemplates } from "@/lib/email-templates";
-import { BeacoEmailPreview, type EmailColorScheme } from "./beaco-email-preview";
+import { BeacoEmailPreview } from "./beaco-email-preview";
+import { useEmailColorScheme } from "./use-email-color-scheme";
 import BrandLogo from "@/components/brand/brand-logo";
 
 /** Adds zero-width break points after path/query separators so long routes wrap cleanly. */
@@ -26,7 +27,7 @@ export function EmailTemplateGallery() {
   const [selectedId, setSelectedId] = useState(emailTemplates[0].id);
   const [query, setQuery] = useState("");
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
-  const [colorScheme, setColorScheme] = useState<EmailColorScheme>("dark");
+  const [colorScheme, setColorScheme] = useEmailColorScheme();
   const filtered = useMemo(
     () =>
       emailTemplates.filter((item) =>

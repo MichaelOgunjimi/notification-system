@@ -250,6 +250,12 @@
   margin-bottom: 0;
 }
 
+.template-detail-page__controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .template-detail-page__toggle {
   background: var(--dashboard-overlay);
   border: 1px solid var(--dashboard-line);

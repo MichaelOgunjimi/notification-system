@@ -22,6 +22,8 @@ import {
 import { AppDialog, DialogAction } from "@/components/ui/app-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { EmailSchemeToggle } from "@/components/email/email-scheme-toggle";
+import { useEmailColorScheme } from "@/components/email/use-email-color-scheme";
 import { absoluteFormatter } from "@/lib/audit-log";
 import { TemplateFormDialog } from "./template-form-dialog";
 import "./template-detail-page.css";
@@ -105,6 +107,7 @@ export function TemplateDetailPage({ organization, project, templateId }: Templa
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<"source" | "preview">("source");
+  const [colorScheme, setColorScheme] = useEmailColorScheme();
 
   const backHref = `/app/${organization.slug}/${project.slug}/templates`;
 
@@ -237,27 +240,32 @@ export function TemplateDetailPage({ organization, project, templateId }: Templa
           <section className="template-detail-page__card">
             <div className="template-detail-page__body-head">
               <h2>Body</h2>
-              <div className="template-detail-page__toggle" role="tablist" aria-label="Body view">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewMode === "source"}
-                  data-active={previewMode === "source" || undefined}
-                  onClick={() => setPreviewMode("source")}
-                >
-                  <Code size={12} />
-                  Source
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={previewMode === "preview"}
-                  data-active={previewMode === "preview" || undefined}
-                  onClick={() => setPreviewMode("preview")}
-                >
-                  <Eye size={12} />
-                  Preview
-                </button>
+              <div className="template-detail-page__controls">
+                <div className="template-detail-page__toggle" role="tablist" aria-label="Body view">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={previewMode === "source"}
+                    data-active={previewMode === "source" || undefined}
+                    onClick={() => setPreviewMode("source")}
+                  >
+                    <Code size={12} />
+                    Source
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={previewMode === "preview"}
+                    data-active={previewMode === "preview" || undefined}
+                    onClick={() => setPreviewMode("preview")}
+                  >
+                    <Eye size={12} />
+                    Preview
+                  </button>
+                </div>
+                {previewMode === "preview" && template.channel === "email" ? (
+                  <EmailSchemeToggle value={colorScheme} onChange={setColorScheme} />
+                ) : null}
               </div>
             </div>
             {previewMode === "source" || template.channel !== "email" ? (
@@ -269,6 +277,7 @@ export function TemplateDetailPage({ organization, project, templateId }: Templa
                 className="template-detail-page__preview-frame"
                 title={`${template.name} preview`}
                 srcDoc={template.body}
+                style={{ colorScheme }}
                 sandbox="allow-same-origin"
               />
             )}

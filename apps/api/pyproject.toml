@@ -23,6 +23,7 @@ dependencies = [
     "redis>=5.0",
     "email-validator>=2.3.0",
     "python-jose[cryptography]>=3.3",
+    "requests>=2.32.5",
 ]
 
 [dependency-groups]
@@ -36,6 +37,7 @@ dev = [
     "ruff>=0.7.0",
     "mypy>=1.19.1",
     "pre-commit>=4.5.1",
+    "types-requests>=2.33.0.20261006",
 ]
 
 [tool.pytest.ini_options]
