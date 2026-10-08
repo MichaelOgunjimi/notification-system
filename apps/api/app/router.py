@@ -7,6 +7,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.credentials.router import router as project_api_keys_router
 from app.modules.delivery.router import router as delivery_router
 from app.modules.events.router import router as events_router
+from app.modules.events.scheduled.tenant_router import router as scheduled_tenant_router
 from app.modules.identity.router import router as identity_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.observability.alerts.router import router as alert_rules_router
@@ -20,6 +21,7 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(identity_router)
 api_v1_router.include_router(health_router)
 api_v1_router.include_router(events_router)
+api_v1_router.include_router(scheduled_tenant_router)
 api_v1_router.include_router(notifications_router)
 api_v1_router.include_router(organizations_router)
 api_v1_router.include_router(project_api_keys_router)

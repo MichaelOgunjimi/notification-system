@@ -19,6 +19,7 @@ import type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  ScheduledEventFilter,
   TemplateCreate,
   TemplateListOptions,
   TemplateUpdate,
@@ -53,6 +54,8 @@ import {
   projectEventsQuery,
   projectNotificationQuery,
   projectNotificationsQuery,
+  projectScheduledEventQuery,
+  projectScheduledEventsQuery,
   projectsQuery,
   projectTemplateDefaultsQuery,
   projectTemplateQuery,
@@ -1152,6 +1155,62 @@ export function useProjectEvent(projectId: string | null, eventId: string | null
   return useQuery({
     ...projectEventQuery(client, projectId ?? "pending", eventId ?? "pending"),
     enabled: Boolean(projectId) && Boolean(eventId),
+  });
+}
+
+/**
+ * Loads one page of a project's scheduled events.
+ *
+ * @param projectId Project whose scheduled events should load; null disables the query.
+ * @param filter 1-based page, page size and status.
+ * @returns TanStack Query result containing one page of scheduled events.
+ */
+export function useProjectScheduledEvents(
+  projectId: string | null,
+  filter: ScheduledEventFilter = {},
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectScheduledEventsQuery(client, projectId ?? "pending", filter),
+    enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Loads one scheduled event with its recipients, content source and payload.
+ *
+ * @param projectId Project the scheduled event must belong to; null disables the query.
+ * @param scheduledEventId Scheduled event to load; null disables the query.
+ * @returns TanStack Query result containing the scheduled event detail.
+ */
+export function useProjectScheduledEvent(
+  projectId: string | null,
+  scheduledEventId: string | null,
+) {
+  const client = useControlPlaneClient();
+  return useQuery({
+    ...projectScheduledEventQuery(client, projectId ?? "pending", scheduledEventId ?? "pending"),
+    enabled: Boolean(projectId) && Boolean(scheduledEventId),
+  });
+}
+
+/** Cancels a pending scheduled event and refreshes the project's scheduled event caches. */
+export function useCancelProjectScheduledEvent() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      scheduledEventId,
+    }: {
+      projectId: string;
+      scheduledEventId: string;
+    }) => client.scheduledEvents.cancel(projectId, scheduledEventId),
+    onSuccess: (_result, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectScheduledEvents(variables.projectId),
+      }),
   });
 }
 

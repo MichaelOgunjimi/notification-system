@@ -451,6 +451,68 @@ export type EventFilter = Readonly<{
   to?: string;
 }>;
 
+/** Lifecycle state of a scheduled event. `processing` is reserved and currently unused. */
+export type ScheduledEventStatus =
+  "pending" | "processing" | "dispatched" | "cancelled" | "failed" | "expired";
+
+/** One scheduled event in a project's list. */
+export type TenantScheduledEvent = Readonly<{
+  id: string;
+  eventType: string;
+  scheduledFor: string;
+  priority: EventPriority;
+  status: ScheduledEventStatus;
+  /** The real event created at dispatch time; null until then. */
+  eventId: string | null;
+  /** Status of that real event, so a dispatched row can show whether delivery finished. */
+  eventStatus: EventStatus | null;
+  /** Why the event is `failed` or `expired`; null otherwise. */
+  failureReason: string | null;
+  apiKeyId: string;
+  apiKeyName: string;
+  apiKeyEnvironment: string;
+  contentSource: "template" | "inline";
+  recipientCount: number;
+  channels: readonly NotificationChannel[];
+  /** Address of the first recipient, for a one-line summary. */
+  firstRecipient: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+/** One recipient of a scheduled event. */
+export type TenantScheduledRecipient = Readonly<{
+  userId: string | null;
+  channels: readonly NotificationChannel[];
+  addresses: readonly string[];
+}>;
+
+/** An attachment on a scheduled event. The download URL is never exposed to the dashboard. */
+export type TenantScheduledAttachment = Readonly<{
+  filename: string;
+  sizeBytes: number;
+}>;
+
+/** A scheduled event with its recipients, content source and payload. */
+export type TenantScheduledEventDetail = TenantScheduledEvent &
+  Readonly<{
+    templateId: string | null;
+    templateName: string | null;
+    /** Subject of inline email content; null for template-backed events. */
+    subject: string | null;
+    recipients: readonly TenantScheduledRecipient[];
+    attachments: readonly TenantScheduledAttachment[];
+    payload: Record<string, unknown>;
+    metadata: Record<string, unknown> | null;
+  }>;
+
+/** Filters and pagination for {@link ControlPlaneClient.scheduledEvents} list queries. */
+export type ScheduledEventFilter = Readonly<{
+  page?: number;
+  perPage?: number;
+  status?: ScheduledEventStatus;
+}>;
+
 /** Lifecycle state of one channel-specific delivery instance. */
 export type NotificationStatus =
   "pending" | "queued" | "processing" | "delivered" | "failed" | "dead_letter" | "cancelled";
@@ -1243,6 +1305,39 @@ export interface ControlPlaneClient {
      */
     get(projectId: string, eventId: string): Promise<TenantEventDetail>;
   };
+  /** Project-scoped scheduled events: browse, inspect and cancel. They cannot be created here. */
+  readonly scheduledEvents: {
+    /**
+     * Lists a project's scheduled events, latest scheduled time first.
+     *
+     * @param projectId Stable project identifier.
+     * @param filter Optional page, page size (1-100, default 25) and status.
+     * @returns One page of scheduled events with resolved API key names.
+     * @throws {ControlPlaneError} When the `project:deliveries:read` capability is unavailable.
+     */
+    forProject(
+      projectId: string,
+      filter?: ScheduledEventFilter,
+    ): Promise<Paginated<TenantScheduledEvent>>;
+    /**
+     * Fetches one scheduled event with its recipients, content source and payload.
+     *
+     * @param projectId Stable project identifier the event must belong to.
+     * @param scheduledEventId Stable scheduled event identifier.
+     * @returns The scheduled event detail.
+     * @throws {ControlPlaneError} When the event isn't visible to this project, or access is denied.
+     */
+    get(projectId: string, scheduledEventId: string): Promise<TenantScheduledEventDetail>;
+    /**
+     * Cancels a pending scheduled event. Cancelling an already cancelled event succeeds.
+     *
+     * @param projectId Stable project identifier the event must belong to.
+     * @param scheduledEventId Stable scheduled event identifier.
+     * @throws {ControlPlaneError} With status 409 once the event is no longer pending, or when
+     *   the `project:deliveries:manage` capability is unavailable.
+     */
+    cancel(projectId: string, scheduledEventId: string): Promise<void>;
+  };
   /** Read-only, project-scoped notification delivery records. */
   readonly notifications: {
     /**
@@ -1522,6 +1617,38 @@ export type ApiTenantEventDetail = {
   created_at: string;
   updated_at: string;
   notifications: ApiTenantEventNotification[];
+};
+
+/** Raw scheduled event payload returned by FastAPI. */
+export type ApiTenantScheduledEvent = {
+  id: string;
+  event_type: string;
+  scheduled_for: string;
+  priority: EventPriority;
+  status: ScheduledEventStatus;
+  event_id: string | null;
+  event_status: EventStatus | null;
+  failure_reason: string | null;
+  api_key_id: string;
+  api_key_name: string;
+  api_key_environment: string;
+  content_source: "template" | "inline";
+  recipient_count: number;
+  channels: NotificationChannel[];
+  first_recipient: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Raw scheduled event detail payload returned by FastAPI. */
+export type ApiTenantScheduledEventDetail = ApiTenantScheduledEvent & {
+  template_id: string | null;
+  template_name: string | null;
+  subject: string | null;
+  recipients: { user_id: string | null; channels: NotificationChannel[]; addresses: string[] }[];
+  attachments: { filename: string; size_bytes: number }[];
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
 };
 
 /** Raw tenant notification payload returned by FastAPI. */

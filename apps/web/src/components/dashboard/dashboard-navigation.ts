@@ -3,6 +3,7 @@ import {
   BellRinging,
   Broadcast,
   Buildings,
+  ClockCountdown,
   Code,
   FolderSimple,
   Gauge,
@@ -36,6 +37,12 @@ export const OPERATE_NAV: readonly DashboardNavItem[] = [
   { label: "Overview", icon: SquaresFour, path: "" },
   { label: "Activity", icon: Broadcast, path: "activity", capability: "project:audit:read" },
   { label: "Events", icon: Pulse, path: "events", capability: "project:usage:read" },
+  {
+    label: "Scheduled",
+    icon: ClockCountdown,
+    path: "scheduled-events",
+    capability: "project:deliveries:read",
+  },
   {
     label: "Templates",
     icon: Code,

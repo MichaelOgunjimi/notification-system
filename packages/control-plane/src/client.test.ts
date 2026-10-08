@@ -1224,6 +1224,116 @@ describe("createControlPlaneClient", () => {
     );
   });
 
+  it("lists a project's scheduled events with camel-cased rows and forwarded filters", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({
+        items: [
+          {
+            id: "sch-1",
+            event_type: "renewal.reminder",
+            scheduled_for: "2026-10-20T09:00:00",
+            priority: "high",
+            status: "failed",
+            event_id: null,
+            event_status: null,
+            failure_reason: "Template with name 'renewal' not found",
+            api_key_id: "key-1",
+            api_key_name: "Live",
+            api_key_environment: "live",
+            content_source: "template",
+            recipient_count: 2,
+            channels: ["email", "sms"],
+            first_recipient: "a@example.com",
+            created_at: "2026-10-06T10:00:00",
+            updated_at: "2026-10-06T10:00:00",
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 25,
+        total_pages: 1,
+      }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const page = await client.scheduledEvents.forProject("project-1", {
+      status: "failed",
+      perPage: 10,
+    });
+
+    expect(page.items[0]).toEqual({
+      id: "sch-1",
+      eventType: "renewal.reminder",
+      scheduledFor: "2026-10-20T09:00:00Z",
+      priority: "high",
+      status: "failed",
+      eventId: null,
+      eventStatus: null,
+      failureReason: "Template with name 'renewal' not found",
+      apiKeyId: "key-1",
+      apiKeyName: "Live",
+      apiKeyEnvironment: "live",
+      contentSource: "template",
+      recipientCount: 2,
+      channels: ["email", "sms"],
+      firstRecipient: "a@example.com",
+      createdAt: "2026-10-06T10:00:00Z",
+      updatedAt: "2026-10-06T10:00:00Z",
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/scheduled-events?per_page=10&status=failed",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("fetches a scheduled event's detail and cancels it with an empty response", async () => {
+    const fetcher = fetchAdapter((_url, init) =>
+      init?.method === "DELETE"
+        ? new Response(null, { status: 204 })
+        : Response.json({
+            id: "sch-1",
+            event_type: "renewal.reminder",
+            scheduled_for: "2026-10-20T09:00:00",
+            priority: "medium",
+            status: "pending",
+            event_id: null,
+            event_status: null,
+            failure_reason: null,
+            api_key_id: "key-1",
+            api_key_name: "Live",
+            api_key_environment: "live",
+            content_source: "inline",
+            recipient_count: 1,
+            channels: ["email"],
+            first_recipient: "a@example.com",
+            created_at: "2026-10-06T10:00:00",
+            updated_at: "2026-10-06T10:00:00",
+            template_id: null,
+            template_name: null,
+            subject: "Renewal",
+            recipients: [{ user_id: "u1", channels: ["email"], addresses: ["a@example.com"] }],
+            attachments: [{ filename: "a.pdf", size_bytes: 10 }],
+            payload: { plan: "pro" },
+            metadata: null,
+          }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const detail = await client.scheduledEvents.get("project-1", "sch-1");
+    await client.scheduledEvents.cancel("project-1", "sch-1");
+
+    expect(detail).toMatchObject({
+      subject: "Renewal",
+      recipients: [{ userId: "u1", channels: ["email"], addresses: ["a@example.com"] }],
+      attachments: [{ filename: "a.pdf", sizeBytes: 10 }],
+      payload: { plan: "pro" },
+    });
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "/api/control-plane/projects/project-1/scheduled-events/sch-1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
   it("repeats the status param when filtering a project's notifications by several statuses", async () => {
     const fetcher = fetchAdapter(() =>
       Response.json({ items: [], total: 0, page: 1, per_page: 25, total_pages: 0 }),

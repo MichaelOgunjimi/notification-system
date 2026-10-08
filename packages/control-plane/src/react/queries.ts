@@ -7,6 +7,7 @@ import type {
   ControlPlaneClient,
   EventFilter,
   NotificationFilter,
+  ScheduledEventFilter,
   OrganizationTemplateListOptions,
   ProjectApiKeyListOptions,
   TemplateListOptions,
@@ -68,6 +69,10 @@ export const controlPlaneQueryKeys = {
   projectEvent: (projectId: string, eventId: string) =>
     ["control-plane", "projects", projectId, "events", eventId] as const,
   projectEvents: (projectId: string) => ["control-plane", "projects", projectId, "events"] as const,
+  projectScheduledEvent: (projectId: string, scheduledEventId: string) =>
+    ["control-plane", "projects", projectId, "scheduled-events", scheduledEventId] as const,
+  projectScheduledEvents: (projectId: string) =>
+    ["control-plane", "projects", projectId, "scheduled-events"] as const,
   projectNotification: (projectId: string, notificationId: string) =>
     ["control-plane", "projects", projectId, "notifications", notificationId] as const,
   projectNotifications: (projectId: string) =>
@@ -874,6 +879,54 @@ export function projectEventQuery(client: ControlPlaneClient, projectId: string,
   return queryOptions({
     queryKey: controlPlaneQueryKeys.projectEvent(projectId, eventId),
     queryFn: () => client.events.get(projectId, eventId),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one page of a project's scheduled events.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project whose scheduled events should be loaded.
+ * @param filter 1-based page, page size and status.
+ * @returns TanStack Query options scoped to the project, page, and filter.
+ */
+export function projectScheduledEventsQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  filter: ScheduledEventFilter,
+) {
+  const { page = 1, perPage = 25, status } = filter;
+  return queryOptions({
+    queryKey: [
+      ...controlPlaneQueryKeys.projectScheduledEvents(projectId),
+      page,
+      perPage,
+      status ?? null,
+    ] as const,
+    queryFn: () => client.scheduledEvents.forProject(projectId, { page, perPage, status }),
+    retry: retryTransientFailure,
+    ...tenantLiveness,
+  });
+}
+
+/**
+ * Builds query options for one scheduled event's detail.
+ *
+ * @param client Control-plane client used by the query function.
+ * @param projectId Project the scheduled event must belong to.
+ * @param scheduledEventId Scheduled event to load.
+ * @returns TanStack Query options scoped to the project and scheduled event.
+ */
+export function projectScheduledEventQuery(
+  client: ControlPlaneClient,
+  projectId: string,
+  scheduledEventId: string,
+) {
+  return queryOptions({
+    queryKey: controlPlaneQueryKeys.projectScheduledEvent(projectId, scheduledEventId),
+    queryFn: () => client.scheduledEvents.get(projectId, scheduledEventId),
     retry: retryTransientFailure,
     ...tenantLiveness,
   });
