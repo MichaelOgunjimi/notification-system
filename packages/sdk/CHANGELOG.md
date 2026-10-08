@@ -1,5 +1,11 @@
 # @beaco/sdk
 
+## 1.1.5
+
+### Patch Changes
+
+- 5ec0aa8: Scheduled events now expose `failureReason`, explaining why an event is `failed` or `expired`.
+
 ## 1.1.4
 
 ### Patch Changes
