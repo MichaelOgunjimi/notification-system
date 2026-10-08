@@ -29,6 +29,7 @@ def _to_response(event: ScheduledEvent) -> ScheduledEventResponse:
         priority=event.priority,
         status=event.status,
         event_id=event.event_id,
+        failure_reason=event.failure_reason,
         created_at=event.created_at,
         updated_at=event.updated_at,
     )

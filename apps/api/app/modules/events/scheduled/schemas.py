@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, field_validator
 
-from app.core.datetime import utc_now
+from app.core.datetime import to_naive_utc, utc_now
 from app.modules.events.enums import EventPriority, ScheduledEventStatus
 from app.modules.events.schemas import EventContent
 
@@ -22,6 +22,8 @@ class ScheduledEventCreate(EventContent):
     @field_validator("scheduled_for")
     @classmethod
     def must_be_future(cls, v: datetime) -> datetime:
+        """Normalize to naive UTC (the column type) so offset-aware input compares safely."""
+        v = to_naive_utc(v)
         if v <= utc_now():
             raise ValueError("scheduled_for must be a future datetime")
         return v
@@ -35,6 +37,7 @@ class ScheduledEventResponse(BaseModel):
     priority: EventPriority
     status: ScheduledEventStatus
     event_id: uuid.UUID | None
+    failure_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 

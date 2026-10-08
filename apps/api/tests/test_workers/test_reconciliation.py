@@ -408,3 +408,49 @@ def test_sweep_batch_limit_respected(mock_get_session, mock_send_task):
         result = reconcile_stuck_notifications.apply().get()
         assert result["recovered_missed_retries"] == batch_size
         assert mock_send_task.call_count == batch_size
+
+
+def _seed_accepted_event(session: Session, *, age: timedelta, pending: bool = True) -> Event:
+    event, notification = _seed_event_and_notification(
+        session, status=NotificationStatus.PENDING if pending else NotificationStatus.DELIVERED
+    )
+    event.status = EventStatus.ACCEPTED
+    event.priority = "high"
+    event.updated_at = utc_now() - age
+    session.commit()
+    return event
+
+
+@patch("app.modules.delivery.processing.reconciliation.celery_app.send_task")
+@patch("app.modules.delivery.processing.reconciliation.get_sync_session")
+def test_stuck_accepted_event_is_re_enqueued_once(mock_get_session, mock_send_task):
+    session = _get_test_session()
+    event = _seed_accepted_event(session, age=timedelta(minutes=10))
+    session.close()
+
+    mock_get_session.side_effect = [_get_test_session(), _get_test_session()]
+    first = reconcile_stuck_notifications.apply().get()
+    second = reconcile_stuck_notifications.apply().get()
+
+    assert first["recovered_stuck_events"] == 1
+    assert second["recovered_stuck_events"] == 0  # updated_at was bumped
+    mock_send_task.assert_called_once_with(
+        "app.modules.delivery.processing.dispatcher.dispatch_event",
+        args=[str(event.id)],
+        queue="notifications.high",
+    )
+
+
+@patch("app.modules.delivery.processing.reconciliation.celery_app.send_task")
+@patch("app.modules.delivery.processing.reconciliation.get_sync_session")
+def test_recent_or_settled_accepted_events_are_left_alone(mock_get_session, mock_send_task):
+    session = _get_test_session()
+    _seed_accepted_event(session, age=timedelta(seconds=30))
+    _seed_accepted_event(session, age=timedelta(minutes=10), pending=False)
+    session.close()
+
+    mock_get_session.return_value = _get_test_session()
+    result = reconcile_stuck_notifications.apply().get()
+
+    assert result["recovered_stuck_events"] == 0
+    mock_send_task.assert_not_called()

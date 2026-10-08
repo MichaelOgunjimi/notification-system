@@ -134,7 +134,9 @@ async def test_event_past_grace_period_expires_without_sending(
     result = await dispatch_due_events(TestSessionLocal, enqueue=enqueue)
 
     assert result.expired == 1
-    assert (await _reload(db, row)).status == ScheduledEventStatus.EXPIRED
+    row = await _reload(db, row)
+    assert row.status == ScheduledEventStatus.EXPIRED
+    assert row.failure_reason and "60 minutes" in row.failure_reason
     assert await _count(db, Event) == 0
     enqueue.assert_not_called()
 
@@ -220,7 +222,10 @@ async def test_unknown_template_fails_permanently(
     result = await dispatch_due_events(TestSessionLocal, enqueue=MagicMock())
 
     assert result.failed == 1
-    assert (await _reload(db, row)).status == ScheduledEventStatus.FAILED
+    row = await _reload(db, row)
+    assert row.status == ScheduledEventStatus.FAILED
+    assert row.failure_reason is not None
+    assert "deleted-since" in row.failure_reason
     assert await _count(db, Event) == 0
 
 
@@ -242,7 +247,10 @@ async def test_row_without_a_content_source_fails(
     result = await dispatch_due_events(TestSessionLocal, enqueue=MagicMock())
 
     assert result.failed == 1
-    assert (await _reload(db, row)).status == ScheduledEventStatus.FAILED
+    row = await _reload(db, row)
+    assert row.status == ScheduledEventStatus.FAILED
+    assert row.failure_reason is not None
+    assert "template_id" in row.failure_reason
 
 
 @pytest.mark.asyncio

@@ -33,8 +33,10 @@ type ScheduledEvent struct {
 	Priority     string  `json:"priority"`
 	Status       string  `json:"status"`
 	EventID      *string `json:"event_id"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	// FailureReason explains a "failed" or "expired" status; nil otherwise.
+	FailureReason *string `json:"failure_reason"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 // ScheduledEventListOptions filters scheduled-event list requests.

@@ -273,6 +273,7 @@ describe("ScheduledEventsResource", () => {
     priority: "medium",
     status: "pending",
     event_id: null,
+    failure_reason: "Template with name 'renewal' not found",
     created_at: "2026-10-06T10:00:00Z",
     updated_at: "2026-10-06T10:00:00Z",
   };
@@ -282,11 +283,12 @@ describe("ScheduledEventsResource", () => {
     const client = new Beaco({ apiKey: "secret", baseUrl: "https://example.test/v1", fetch });
     const file = { filename: "a.pdf", url: "https://files.example.com/a.pdf", sizeBytes: 10 };
 
-    await client.scheduledEvents.create({
+    const created = await client.scheduledEvents.create({
       ...scheduled,
       templateName: "renewal",
       attachments: [file],
     });
+    expect(created.failureReason).toBe("Template with name 'renewal' not found");
 
     const body = JSON.parse(fetch.mock.calls[0]![1]!.body as string) as Record<string, unknown>;
     expect(body).toMatchObject({

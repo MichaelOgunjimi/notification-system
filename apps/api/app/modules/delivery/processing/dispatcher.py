@@ -41,10 +41,14 @@ def dispatch_event(self, event_id: str) -> dict:
         # Get all pending notifications for this event
         notifications = (
             session.execute(
-                select(Notification).where(
+                select(Notification)
+                .where(
                     col(Notification.event_id) == event_id,
                     col(Notification.status) == NotificationStatus.PENDING,
                 )
+                # Two dispatch tasks for one event (e.g. a reconciliation nudge racing
+                # the original) must not both fan out the same notifications.
+                .with_for_update(skip_locked=True)
             )
             .scalars()
             .all()

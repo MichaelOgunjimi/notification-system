@@ -1,6 +1,6 @@
 """Scheduled event endpoints — content sources, early validation and cancellation."""
 
-from datetime import timedelta
+from datetime import UTC, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -36,11 +36,35 @@ async def test_create_stores_inline_content_and_attachments(
     body = resp.json()
     assert body["status"] == "pending"
     assert body["priority"] == "high"
+    assert body["failure_reason"] is None
     assert "attachments" not in body
     stored = await db.get(ScheduledEvent, body["id"])
     assert stored is not None
     assert stored.payload["inline"]["html"] == "<p>Soon</p>"
     assert stored.payload["attachments"] == [attachment]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("offset_hours", [0, 1, -5])
+async def test_create_accepts_timezone_aware_scheduled_for(
+    auth_client: AsyncClient, db: AsyncSession, offset_hours: int
+) -> None:
+    """SDKs send ISO strings with Z or an offset; both used to crash with a 500."""
+    tz = timezone(timedelta(hours=offset_hours))
+    target = (utc_now() + timedelta(hours=2)).replace(tzinfo=UTC, microsecond=0)
+    resp = await auth_client.post(URL, json=_body(scheduled_for=target.astimezone(tz).isoformat()))
+
+    assert resp.status_code == 201
+    stored = await db.get(ScheduledEvent, resp.json()["id"])
+    assert stored is not None
+    assert stored.scheduled_for == target.replace(tzinfo=None)
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_past_aware_scheduled_for(auth_client: AsyncClient) -> None:
+    past = (utc_now() - timedelta(hours=1)).replace(tzinfo=UTC).isoformat()
+
+    assert (await auth_client.post(URL, json=_body(scheduled_for=past))).status_code == 422
 
 
 @pytest.mark.asyncio

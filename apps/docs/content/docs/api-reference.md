@@ -541,7 +541,7 @@ becomes `expired` and is **not** sent.
 Lifecycle `status`: `pending` (waiting), `dispatched` (an event was created; `event_id` is set and
 you can follow it with `GET /events/{id}`), `cancelled`, `failed` (the content could not be
 delivered, for example the template was deleted after scheduling) and `expired`. `processing` is
-reserved and not currently used.
+reserved and not currently used. For `failed` and `expired` events, `failure_reason` says why.
 
 ### `POST /scheduled-events`
 
@@ -589,6 +589,7 @@ curl -X POST https://beaco.michaelogunjimi.com/api/v1/scheduled-events \
   "priority": "medium",
   "status": "pending",
   "event_id": null,
+  "failure_reason": null,
   "created_at": "2026-04-18T12:00:00Z",
   "updated_at": "2026-04-18T12:00:00Z"
 }
@@ -624,6 +625,7 @@ curl -X GET "https://beaco.michaelogunjimi.com/api/v1/scheduled-events?status=pe
       "priority": "medium",
       "status": "pending",
       "event_id": null,
+      "failure_reason": null,
       "created_at": "2026-04-18T12:00:00Z",
       "updated_at": "2026-04-18T12:00:00Z"
     }

@@ -1,21 +1,26 @@
-"""Reconciliation task — recovers stuck notifications."""
+"""Reconciliation task — recovers stuck events and notifications."""
 
 from __future__ import annotations
 
 import logging
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlmodel import col
 
 from app.core.datetime import utc_now
-from app.modules.delivery.processing.queues import CHANNEL_TASK_NAMES, channel_queue
+from app.modules.delivery.processing.queues import (
+    CHANNEL_TASK_NAMES,
+    channel_queue,
+    dispatcher_queue,
+)
 from app.modules.delivery.processing.retry import (
     load_retry_policy,
     move_to_dead_letter,
     schedule_retry,
     should_retry,
 )
+from app.modules.events.enums import EventStatus
 from app.modules.events.model import Event
 from app.modules.notifications.enums import NotificationStatus
 from app.modules.notifications.model import Notification
@@ -26,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 _RECOVERY_MESSAGE = "Recovered by reconciliation: worker timeout"
 SWEEP_BATCH_LIMIT = 500
+DISPATCH_TASK_NAME = "app.modules.delivery.processing.dispatcher.dispatch_event"
+# An ACCEPTED event this old never reached (or outlived the backlog of) the dispatcher.
+STUCK_EVENT_AGE = timedelta(minutes=5)
 
 
 @celery_app.task(name="reconciliation.sweep", bind=True)
@@ -34,9 +42,43 @@ def reconcile_stuck_notifications(_self) -> dict:
     session = get_sync_session()
     recovered_missed_retries = 0
     recovered_zombies = 0
+    recovered_events = 0
 
     try:
         now = utc_now()
+
+        # Recover events that were committed but never handed to the dispatcher
+        # (enqueue failed after the commit). dispatch_event only touches PENDING
+        # notifications under SKIP LOCKED, so a duplicate nudge is harmless; bumping
+        # updated_at limits re-enqueues to one per STUCK_EVENT_AGE.
+        stuck_events = (
+            session.execute(
+                select(Event)
+                .where(
+                    col(Event.status) == EventStatus.ACCEPTED,
+                    col(Event.updated_at) < now - STUCK_EVENT_AGE,
+                    exists().where(
+                        col(Notification.event_id) == col(Event.id),
+                        col(Notification.status) == NotificationStatus.PENDING,
+                    ),
+                )
+                .limit(SWEEP_BATCH_LIMIT)
+                .with_for_update(skip_locked=True)
+            )
+            .scalars()
+            .all()
+        )
+
+        for stuck in stuck_events:
+            celery_app.send_task(
+                DISPATCH_TASK_NAME,
+                args=[str(stuck.id)],
+                queue=dispatcher_queue(str(stuck.priority)),
+            )
+            stuck.updated_at = utc_now()
+            logger.warning("Reconciliation re-enqueued stuck ACCEPTED event %s", stuck.id)
+            recovered_events += 1
+            session.commit()
 
         # Recover missed retries: QUEUED + next_retry_at elapsed
         missed_retry_notifications = (
@@ -150,6 +192,7 @@ def reconcile_stuck_notifications(_self) -> dict:
             "status": "ok",
             "recovered_missed_retries": recovered_missed_retries,
             "recovered_zombies": recovered_zombies,
+            "recovered_stuck_events": recovered_events,
         }
     except Exception:
         session.rollback()
