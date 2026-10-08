@@ -60,7 +60,7 @@ infra: ## Start the infrastructure used by host development
 ##@ Quality
 
 test-db: infra ## Create this checkout's test database if it is missing
-	@docker compose exec -T db psql -U $(or $(POSTGRES_USER),postgres) -tAc "SELECT 1 FROM pg_database WHERE datname = 'notification_system_test'" | grep -q 1 \
+	@docker compose exec -T db psql -U $(or $(POSTGRES_USER),postgres) -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'notification_system_test'" | grep -q 1 \
 		|| docker compose exec -T db createdb -U $(or $(POSTGRES_USER),postgres) notification_system_test
 
 test: test-db ## Run API tests
