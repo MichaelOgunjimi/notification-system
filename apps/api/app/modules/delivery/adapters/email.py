@@ -47,14 +47,14 @@ def _transport_failure(exc: BaseException) -> tuple[str, str] | None:
             return (
                 "timeout",
                 "The email provider (Resend) took too long to respond. "
-                "The message was not sent; delivery will be retried.",
+                "The message was not sent. Please try again shortly.",
             )
         if isinstance(current, requests.ConnectionError | httpx.ConnectError):
             return (
                 "connection_error",
                 "Could not reach the email provider (Resend). This is a network or DNS "
                 "problem on our side, not an issue with your API key or the recipient. "
-                "The message was not sent; delivery will be retried.",
+                "The message was not sent. Please try again shortly.",
             )
         current = current.__cause__ or current.__context__
     return None

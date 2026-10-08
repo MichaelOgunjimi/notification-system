@@ -128,6 +128,8 @@ class TestEmailErrorClassification:
         assert result.error_type == "connection_error"
         assert "Could not reach the email provider" in result.error_message
         assert "HTTPSConnectionPool" not in result.error_message
+        assert "The message was not sent." in result.error_message
+        assert "retried" not in result.error_message
 
     @patch("app.modules.delivery.adapters.email.resend.Emails.send")
     def test_sdk_wrapped_timeout_is_timeout(self, mock_send, adapter):
