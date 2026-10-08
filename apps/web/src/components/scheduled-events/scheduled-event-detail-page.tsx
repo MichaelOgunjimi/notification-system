@@ -11,10 +11,10 @@ import { formatBytes } from "@/lib/format-bytes";
 import {
   SCHEDULED_STATUS_LABEL,
   canCancelScheduledEvent,
-  scheduledDisplayStatus,
   scheduledStatusTone,
 } from "@/lib/scheduled-events";
 import { CancelScheduledEventDialog } from "./cancel-scheduled-event-dialog";
+import "./scheduled-motion.css";
 import "./scheduled-event-detail-page.css";
 
 /** Props for {@link ScheduledEventDetailPage}. */
@@ -97,7 +97,7 @@ export function ScheduledEventDetailPage({
   }
 
   const event = query.data;
-  const display = scheduledDisplayStatus(event);
+  const display = event.displayStatus;
   const tone = scheduledStatusTone(display);
   const eventHref = event.eventId
     ? `/app/${organization.slug}/${project.slug}/events/${event.eventId}`
@@ -110,12 +110,16 @@ export function ScheduledEventDetailPage({
         All scheduled events
       </Link>
 
-      <header className="scheduled-detail__head">
+      <header className="scheduled-detail__head scheduled-fade-in">
         <div>
           <div className="scheduled-detail__title-row">
             <h1>{event.eventType}</h1>
             <span className="scheduled-detail__badge" data-tone={tone}>
-              <span className="scheduled-detail__badge-dot" aria-hidden />
+              <span
+                className="scheduled-detail__badge-dot"
+                data-live={display === "dispatched" || undefined}
+                aria-hidden
+              />
               {SCHEDULED_STATUS_LABEL[display]}
             </span>
           </div>
@@ -144,13 +148,17 @@ export function ScheduledEventDetailPage({
       </header>
 
       {event.failureReason ? (
-        <section className="scheduled-detail__reason" role="note" data-tone={tone}>
+        <section
+          className="scheduled-detail__reason scheduled-fade-in"
+          role="note"
+          data-tone={tone}
+        >
           <h2>{display === "expired" ? "Why it expired" : "Why it failed"}</h2>
           <p>{event.failureReason}</p>
         </section>
       ) : null}
 
-      <section className="scheduled-detail__card">
+      <section className="scheduled-detail__card scheduled-fade-in" style={{ "--i": 1 } as never}>
         <h2>Schedule</h2>
         <div className="scheduled-detail__mgrid">
           <div className="scheduled-detail__mcell">
@@ -190,7 +198,7 @@ export function ScheduledEventDetailPage({
         </div>
       </section>
 
-      <section className="scheduled-detail__card">
+      <section className="scheduled-detail__card scheduled-fade-in" style={{ "--i": 2 } as never}>
         <h2>Content</h2>
         <div className="scheduled-detail__mgrid">
           <div className="scheduled-detail__mcell">
@@ -209,7 +217,7 @@ export function ScheduledEventDetailPage({
       </section>
 
       {event.attachments.length > 0 ? (
-        <section className="scheduled-detail__card">
+        <section className="scheduled-detail__card scheduled-fade-in" style={{ "--i": 3 } as never}>
           <h2>
             Attachments <span>{event.attachments.length}</span>
           </h2>
@@ -224,7 +232,7 @@ export function ScheduledEventDetailPage({
         </section>
       ) : null}
 
-      <section className="scheduled-detail__card">
+      <section className="scheduled-detail__card scheduled-fade-in" style={{ "--i": 4 } as never}>
         <h2>
           Recipients <span>{event.recipientCount}</span>
         </h2>
@@ -254,7 +262,7 @@ export function ScheduledEventDetailPage({
         )}
       </section>
 
-      <section className="scheduled-detail__card">
+      <section className="scheduled-detail__card scheduled-fade-in" style={{ "--i": 5 } as never}>
         <h2>Payload</h2>
         <pre className="scheduled-detail__payload">{JSON.stringify(event.payload, null, 2)}</pre>
       </section>

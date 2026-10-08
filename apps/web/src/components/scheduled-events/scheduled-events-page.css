@@ -16,7 +16,12 @@
 }
 
 .scheduled-page__heading {
+  align-items: flex-start;
   border-bottom: 1px solid var(--dashboard-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
   padding-bottom: 24px;
 }
 
@@ -354,5 +359,67 @@
 @media (max-width: 680px) {
   .scheduled-page__filters {
     align-items: stretch;
+  }
+}
+
+.scheduled-page__schedule {
+  align-items: center;
+  background: var(--dashboard-accent);
+  border: 1px solid var(--dashboard-accent);
+  border-radius: 8px;
+  color: var(--dashboard-accent-ink, #171208);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 560;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 15px;
+  text-decoration: none;
+  transition:
+    background 140ms ease,
+    transform 100ms ease;
+}
+
+.scheduled-page__schedule:hover {
+  background: color-mix(in srgb, var(--dashboard-accent) 88%, white);
+}
+
+.scheduled-page__schedule:active,
+.scheduled-page__cancel:active {
+  transform: translateY(1px);
+}
+
+.scheduled-page__schedule:focus-visible {
+  outline: 2px solid var(--dashboard-accent);
+  outline-offset: 2px;
+}
+
+.scheduled-page__empty p + .scheduled-page__empty-hint {
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+.scheduled-page__empty a {
+  color: var(--dashboard-accent);
+}
+
+.scheduled-page__empty code {
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+}
+
+/* DESIGN_REFERENCE: table rows use transition-colors; animate-pulse marks live processing only. */
+.scheduled-page td {
+  transition: background-color 150ms ease;
+}
+
+.scheduled-page__badge-dot[data-live] {
+  animation: scheduled-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-page__badge-dot[data-live] {
+    animation: none;
   }
 }

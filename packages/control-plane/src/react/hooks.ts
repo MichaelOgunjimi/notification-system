@@ -19,6 +19,7 @@ import type {
   ProjectApiKeyUpdate,
   ProjectCreate,
   ProjectUpdate,
+  ScheduledEventCreate,
   ScheduledEventFilter,
   TemplateCreate,
   TemplateListOptions,
@@ -1192,6 +1193,20 @@ export function useProjectScheduledEvent(
   return useQuery({
     ...projectScheduledEventQuery(client, projectId ?? "pending", scheduledEventId ?? "pending"),
     enabled: Boolean(projectId) && Boolean(scheduledEventId),
+  });
+}
+
+/** Schedules an event as one of the project's API keys and refreshes the scheduled event caches. */
+export function useCreateProjectScheduledEvent() {
+  const client = useControlPlaneClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: ScheduledEventCreate }) =>
+      client.scheduledEvents.create(projectId, input),
+    onSuccess: (_event, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: controlPlaneQueryKeys.projectScheduledEvents(variables.projectId),
+      }),
   });
 }
 

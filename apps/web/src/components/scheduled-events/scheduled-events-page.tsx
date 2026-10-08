@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CaretRight } from "@phosphor-icons/react";
+import Link from "next/link";
+import { CalendarPlus, CaretRight } from "@phosphor-icons/react";
 import type {
   Organization,
   Project,
-  ScheduledEventStatus,
+  ScheduledDisplayStatus,
   TenantScheduledEvent,
 } from "@beaco/control-plane";
 import { useProjectScheduledEvents } from "@beaco/control-plane/react";
@@ -21,10 +22,11 @@ import {
   channelList,
   parseScheduledStatusFilter,
   recipientSummary,
-  scheduledDisplayStatus,
+  scheduledOrderCaption,
   scheduledStatusTone,
 } from "@/lib/scheduled-events";
 import { CancelScheduledEventDialog } from "./cancel-scheduled-event-dialog";
+import "./scheduled-motion.css";
 import "./scheduled-events-page.css";
 
 /** Props for {@link ScheduledEventsPage}. */
@@ -37,7 +39,7 @@ const PER_PAGE_OPTIONS = [25, 50, 100] as const;
 const DEFAULT_PER_PAGE = PER_PAGE_OPTIONS[0];
 
 type ScheduledUrlState = Readonly<{
-  status: ScheduledEventStatus | "";
+  status: ScheduledDisplayStatus | "";
   page: number;
   perPage: number;
 }>;
@@ -100,22 +102,32 @@ export function ScheduledEventsPage({ organization, project }: ScheduledEventsPa
   const total = query.data?.total ?? 0;
   const totalPages = query.data ? Math.max(1, query.data.totalPages) : 1;
 
+  const scheduleHref = `/app/${organization.slug}/${project.slug}/scheduled-events/new`;
+
   function eventHref(event: TenantScheduledEvent): string {
     return `/app/${organization.slug}/${project.slug}/scheduled-events/${event.id}`;
   }
 
   return (
     <div className="scheduled-page">
-      <header className="scheduled-page__heading">
-        <p className="scheduled-page__eyebrow">Operate</p>
-        <h1>Scheduled events</h1>
-        <span>
-          Events queued for a future time. Each becomes a normal event when it is due; one that
-          could not be sent, or was missed by more than an hour, says why.
-        </span>
+      <header className="scheduled-page__heading scheduled-fade-in">
+        <div>
+          <p className="scheduled-page__eyebrow">Operate</p>
+          <h1>Scheduled events</h1>
+          <span>
+            Events queued for a future time. Each becomes a normal event when it is due; one that
+            could not be sent, or was missed by more than an hour, says why.
+          </span>
+        </div>
+        {canManage ? (
+          <Link href={scheduleHref} className="scheduled-page__schedule">
+            <CalendarPlus size={15} />
+            Schedule
+          </Link>
+        ) : null}
       </header>
 
-      <div className="scheduled-page__filters">
+      <div className="scheduled-page__filters scheduled-fade-in" style={{ "--i": 1 } as never}>
         <span className="scheduled-page__chipset">
           {SCHEDULED_STATUS_FILTERS.map((chip) => (
             <button
@@ -135,11 +147,15 @@ export function ScheduledEventsPage({ organization, project }: ScheduledEventsPa
           Loading scheduled events
         </span>
       ) : null}
-      <div className="scheduled-page__table" aria-busy={query.isFetching || undefined}>
+      <div
+        className="scheduled-page__table scheduled-fade-in"
+        style={{ "--i": 2 } as never}
+        aria-busy={query.isFetching || undefined}
+      >
         <div className="scheduled-page__table-head">
           <div>
             <h2>Schedule</h2>
-            <p>Latest scheduled time first.</p>
+            <p>{scheduledOrderCaption(state.status)}</p>
           </div>
           <span className="scheduled-page__count" title="Refreshes automatically">
             <span className="scheduled-page__live-dot" aria-hidden />
@@ -173,12 +189,13 @@ export function ScheduledEventsPage({ organization, project }: ScheduledEventsPa
                     </tr>
                   ))
                 : null}
-              {events.map((event) => {
-                const display = scheduledDisplayStatus(event);
+              {events.map((event, index) => {
+                const display = event.displayStatus;
                 return (
                   <tr
                     key={event.id}
-                    className="scheduled-page__row"
+                    className="scheduled-page__row scheduled-stagger-in"
+                    style={{ "--i": Math.min(index, 10) } as never}
                     tabIndex={0}
                     role="link"
                     aria-label={`Open scheduled event ${event.eventType}`}
@@ -208,7 +225,11 @@ export function ScheduledEventsPage({ organization, project }: ScheduledEventsPa
                         className="scheduled-page__badge"
                         data-tone={scheduledStatusTone(display)}
                       >
-                        <span className="scheduled-page__badge-dot" aria-hidden />
+                        <span
+                          className="scheduled-page__badge-dot"
+                          data-live={display === "dispatched" || undefined}
+                          aria-hidden
+                        />
                         {SCHEDULED_STATUS_LABEL[display]}
                       </span>
                       {event.failureReason ? (
@@ -240,13 +261,30 @@ export function ScheduledEventsPage({ organization, project }: ScheduledEventsPa
           </table>
         </div>
         {!query.isPending && events.length === 0 ? (
-          <p className="scheduled-page__empty" role={query.isError ? "alert" : undefined}>
-            {query.isError
-              ? query.error.message
-              : state.status
-                ? "No scheduled events match this filter."
-                : "Nothing scheduled yet. Schedule an event with POST /scheduled-events or an SDK."}
-          </p>
+          <div className="scheduled-page__empty" role={query.isError ? "alert" : undefined}>
+            <p>
+              {query.isError
+                ? query.error.message
+                : state.status
+                  ? "No scheduled events match this filter."
+                  : "Nothing scheduled yet."}
+            </p>
+            {!query.isError && !state.status ? (
+              <p className="scheduled-page__empty-hint">
+                {canManage ? (
+                  <>
+                    <Link href={scheduleHref}>Schedule an event</Link> from here, or call{" "}
+                    <code>POST /scheduled-events</code> from your app or an SDK.
+                  </>
+                ) : (
+                  <>
+                    Events are scheduled with <code>POST /scheduled-events</code> from your app or
+                    an SDK.
+                  </>
+                )}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {total > 0 ? (
           <div className="scheduled-page__pager">

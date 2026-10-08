@@ -1,4 +1,9 @@
-type ValidationIssue = { message?: string; msg?: string };
+type ValidationIssue = {
+  message?: string;
+  msg?: string;
+  field?: string;
+  loc?: (string | number)[];
+};
 type ErrorPayload = {
   detail?: string | ValidationIssue[];
   error?: { message?: string; details?: ValidationIssue[] };
@@ -26,6 +31,9 @@ function codeForStatus(status: number): ControlPlaneErrorCode {
   return "unexpected_error";
 }
 
+/** One validation problem the API reported, with the request field it concerns when known. */
+export type ControlPlaneIssue = Readonly<{ field: string | null; message: string }>;
+
 /**
  * Structured failure returned by the control-plane client.
  *
@@ -39,6 +47,8 @@ export class ControlPlaneError extends Error {
   readonly status: number;
   /** Whether retrying may succeed without changing the request. */
   readonly retryable: boolean;
+  /** Per-field validation problems, empty unless the API returned a field-level breakdown. */
+  readonly issues: readonly ControlPlaneIssue[];
 
   /**
    * Creates a structured control-plane failure.
@@ -47,8 +57,13 @@ export class ControlPlaneError extends Error {
    * @param status HTTP status associated with the failure.
    * @param options Optional native error options, including an underlying cause.
    */
-  constructor(message: string, status: number, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    status: number,
+    options?: ErrorOptions & { issues?: readonly ControlPlaneIssue[] },
+  ) {
     super(message, options);
+    this.issues = options?.issues ?? [];
     this.name = "ControlPlaneError";
     this.status = status;
     this.code = codeForStatus(status);
@@ -77,7 +92,12 @@ export async function controlPlaneErrorFromResponse(
     : typeof payload.detail === "string"
       ? payload.detail
       : payload.error?.message;
-  return new ControlPlaneError(detail || fallback, response.status);
+  const fieldIssues = (issues ?? []).flatMap((issue) => {
+    const message = issue.message ?? issue.msg;
+    const field = issue.field ?? (issue.loc ? issue.loc.slice(1).join(".") : null);
+    return message ? [{ field: field || null, message }] : [];
+  });
+  return new ControlPlaneError(detail || fallback, response.status, { issues: fieldIssues });
 }
 
 /**

@@ -1234,6 +1234,7 @@ describe("createControlPlaneClient", () => {
             scheduled_for: "2026-10-20T09:00:00",
             priority: "high",
             status: "failed",
+            display_status: "failed",
             event_id: null,
             event_status: null,
             failure_reason: "Template with name 'renewal' not found",
@@ -1267,6 +1268,7 @@ describe("createControlPlaneClient", () => {
       scheduledFor: "2026-10-20T09:00:00Z",
       priority: "high",
       status: "failed",
+      displayStatus: "failed",
       eventId: null,
       eventStatus: null,
       failureReason: "Template with name 'renewal' not found",
@@ -1296,6 +1298,7 @@ describe("createControlPlaneClient", () => {
             scheduled_for: "2026-10-20T09:00:00",
             priority: "medium",
             status: "pending",
+            display_status: "pending",
             event_id: null,
             event_status: null,
             failure_reason: null,
@@ -1332,6 +1335,113 @@ describe("createControlPlaneClient", () => {
       "/api/control-plane/projects/project-1/scheduled-events/sch-1",
       expect.objectContaining({ method: "DELETE" }),
     );
+  });
+
+  it("forwards the displayed status filter to the API", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json({ items: [], total: 0, page: 1, per_page: 25, total_pages: 0 }),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    await client.scheduledEvents.forProject("project-1", { status: "partially_failed" });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/control-plane/projects/project-1/scheduled-events?status=partially_failed",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("schedules an event as a chosen API key with snake-cased fields", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          id: "sch-9",
+          event_type: "renewal.reminder",
+          scheduled_for: "2026-10-20T08:00:00",
+          priority: "high",
+          status: "pending",
+          display_status: "pending",
+          event_id: null,
+          event_status: null,
+          failure_reason: null,
+          api_key_id: "key-1",
+          api_key_name: "Live",
+          api_key_environment: "live",
+          content_source: "inline",
+          recipient_count: 1,
+          channels: ["email"],
+          first_recipient: "a@example.com",
+          created_at: "2026-10-08T10:00:00",
+          updated_at: "2026-10-08T10:00:00",
+          template_id: null,
+          template_name: null,
+          subject: "Renewal",
+          recipients: [{ user_id: null, channels: ["email"], addresses: ["a@example.com"] }],
+          attachments: [],
+          payload: {},
+          metadata: null,
+        },
+        { status: 201 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const created = await client.scheduledEvents.create("project-1", {
+      apiKeyId: "key-1",
+      eventType: "renewal.reminder",
+      recipients: [{ channels: ["email"], email: "a@example.com" }],
+      scheduledFor: "2026-10-20T09:00:00+01:00",
+      priority: "high",
+      inline: { subject: "Renewal", html: "<p>Hi</p>" },
+    });
+
+    expect(created).toMatchObject({ id: "sch-9", apiKeyName: "Live", subject: "Renewal" });
+    const [url, init] = vi.mocked(fetcher).mock.calls[0]!;
+    expect(url).toBe("/api/control-plane/projects/project-1/scheduled-events");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      api_key_id: "key-1",
+      event_type: "renewal.reminder",
+      recipients: [{ channels: ["email"], email: "a@example.com" }],
+      scheduled_for: "2026-10-20T09:00:00+01:00",
+      priority: "high",
+      inline: { subject: "Renewal", html: "<p>Hi</p>" },
+    });
+  });
+
+  it("keeps field-level validation issues on the error", async () => {
+    const fetcher = fetchAdapter(() =>
+      Response.json(
+        {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Request validation failed",
+            details: [
+              { field: "recipients.0.email", message: "Invalid email address format" },
+              { field: "", message: "Value error, exactly one of template_id is required" },
+            ],
+          },
+        },
+        { status: 422 },
+      ),
+    );
+    const client = createControlPlaneClient({ fetch: fetcher });
+
+    const error = await client.scheduledEvents
+      .create("project-1", {
+        apiKeyId: "key-1",
+        eventType: "x",
+        recipients: [{ channels: ["email"], email: "nope" }],
+        scheduledFor: "2026-10-20T09:00:00Z",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ControlPlaneError);
+    expect((error as ControlPlaneError).status).toBe(422);
+    expect((error as ControlPlaneError).issues).toEqual([
+      { field: "recipients.0.email", message: "Invalid email address format" },
+      { field: null, message: "Value error, exactly one of template_id is required" },
+    ]);
   });
 
   it("repeats the status param when filtering a project's notifications by several statuses", async () => {

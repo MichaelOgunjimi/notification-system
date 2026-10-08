@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.datetime import to_naive_utc, utc_now
 from app.modules.events.enums import EventPriority, EventStatus, ScheduledEventStatus
+from app.modules.events.scheduled.display import ScheduledDisplayStatus
 from app.modules.events.schemas import EventContent
 
 
@@ -45,6 +46,12 @@ class ScheduledEventResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TenantScheduledEventCreate(ScheduledEventCreate):
+    """Create a scheduled event from the dashboard, owned by one of the project's API keys."""
+
+    api_key_id: uuid.UUID
+
+
 class TenantScheduledEventResponse(BaseModel):
     """A scheduled event as the dashboard lists it (session-authenticated, per project)."""
 
@@ -53,6 +60,8 @@ class TenantScheduledEventResponse(BaseModel):
     scheduled_for: datetime
     priority: EventPriority
     status: ScheduledEventStatus
+    # What the dashboard shows and filters by: the stored status, refined by the linked event.
+    display_status: ScheduledDisplayStatus
     event_id: uuid.UUID | None
     # Status of the real event once dispatched, so the UI can tell "sent" from "delivered".
     event_status: EventStatus | None

@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.core.http.dependencies import SessionDep
-from app.modules.credentials.authentication import validate_api_key
+from app.modules.credentials.authentication import api_key_has_scope, validate_api_key
 from app.modules.credentials.model import ApiKey
 from app.modules.credentials.types import ApiKeyScope
 
@@ -37,7 +37,7 @@ ApiKeyDep = Annotated[ApiKey, Depends(get_current_api_key)]
 
 def require_api_key_scope(scope: ApiKeyScope) -> Callable[..., Awaitable[ApiKey]]:
     async def require_scope(api_key: ApiKeyDep) -> ApiKey:
-        if scope.value in set(api_key.scopes):
+        if api_key_has_scope(api_key, scope):
             return api_key
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

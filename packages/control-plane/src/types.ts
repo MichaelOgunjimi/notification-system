@@ -455,6 +455,21 @@ export type EventFilter = Readonly<{
 export type ScheduledEventStatus =
   "pending" | "processing" | "dispatched" | "cancelled" | "failed" | "expired";
 
+/**
+ * What the dashboard shows, and filters by, for a scheduled event: the stored status refined by
+ * the linked event once dispatched. Computed by the API so a filter never contains rows labelled
+ * differently.
+ */
+export type ScheduledDisplayStatus =
+  | "pending"
+  | "dispatched"
+  | "completed"
+  | "partially_failed"
+  | "delivery_failed"
+  | "failed"
+  | "expired"
+  | "cancelled";
+
 /** One scheduled event in a project's list. */
 export type TenantScheduledEvent = Readonly<{
   id: string;
@@ -462,6 +477,8 @@ export type TenantScheduledEvent = Readonly<{
   scheduledFor: string;
   priority: EventPriority;
   status: ScheduledEventStatus;
+  /** The status to show; see {@link ScheduledDisplayStatus}. */
+  displayStatus: ScheduledDisplayStatus;
   /** The real event created at dispatch time; null until then. */
   eventId: string | null;
   /** Status of that real event, so a dispatched row can show whether delivery finished. */
@@ -506,11 +523,41 @@ export type TenantScheduledEventDetail = TenantScheduledEvent &
     metadata: Record<string, unknown> | null;
   }>;
 
-/** Filters and pagination for {@link ControlPlaneClient.scheduledEvents} list queries. */
+/**
+ * Filters and pagination for {@link ControlPlaneClient.scheduledEvents} list queries. `status` is
+ * the displayed status and is applied by the API; `pending` lists soonest first, everything else
+ * latest first.
+ */
 export type ScheduledEventFilter = Readonly<{
   page?: number;
   perPage?: number;
-  status?: ScheduledEventStatus;
+  status?: ScheduledDisplayStatus;
+}>;
+
+/** One recipient of a scheduled event being created. */
+export type ScheduledEventRecipientInput = Readonly<{
+  userId?: string;
+  channels: readonly NotificationChannel[];
+  email?: string;
+  phone?: string;
+  webhookUrl?: string;
+}>;
+
+/**
+ * Fields for scheduling an event from the dashboard. Exactly one of `templateName` and `inline`
+ * is required; the event is created as, and owned by, the project API key `apiKeyId`.
+ */
+export type ScheduledEventCreate = Readonly<{
+  apiKeyId: string;
+  eventType: string;
+  recipients: readonly ScheduledEventRecipientInput[];
+  /** ISO 8601 timestamp that carries its UTC offset, e.g. `2026-10-20T09:00:00+01:00`. */
+  scheduledFor: string;
+  priority?: EventPriority;
+  templateName?: string;
+  inline?: Readonly<{ subject?: string; html: string; text?: string }>;
+  payload?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }>;
 
 /** Lifecycle state of one channel-specific delivery instance. */
@@ -1337,6 +1384,18 @@ export interface ControlPlaneClient {
      *   the `project:deliveries:manage` capability is unavailable.
      */
     cancel(projectId: string, scheduledEventId: string): Promise<void>;
+    /**
+     * Schedules an event owned by one of the project's API keys. The key must belong to the
+     * project, be active and hold `scheduled_events:write`; validation and rate limiting are the
+     * public endpoint's.
+     *
+     * @param projectId Stable project identifier.
+     * @param input Content, recipients, timestamp (with offset) and the owning key's id.
+     * @returns The created scheduled event.
+     * @throws {ControlPlaneError} With field-level `issues` on 422, or when the
+     *   `project:deliveries:manage` capability is unavailable.
+     */
+    create(projectId: string, input: ScheduledEventCreate): Promise<TenantScheduledEventDetail>;
   };
   /** Read-only, project-scoped notification delivery records. */
   readonly notifications: {
@@ -1626,6 +1685,7 @@ export type ApiTenantScheduledEvent = {
   scheduled_for: string;
   priority: EventPriority;
   status: ScheduledEventStatus;
+  display_status: ScheduledDisplayStatus;
   event_id: string | null;
   event_status: EventStatus | null;
   failure_reason: string | null;

@@ -4,27 +4,10 @@ import {
   channelList,
   parseScheduledStatusFilter,
   recipientSummary,
-  scheduledDisplayStatus,
+  SCHEDULED_STATUS_FILTERS,
+  scheduledOrderCaption,
   scheduledStatusTone,
 } from "./scheduled-events";
-
-describe("scheduledDisplayStatus", () => {
-  it.each([
-    ["pending", null, "pending"],
-    ["processing", null, "pending"],
-    ["dispatched", null, "dispatched"],
-    ["dispatched", "accepted", "dispatched"],
-    ["dispatched", "processing", "dispatched"],
-    ["dispatched", "completed", "completed"],
-    ["dispatched", "partially_failed", "partially_failed"],
-    ["dispatched", "failed", "delivery_failed"],
-    ["failed", null, "failed"],
-    ["expired", null, "expired"],
-    ["cancelled", null, "cancelled"],
-  ] as const)("shows %s with event status %s as %s", (status, eventStatus, expected) => {
-    expect(scheduledDisplayStatus({ status, eventStatus })).toBe(expected);
-  });
-});
 
 describe("scheduledStatusTone", () => {
   it("colours outcomes by how good the news is", () => {
@@ -37,8 +20,12 @@ describe("scheduledStatusTone", () => {
 });
 
 describe("parseScheduledStatusFilter", () => {
-  it("accepts known statuses and falls back to all", () => {
+  it("accepts every displayed status and falls back to all", () => {
+    for (const chip of SCHEDULED_STATUS_FILTERS) {
+      expect(parseScheduledStatusFilter(chip.value || null)).toBe(chip.value);
+    }
     expect(parseScheduledStatusFilter("failed")).toBe("failed");
+    expect(parseScheduledStatusFilter("processing")).toBe("");
     expect(parseScheduledStatusFilter("scheduled")).toBe("");
     expect(parseScheduledStatusFilter(null)).toBe("");
   });
@@ -73,5 +60,13 @@ describe("channelList", () => {
   it("joins channels", () => {
     expect(channelList(["email", "sms"])).toBe("email · sms");
     expect(channelList([])).toBe("—");
+  });
+});
+
+describe("scheduledOrderCaption", () => {
+  it("reads the pending chip as a queue and everything else latest first", () => {
+    expect(scheduledOrderCaption("pending")).toBe("Soonest first.");
+    expect(scheduledOrderCaption("")).toBe("Latest scheduled time first.");
+    expect(scheduledOrderCaption("completed")).toBe("Latest scheduled time first.");
   });
 });

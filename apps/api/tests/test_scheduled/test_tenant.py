@@ -36,6 +36,7 @@ async def _seed_project(db: AsyncSession, *, slug: str):
         key_hash=f"{slug}-hash"[:60],
         key_prefix=f"{slug}pre"[:10].ljust(10, "x"),
         name=f"{slug} key",
+        scopes=["scheduled_events:write", "scheduled_events:read"],
     )
     db.add(key)
     await db.commit()

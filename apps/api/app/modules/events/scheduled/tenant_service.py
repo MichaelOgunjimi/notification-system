@@ -17,6 +17,11 @@ from app.core.pagination import Page
 from app.modules.credentials.model import ApiKey
 from app.modules.events.enums import EventStatus, ScheduledEventStatus
 from app.modules.events.model import Event
+from app.modules.events.scheduled.display import (
+    ScheduledDisplayStatus,
+    display_status,
+    display_status_clause,
+)
 from app.modules.events.scheduled.model import ScheduledEvent
 from app.modules.events.scheduled.schemas import (
     TenantScheduledAttachment,
@@ -54,6 +59,7 @@ def _summary_fields(
         "scheduled_for": row.scheduled_for,
         "priority": row.priority,
         "status": row.status,
+        "display_status": display_status(row.status, event_status),
         "event_id": row.event_id,
         "event_status": event_status,
         "failure_reason": row.failure_reason,
@@ -69,40 +75,50 @@ def _summary_fields(
     }
 
 
-def _project_rows(project_id: uuid.UUID) -> Any:
+def _scoped(stmt: Any, project_id: uuid.UUID) -> Any:
+    """Join a scheduled event select to its key and linked event, limited to one project."""
     return (
-        select(ScheduledEvent, ApiKey, col(Event.status))
+        stmt.select_from(ScheduledEvent)
         .join(ApiKey, col(ApiKey.id) == col(ScheduledEvent.api_key_id))
         .outerjoin(Event, col(Event.id) == col(ScheduledEvent.event_id))
         .where(col(ApiKey.project_id) == project_id)
     )
 
 
+def _project_rows(project_id: uuid.UUID) -> Any:
+    return _scoped(select(ScheduledEvent, ApiKey, col(Event.status)), project_id)
+
+
 async def list_project_scheduled_events(
     db: AsyncSession,
     *,
     project_id: uuid.UUID,
-    status: ScheduledEventStatus | None = None,
+    status: ScheduledDisplayStatus | None = None,
     page: int,
     per_page: int,
 ) -> Page[TenantScheduledEventResponse]:
+    """One page of the project's scheduled events.
+
+    ``status`` is the displayed status (see ``display.py``), applied in SQL so every page is
+    consistent. Latest scheduled time first, except the pending queue, which reads soonest first.
+    """
     query = _project_rows(project_id)
-    count = (
-        select(func.count())
-        .select_from(ScheduledEvent)
-        .join(ApiKey, col(ApiKey.id) == col(ScheduledEvent.api_key_id))
-        .where(col(ApiKey.project_id) == project_id)
-    )
     if status is not None:
-        query = query.where(col(ScheduledEvent.status) == status)
-        count = count.where(col(ScheduledEvent.status) == status)
-    total = int((await db.execute(count)).scalar() or 0)
+        query = query.where(display_status_clause(status))
+    total = int(
+        (
+            await db.execute(select(func.count()).select_from(query.order_by(None).subquery()))
+        ).scalar()
+        or 0
+    )
+    scheduled_for = col(ScheduledEvent.scheduled_for)
+    order = (
+        (scheduled_for.asc(), col(ScheduledEvent.id).asc())
+        if status == ScheduledDisplayStatus.PENDING
+        else (scheduled_for.desc(), col(ScheduledEvent.id).desc())
+    )
     rows = (
-        await db.execute(
-            query.order_by(col(ScheduledEvent.scheduled_for).desc())
-            .offset((page - 1) * per_page)
-            .limit(per_page)
-        )
+        await db.execute(query.order_by(*order).offset((page - 1) * per_page).limit(per_page))
     ).all()
     items = [
         TenantScheduledEventResponse(**_summary_fields(row, key, event_status))

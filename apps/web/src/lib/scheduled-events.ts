@@ -1,19 +1,8 @@
 import type {
   NotificationChannel,
-  ScheduledEventStatus,
+  ScheduledDisplayStatus,
   TenantScheduledEvent,
 } from "@beaco/control-plane";
-
-/** What the dashboard shows for a scheduled event once its linked event is taken into account. */
-export type ScheduledDisplayStatus =
-  | "pending"
-  | "dispatched"
-  | "completed"
-  | "partially_failed"
-  | "delivery_failed"
-  | "failed"
-  | "expired"
-  | "cancelled";
 
 /** Visual tone of a status badge. */
 export type StatusTone = "success" | "danger" | "warning" | "muted";
@@ -42,33 +31,6 @@ const TONE: Readonly<Record<ScheduledDisplayStatus, StatusTone>> = {
 };
 
 /**
- * Resolves the status to display for a scheduled event.
- *
- * The API row only knows it was `dispatched`; the linked event says whether the
- * delivery then finished, so a dispatched row shows the outcome once it is known.
- * `processing` is reserved and never produced by the dispatcher, so it reads as pending.
- *
- * @param event A scheduled event from the list or detail endpoint.
- * @returns The display status.
- */
-export function scheduledDisplayStatus(
-  event: Pick<TenantScheduledEvent, "status" | "eventStatus">,
-): ScheduledDisplayStatus {
-  switch (event.status) {
-    case "pending":
-    case "processing":
-      return "pending";
-    case "dispatched":
-      if (event.eventStatus === "completed") return "completed";
-      if (event.eventStatus === "partially_failed") return "partially_failed";
-      if (event.eventStatus === "failed") return "delivery_failed";
-      return "dispatched";
-    default:
-      return event.status;
-  }
-}
-
-/**
  * Picks the badge tone for a display status.
  *
  * @param status Display status from {@link scheduledDisplayStatus}.
@@ -78,17 +40,23 @@ export function scheduledStatusTone(status: ScheduledDisplayStatus): StatusTone 
   return TONE[status];
 }
 
-/** Status filter chips. `Dispatched` includes events whose delivery has since completed. */
+/**
+ * Status filter chips. Each is a displayed status, filtered by the API, so a chip only ever
+ * contains rows carrying its own label.
+ */
 export const SCHEDULED_STATUS_FILTERS: ReadonlyArray<{
-  value: ScheduledEventStatus | "";
+  value: ScheduledDisplayStatus | "";
   label: string;
 }> = [
   { value: "", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "dispatched", label: "Dispatched" },
-  { value: "failed", label: "Failed" },
-  { value: "expired", label: "Expired" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "pending", label: SCHEDULED_STATUS_LABEL.pending },
+  { value: "dispatched", label: SCHEDULED_STATUS_LABEL.dispatched },
+  { value: "completed", label: SCHEDULED_STATUS_LABEL.completed },
+  { value: "partially_failed", label: SCHEDULED_STATUS_LABEL.partially_failed },
+  { value: "delivery_failed", label: SCHEDULED_STATUS_LABEL.delivery_failed },
+  { value: "failed", label: SCHEDULED_STATUS_LABEL.failed },
+  { value: "expired", label: SCHEDULED_STATUS_LABEL.expired },
+  { value: "cancelled", label: SCHEDULED_STATUS_LABEL.cancelled },
 ];
 
 /**
@@ -97,10 +65,21 @@ export const SCHEDULED_STATUS_FILTERS: ReadonlyArray<{
  * @param value Raw query-string value.
  * @returns A known filter value, or an empty string for "all".
  */
-export function parseScheduledStatusFilter(value: string | null): ScheduledEventStatus | "" {
+export function parseScheduledStatusFilter(value: string | null): ScheduledDisplayStatus | "" {
   return SCHEDULED_STATUS_FILTERS.some((chip) => chip.value !== "" && chip.value === value)
-    ? (value as ScheduledEventStatus)
+    ? (value as ScheduledDisplayStatus)
     : "";
+}
+
+/**
+ * Describes the list order for a filter: the pending chip is a "next up" queue, every other view
+ * reads latest first. The API applies the same rule.
+ *
+ * @param status The active status filter, or an empty string for all.
+ * @returns A short caption for the table header.
+ */
+export function scheduledOrderCaption(status: ScheduledDisplayStatus | ""): string {
+  return status === "pending" ? "Soonest first." : "Latest scheduled time first.";
 }
 
 /**

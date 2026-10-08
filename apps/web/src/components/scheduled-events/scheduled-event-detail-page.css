@@ -356,3 +356,17 @@
 .scheduled-detail__link:hover {
   text-decoration: underline;
 }
+
+.scheduled-detail__cancel:active {
+  transform: translateY(1px);
+}
+
+.scheduled-detail__badge-dot[data-live] {
+  animation: scheduled-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-detail__badge-dot[data-live] {
+    animation: none;
+  }
+}

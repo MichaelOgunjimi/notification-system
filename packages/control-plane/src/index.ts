@@ -1,5 +1,5 @@
 export { controlPlaneClient, createControlPlaneClient } from "./client";
-export { ControlPlaneError, type ControlPlaneErrorCode } from "./error";
+export { ControlPlaneError, type ControlPlaneErrorCode, type ControlPlaneIssue } from "./error";
 export type {
   AlertComparison,
   AlertMetric,
@@ -53,7 +53,10 @@ export type {
   TenantScheduledRecipient,
   TenantNotificationDetail,
   TenantNotificationLog,
+  ScheduledDisplayStatus,
+  ScheduledEventCreate,
   ScheduledEventFilter,
+  ScheduledEventRecipientInput,
   ScheduledEventStatus,
   Template,
   TemplateChannel,

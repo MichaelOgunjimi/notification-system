@@ -48,6 +48,7 @@ import type {
   Paginated,
   Project,
   ProjectApiKey,
+  ScheduledEventCreate,
   ScheduledEventFilter,
   Template,
   TemplateCreate,
@@ -476,6 +477,7 @@ function mapTenantScheduledEvent(event: ApiTenantScheduledEvent): TenantSchedule
     scheduledFor: utcTimestamp(event.scheduled_for),
     priority: event.priority,
     status: event.status,
+    displayStatus: event.display_status,
     eventId: event.event_id,
     eventStatus: event.event_status,
     failureReason: event.failure_reason,
@@ -510,6 +512,26 @@ function mapTenantScheduledEventDetail(
     })),
     payload: detail.payload,
     metadata: detail.metadata,
+  };
+}
+
+function scheduledEventBody(input: ScheduledEventCreate) {
+  return {
+    api_key_id: input.apiKeyId,
+    event_type: input.eventType,
+    recipients: input.recipients.map((recipient) => ({
+      user_id: recipient.userId,
+      channels: recipient.channels,
+      email: recipient.email,
+      phone: recipient.phone,
+      webhook_url: recipient.webhookUrl,
+    })),
+    scheduled_for: input.scheduledFor,
+    priority: input.priority,
+    template_name: input.templateName,
+    inline: input.inline,
+    payload: input.payload,
+    metadata: input.metadata,
   };
 }
 
@@ -1171,6 +1193,17 @@ class HttpControlPlaneClient implements ControlPlaneClient {
       mapTenantScheduledEventDetail(
         await this.get<ApiTenantScheduledEventDetail>(
           `/projects/${encodeURIComponent(projectId)}/scheduled-events/${encodeURIComponent(scheduledEventId)}`,
+        ),
+      ),
+    create: async (
+      projectId: string,
+      input: ScheduledEventCreate,
+    ): Promise<TenantScheduledEventDetail> =>
+      mapTenantScheduledEventDetail(
+        await this.request<ApiTenantScheduledEventDetail>(
+          `/projects/${encodeURIComponent(projectId)}/scheduled-events`,
+          "POST",
+          scheduledEventBody(input),
         ),
       ),
     cancel: async (projectId: string, scheduledEventId: string): Promise<void> => {

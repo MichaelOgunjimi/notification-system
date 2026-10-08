@@ -40,6 +40,7 @@ export {
   useProjectScheduledEvent,
   useProjectScheduledEvents,
   useCancelProjectScheduledEvent,
+  useCreateProjectScheduledEvent,
   useProjectEvents,
   useProjectNotification,
   useProjectNotifications,
