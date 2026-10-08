@@ -1,0 +1,57 @@
+/*
+ * Entrance motion for the scheduled events pages, using the values in DESIGN_REFERENCE.md:
+ * FadeIn is 12px up over 0.4s and StaggerItem is 8px up over 0.35s, both on
+ * cubic-bezier(0.25, 0.46, 0.45, 0.94), with 60ms between siblings. The app has no motion
+ * library, so these are the same curves as CSS. Set `--i` on an element to stagger it.
+ */
+@keyframes scheduled-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scheduled-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* `animate-pulse`: opacity 100% <-> 50%, reserved for status dots that signal live processing. */
+@keyframes scheduled-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/*
+ * `backwards`, not `both`: once the entrance ends nothing keeps applying, so the element does not
+ * stay a stacking context and select menus and calendars still open over the next card.
+ */
+.scheduled-fade-in {
+  animation: scheduled-fade-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.scheduled-stagger-in {
+  animation: scheduled-stagger-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-fade-in,
+  .scheduled-stagger-in {
+    animation: none;
+  }
+}

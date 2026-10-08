@@ -7,6 +7,7 @@ import type { Organization, Project } from "@beaco/control-plane";
 import { useProjectEvent } from "@beaco/control-plane/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { absoluteFormatter } from "@/lib/audit-log";
+import { formatBytes } from "@/lib/format-bytes";
 import "./event-detail-page.css";
 
 /** Props for {@link EventDetailPage}. */
@@ -32,19 +33,6 @@ function statusTone(status: string): "success" | "danger" | "warning" | "muted" 
     return "warning";
   }
   return "muted";
-}
-
-/** Formats a declared attachment size as B, KB, MB or GB for display. */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
 }
 
 function EventDetailSkeleton({ backHref }: Readonly<{ backHref: string }>) {

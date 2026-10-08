@@ -120,6 +120,12 @@ describe("control-plane queries", () => {
         forOrganization: vi.fn().mockResolvedValue(emptyPage),
         get: vi.fn(),
       },
+      scheduledEvents: {
+        forProject: vi.fn().mockResolvedValue(emptyPage),
+        get: vi.fn(),
+        cancel: vi.fn(),
+        create: vi.fn(),
+      },
       notifications: {
         forProject: vi.fn().mockResolvedValue(emptyPage),
         get: vi.fn(),

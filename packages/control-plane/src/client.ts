@@ -23,6 +23,8 @@ import type {
   ApiTenantEventNotification,
   ApiTenantNotification,
   ApiTenantNotificationDetail,
+  ApiTenantScheduledEvent,
+  ApiTenantScheduledEventDetail,
   ApiTenantNotificationLog,
   ApiTrendPoint,
   ApiTrends,
@@ -46,6 +48,8 @@ import type {
   Paginated,
   Project,
   ProjectApiKey,
+  ScheduledEventCreate,
+  ScheduledEventFilter,
   Template,
   TemplateCreate,
   TemplateListOptions,
@@ -56,6 +60,8 @@ import type {
   TenantNotification,
   TenantNotificationDetail,
   TenantNotificationLog,
+  TenantScheduledEvent,
+  TenantScheduledEventDetail,
   TrendPoint,
   Trends,
   TrendsFilter,
@@ -462,6 +468,80 @@ function mapTenantEventDetail(detail: ApiTenantEventDetail): TenantEventDetail {
     updatedAt: utcTimestamp(detail.updated_at),
     notifications: detail.notifications.map(mapTenantEventNotification),
   };
+}
+
+function mapTenantScheduledEvent(event: ApiTenantScheduledEvent): TenantScheduledEvent {
+  return {
+    id: event.id,
+    eventType: event.event_type,
+    scheduledFor: utcTimestamp(event.scheduled_for),
+    priority: event.priority,
+    status: event.status,
+    displayStatus: event.display_status,
+    eventId: event.event_id,
+    eventStatus: event.event_status,
+    failureReason: event.failure_reason,
+    apiKeyId: event.api_key_id,
+    apiKeyName: event.api_key_name,
+    apiKeyEnvironment: event.api_key_environment,
+    contentSource: event.content_source,
+    recipientCount: event.recipient_count,
+    channels: event.channels,
+    firstRecipient: event.first_recipient,
+    createdAt: utcTimestamp(event.created_at),
+    updatedAt: utcTimestamp(event.updated_at),
+  };
+}
+
+function mapTenantScheduledEventDetail(
+  detail: ApiTenantScheduledEventDetail,
+): TenantScheduledEventDetail {
+  return {
+    ...mapTenantScheduledEvent(detail),
+    templateId: detail.template_id,
+    templateName: detail.template_name,
+    subject: detail.subject,
+    recipients: detail.recipients.map(({ user_id, channels, addresses }) => ({
+      userId: user_id,
+      channels,
+      addresses,
+    })),
+    attachments: detail.attachments.map(({ filename, size_bytes }) => ({
+      filename,
+      sizeBytes: size_bytes,
+    })),
+    payload: detail.payload,
+    metadata: detail.metadata,
+  };
+}
+
+function scheduledEventBody(input: ScheduledEventCreate) {
+  return {
+    api_key_id: input.apiKeyId,
+    event_type: input.eventType,
+    recipients: input.recipients.map((recipient) => ({
+      user_id: recipient.userId,
+      channels: recipient.channels,
+      email: recipient.email,
+      phone: recipient.phone,
+      webhook_url: recipient.webhookUrl,
+    })),
+    scheduled_for: input.scheduledFor,
+    priority: input.priority,
+    template_name: input.templateName,
+    inline: input.inline,
+    payload: input.payload,
+    metadata: input.metadata,
+  };
+}
+
+function scheduledEventQuery(filter: ScheduledEventFilter): string {
+  const params = new URLSearchParams();
+  if (filter.page !== undefined) params.set("page", String(filter.page));
+  if (filter.perPage !== undefined) params.set("per_page", String(filter.perPage));
+  if (filter.status) params.set("status", filter.status);
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 function eventQuery(filter: EventFilter): string {
@@ -1097,6 +1177,41 @@ class HttpControlPlaneClient implements ControlPlaneClient {
           `/projects/${encodeURIComponent(projectId)}/events/${encodeURIComponent(eventId)}`,
         ),
       ),
+  };
+
+  readonly scheduledEvents = {
+    forProject: async (
+      projectId: string,
+      filter: ScheduledEventFilter = {},
+    ): Promise<Paginated<TenantScheduledEvent>> => {
+      const page = await this.get<ApiPaginated<ApiTenantScheduledEvent>>(
+        `/projects/${encodeURIComponent(projectId)}/scheduled-events${scheduledEventQuery(filter)}`,
+      );
+      return mapPage(page, mapTenantScheduledEvent);
+    },
+    get: async (projectId: string, scheduledEventId: string): Promise<TenantScheduledEventDetail> =>
+      mapTenantScheduledEventDetail(
+        await this.get<ApiTenantScheduledEventDetail>(
+          `/projects/${encodeURIComponent(projectId)}/scheduled-events/${encodeURIComponent(scheduledEventId)}`,
+        ),
+      ),
+    create: async (
+      projectId: string,
+      input: ScheduledEventCreate,
+    ): Promise<TenantScheduledEventDetail> =>
+      mapTenantScheduledEventDetail(
+        await this.request<ApiTenantScheduledEventDetail>(
+          `/projects/${encodeURIComponent(projectId)}/scheduled-events`,
+          "POST",
+          scheduledEventBody(input),
+        ),
+      ),
+    cancel: async (projectId: string, scheduledEventId: string): Promise<void> => {
+      await this.request<void>(
+        `/projects/${encodeURIComponent(projectId)}/scheduled-events/${encodeURIComponent(scheduledEventId)}`,
+        "DELETE",
+      );
+    },
   };
 
   readonly notifications = {
