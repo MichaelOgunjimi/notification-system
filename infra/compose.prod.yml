@@ -8,6 +8,12 @@
 #     need to reach them directly
 #   - resource limits on every service, not just workers
 #   - build args / env point at the real beaco.michaelogunjimi.com hostnames
+#   - two networks: "edge" (cloudflared, web, docs, api) and "backend" (api,
+#     workers, db, redis) — web/docs/cloudflared have no route to db/redis at
+#     all. "backend" is a plain bridge, not `internal: true`, because workers
+#     need real outbound internet access (Resend, Twilio, arbitrary webhook
+#     targets are core functionality, not optional)
+#   - redis requires a password; nothing here is reachable without one
 
 x-worker-common: &worker-common
   build:
@@ -24,11 +30,11 @@ x-worker-common: &worker-common
   environment: &worker-env
     POSTGRES_SERVER: db
     POSTGRES_PORT: 5432
-    CELERY_BROKER_URL: redis://redis:6379/0
-    CELERY_RESULT_BACKEND: redis://redis:6379/1
-    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
   networks:
-    - notification-net
+    - notification-backend
   deploy:
     resources:
       limits:
@@ -55,7 +61,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - notification-net
+      - notification-backend
     deploy:
       resources:
         limits:
@@ -65,15 +71,16 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} --no-auth-warning ping"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - notification-net
+      - notification-backend
     deploy:
       resources:
         limits:
@@ -95,7 +102,8 @@ services:
     environment:
       <<: *worker-env
     networks:
-      - notification-net
+      - notification-edge
+      - notification-backend
     deploy:
       resources:
         limits:
@@ -139,15 +147,13 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    env_file:
-      - ../env/.env.production
     environment:
       BACKEND_URL: http://api:8000
       NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
       NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
       NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
     networks:
-      - notification-net
+      - notification-edge
     deploy:
       resources:
         limits:
@@ -161,12 +167,10 @@ services:
       args:
         NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
     restart: unless-stopped
-    env_file:
-      - ../env/.env.production
     environment:
       NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
     networks:
-      - notification-net
+      - notification-edge
     deploy:
       resources:
         limits:
@@ -184,7 +188,7 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     networks:
-      - notification-net
+      - notification-edge
     deploy:
       resources:
         limits:
@@ -196,5 +200,7 @@ volumes:
   redisdata:
 
 networks:
-  notification-net:
+  notification-edge:
+    driver: bridge
+  notification-backend:
     driver: bridge
