@@ -21,9 +21,9 @@ x-worker-common: &worker-common
     EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
     SMTP_HOST: mailpit
     SMTP_PORT: 1025
-    BACKEND_URL: https://beaco-api.michaelogunjimi.com
-    FRONTEND_URL: https://beaco.michaelogunjimi.com
-    CORS_ALLOWED_ORIGINS: http://localhost:3000 http://localhost:3001 https://beaco.michaelogunjimi.com https://beaco-docs.michaelogunjimi.com
+    BACKEND_URL: https://beaco-api-dev.michaelogunjimi.com
+    FRONTEND_URL: https://beaco-dev.michaelogunjimi.com
+    CORS_ALLOWED_ORIGINS: http://localhost:3000 http://localhost:3001 https://beaco-dev.michaelogunjimi.com https://beaco-docs-dev.michaelogunjimi.com
   networks:
     - notification-net
   deploy:
@@ -146,9 +146,9 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         BACKEND_URL: http://api:8000
-        NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
-        NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
-        NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
+        NEXT_PUBLIC_API_URL: https://beaco-api-dev.michaelogunjimi.com/api/v1
+        NEXT_PUBLIC_DOCS_URL: https://beaco-docs-dev.michaelogunjimi.com
+        NEXT_PUBLIC_SITE_URL: https://beaco-dev.michaelogunjimi.com
     restart: unless-stopped
     depends_on:
       - api
@@ -156,9 +156,9 @@ services:
       - .env
     environment:
       BACKEND_URL: http://api:8000
-      NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
-      NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
-      NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
+      NEXT_PUBLIC_API_URL: https://beaco-api-dev.michaelogunjimi.com/api/v1
+      NEXT_PUBLIC_DOCS_URL: https://beaco-docs-dev.michaelogunjimi.com
+      NEXT_PUBLIC_SITE_URL: https://beaco-dev.michaelogunjimi.com
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
@@ -169,12 +169,12 @@ services:
       context: .
       dockerfile: apps/docs/Dockerfile
       args:
-        NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
+        NEXT_PUBLIC_WEB_URL: https://beaco-dev.michaelogunjimi.com
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
+      NEXT_PUBLIC_WEB_URL: https://beaco-dev.michaelogunjimi.com
     ports:
       - "${DOCS_PORT:-3001}:3001"
     networks:

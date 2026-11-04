@@ -1,0 +1,206 @@
+# Production stack for the self-hosted VM. Build and run from the repo root:
+#   docker compose -f infra/compose.prod.yml --env-file env/.env.production up -d --build
+#
+# Differences from the dev docker-compose.yml:
+#   - no mailpit / flower (Resend + no monitoring UI exposed in prod)
+#   - no ports published to the host — cloudflared reaches every service over
+#     the internal Docker network by container name; nothing else should
+#     need to reach them directly
+#   - resource limits on every service, not just workers
+#   - build args / env point at the real beaco.michaelogunjimi.com hostnames
+#   - two networks: "edge" (cloudflared, web, docs, api) and "backend" (api,
+#     workers, db, redis) — web/docs/cloudflared have no route to db/redis at
+#     all. "backend" is a plain bridge, not `internal: true`, because workers
+#     need real outbound internet access (Resend, Twilio, arbitrary webhook
+#     targets are core functionality, not optional)
+#   - redis requires a password; nothing here is reachable without one
+
+x-worker-common: &worker-common
+  build:
+    context: ../apps/api
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  env_file:
+    - ../env/.env.production
+  environment: &worker-env
+    POSTGRES_SERVER: db
+    POSTGRES_PORT: 5432
+    CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  networks:
+    - notification-backend
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+        cpus: "1.0"
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-notification_system}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-notification_system}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notification-backend
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} --no-auth-warning ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notification-backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../env/.env.production
+    environment:
+      <<: *worker-env
+    networks:
+      - notification-edge
+      - notification-backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  worker-dispatcher:
+    <<: *worker-common
+    command: celery -A app.workers.celery_app worker -Q notifications.high,notifications.medium,notifications.low,notifications.reconciliation -l info -n dispatcher@%h --concurrency=4
+
+  worker-email:
+    <<: *worker-common
+    command: celery -A app.workers.celery_app worker -Q notifications.email.high,notifications.email.medium,notifications.email.low,notifications.email.lifecycle -l info -n email@%h --concurrency=4
+
+  worker-sms:
+    <<: *worker-common
+    command: celery -A app.workers.celery_app worker -Q notifications.sms.high,notifications.sms.medium,notifications.sms.low -l info -n sms@%h --concurrency=4
+
+  worker-webhook:
+    <<: *worker-common
+    command: celery -A app.workers.celery_app worker -Q notifications.webhook.high,notifications.webhook.medium,notifications.webhook.low -l info -n webhook@%h --concurrency=4
+
+  celery-beat:
+    <<: *worker-common
+    command: celery -A app.workers.celery_app beat -l info --schedule=/tmp/celerybeat-schedule
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        BACKEND_URL: http://api:8000
+        NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
+        NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
+        NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      BACKEND_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: https://beaco-api.michaelogunjimi.com/api/v1
+      NEXT_PUBLIC_DOCS_URL: https://beaco-docs.michaelogunjimi.com
+      NEXT_PUBLIC_SITE_URL: https://beaco.michaelogunjimi.com
+    networks:
+      - notification-edge
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  docs:
+    build:
+      context: ..
+      dockerfile: apps/docs/Dockerfile
+      args:
+        NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_WEB_URL: https://beaco.michaelogunjimi.com
+    networks:
+      - notification-edge
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+      - docs
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    networks:
+      - notification-edge
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  notification-edge:
+    driver: bridge
+  notification-backend:
+    driver: bridge
