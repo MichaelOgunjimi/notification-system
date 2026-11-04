@@ -12,13 +12,14 @@ build/
 # Virtual environments
 .venv/
 venv/
-ENV/
 
 # uv
 .python-version
 
 # Environment
 .env
+env/.env.*
+!env/.env.*.example
 
 # IDE
 .idea/
@@ -44,6 +45,8 @@ htmlcov/
 # Docker
 .docker/
 cloudflared/*.json
+infra/cloudflared/*.json
+infra/backups/
 
 # OS
 .DS_Store

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 -include .env
 
-.PHONY: help install setup new-worktree inherit-env status dev dev-api dev-web dev-docs infra test-db test lint lint-fix format type-check check migrate migrate-create seed smoke load-test up up-tunnel stop-tunnel down clean stop-all docker-migrate docker-seed rebuild rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower
+.PHONY: help install setup new-worktree inherit-env status dev dev-api dev-web dev-docs infra test-db test lint lint-fix format type-check check migrate migrate-create seed smoke load-test up up-tunnel stop-tunnel down clean stop-all docker-migrate docker-seed rebuild rebuild-web worker-dispatcher worker-email worker-sms worker-webhook worker-all celery-beat flower up-prod migrate-prod backup-prod logs-prod down-prod
 
 API_DIR := apps/api
 # Host-run API commands must reach this checkout's own containers, not the
@@ -168,3 +168,23 @@ celery-beat: ## Run the Celery scheduler
 
 flower: ## Run the Flower worker dashboard
 	cd $(API_DIR) && $(HOST_ENV) uv run celery -A app.workers.celery_app flower --port=$(or $(FLOWER_PORT),5555)
+
+##@ Production
+
+PROD_COMPOSE := docker compose -f infra/compose.prod.yml --env-file env/.env.production
+
+up-prod: ## Build, migrate, and start the production stack
+	$(PROD_COMPOSE) up -d --build
+	$(PROD_COMPOSE) exec -T api alembic upgrade head
+
+migrate-prod: ## Apply database migrations against the running production stack
+	$(PROD_COMPOSE) exec -T api alembic upgrade head
+
+backup-prod: ## Dump and gzip the production database into infra/backups/
+	./infra/backup.sh
+
+logs-prod: ## Tail logs from the production stack; pass service="api" to scope it
+	$(PROD_COMPOSE) logs -f --tail=200 $(service)
+
+down-prod: ## Stop the production stack; keep volumes
+	$(PROD_COMPOSE) down
