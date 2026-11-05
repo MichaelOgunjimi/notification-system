@@ -1,0 +1,38 @@
+# Manage the Openship-deployed Beaco stack on the VM from your Mac (over ssh).
+# Run:  make -f Makefile.vm <target>      (or `make -f Makefile.vm` for this help)
+#
+# Openship names containers  openship-<project>-<service>, so no lookup is needed:
+#   s=api  ->  openship-beaco-api.  Change P= if the Openship project is renamed.
+
+VM ?= contabo-vm
+P  ?= openship-beaco
+s  ?= api
+SSH = ssh $(VM)
+
+.DEFAULT_GOAL := help
+.PHONY: help ps stats logs shell migrate psql backup health
+
+help:    ## show this list
+	@grep -hE '^[a-z]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | column -t -s "$$(printf '\t')"
+ps:      ## list containers and their status
+	$(SSH) 'docker ps -a --format "table {{.Names}}\t{{.Status}}"'
+stats:   ## CPU / RAM per container (watch MEM %, near 100 = about to be OOM-killed), plus VM load and swap
+	$(SSH) 'docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"; echo; uptime; free -h | sed -n 1,3p'
+logs:    ## follow logs of one service:  make -f Makefile.vm logs s=worker-email
+	$(SSH) 'docker logs -f --tail 100 $(P)-$(s)'
+shell:   ## open a shell inside a service:  ... shell s=api
+	$(SSH) -t 'docker exec -it $(P)-$(s) sh'
+migrate: ## run Alembic migrations (alembic upgrade head) in the api container
+	$(SSH) 'docker exec $(P)-api alembic upgrade head && docker exec $(P)-api alembic current'
+psql:    ## open a psql prompt on the database
+	$(SSH) -t 'docker exec -it $(P)-db sh -c "psql -U \$${POSTGRES_USER:-postgres} -d \$${POSTGRES_DB:-postgres}"'
+backup:  ## dump the database to ./backups/beaco-<date>.sql.gz on this Mac
+	mkdir -p backups && $(SSH) 'docker exec $(P)-db sh -c "pg_dump -U \$${POSTGRES_USER:-postgres} -d \$${POSTGRES_DB:-postgres}"' | gzip > backups/beaco-$$(date +%F-%H%M).sql.gz && ls -lh backups | tail -1
+health:  ## HTTP status of the public Beaco URLs through the tunnel
+	@for u in beaco beaco-docs beaco-api; do \
+		path="/"; \
+		if [ "$$u" = "beaco-api" ]; then path="/api/v1/health"; fi; \
+		printf "%s: " "$$u"; \
+		curl -sS -o /dev/null -m 10 -w "%{http_code}\n" \
+			"https://$$u.michaelogunjimi.com$$path"; \
+	done

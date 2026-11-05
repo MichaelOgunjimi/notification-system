@@ -85,3 +85,6 @@ graphify-out/
 
 DESIGN_REFERENCE.md
 CODE_REVIEW.md
+
+# VM DB dumps (make -f Makefile.vm backup)
+backups/
