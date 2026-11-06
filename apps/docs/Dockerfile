@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:24.22.1-alpine AS builder
 
 WORKDIR /repo
 
@@ -17,7 +17,7 @@ COPY apps/docs apps/docs
 COPY packages/theme packages/theme
 RUN npm run build --workspace @beaco/docs
 
-FROM node:20-alpine AS runtime
+FROM node:24.22.1-alpine AS runtime
 
 WORKDIR /app
 
