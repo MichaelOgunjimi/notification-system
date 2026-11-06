@@ -182,9 +182,32 @@ services:
           memory: 256M
           cpus: "0.5"
 
+  # Test mail catcher. Point the app at it with EMAIL_PROVIDER=smtp, SMTP_HOST=mailpit,
+  # SMTP_PORT=1025. Nothing is delivered to real inboxes. The UI listens on the VM's
+  # loopback only; publish it through Openship Edge (beaco-mail hostname) and put an
+  # Access policy in front, because Mailpit itself has no login.
+  mailpit:
+    image: axllent/mailpit:v1.31.0
+    command: ["--database", "/data/mailpit.db"]
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "2000"
+    ports:
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpitdata:/data
+    networks:
+      - notification-backend
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
 volumes:
   pgdata:
   redisdata:
+  mailpitdata:
 
 networks:
   notification-edge:
