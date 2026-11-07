@@ -1,0 +1,35 @@
+name: Deploy
+
+# After CI passes on main, call the project's Openship incoming deploy hook.
+# The hook is served by the Openship desktop app on the maintainer's Mac through
+# the openship-hooks Cloudflare Tunnel, so the Mac must be on with the app open.
+# Without the two secrets below this workflow skips quietly.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Openship deploy
+        env:
+          HOOK_URL: ${{ secrets.OPENSHIP_HOOK_URL }}
+          HOOK_TOKEN: ${{ secrets.OPENSHIP_HOOK_TOKEN }}
+        run: |
+          if [ -z "$HOOK_URL" ] || [ -z "$HOOK_TOKEN" ]; then
+            echo "OPENSHIP_HOOK_URL / OPENSHIP_HOOK_TOKEN not set; skipping"
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --retry 3 --retry-delay 15 \
+            -X POST -H "Authorization: Bearer $HOOK_TOKEN" "$HOOK_URL"
